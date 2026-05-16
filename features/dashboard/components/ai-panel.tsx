@@ -10,7 +10,7 @@ import {
   X,
 } from "lucide-react";
 // import { cn } from "@/lib/utils";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
@@ -154,6 +154,7 @@ export function AIPanelSheet({
         side="right"
         className="p-0 w-full sm:w-[380px] bg-sidebar border-l-border"
       >
+        <SheetTitle className="sr-only">Nucleus AI Panel</SheetTitle>
         <PanelHeader onClose={() => onOpenChange(false)} />
         <PanelBody />
       </SheetContent>
