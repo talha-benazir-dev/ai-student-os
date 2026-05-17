@@ -24,7 +24,7 @@ type NavItem = {
 };
 
 const nav: NavItem[] = [
-  { to: "/", label: "Dashboard", icon: LayoutDashboard },
+  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/notes", label: "Notes", icon: FileText },
   { to: "/tasks", label: "Tasks", icon: CheckSquare },
   { to: "/documents", label: "Documents", icon: FolderOpen },

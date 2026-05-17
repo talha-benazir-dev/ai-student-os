@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { ArrowUpRight, Check, Search, Sparkles } from "lucide-react";
 import { Tilt } from "./tilt";
 
@@ -8,7 +9,7 @@ function Bubble({
   children,
 }: {
   role: "ai" | "user";
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   if (role === "user") {
     return (

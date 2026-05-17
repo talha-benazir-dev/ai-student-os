@@ -1,0 +1,82 @@
+"use client";
+
+import { useActionState } from "react";
+import { login } from "@/features/auth/actions/auth";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import Link from "next/link";
+import { OAuthButtons } from "./oauth-buttons";
+import { Loader2 } from "lucide-react";
+
+export function LoginForm() {
+  const [state, formAction, isPending] = useActionState(login, null);
+
+  return (
+    <Card className="w-full max-w-md shadow-violet-500/20 border-border bg-card/50 backdrop-blur-sm">
+      <CardHeader className="space-y-1">
+        <CardTitle className="text-2xl font-bold tracking-tight text-center">
+          Welcome back
+        </CardTitle>
+        <CardDescription className="text-center text-muted-foreground">
+          Enter your email below to login to your account
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="grid gap-4">
+        <OAuthButtons />
+        <div className="relative">
+          <div className="absolute inset-0 flex items-center">
+            <span className="w-full border-t" />
+          </div>
+          <div className="relative flex justify-center text-xs uppercase">
+            <span className="bg-background px-2 text-muted-foreground">
+              Or continue with
+            </span>
+          </div>
+        </div>
+        <form action={formAction} className="grid gap-4">
+          <div className="grid gap-2">
+            <Label htmlFor="email">Email</Label>
+            <Input
+              id="email"
+              name="email"
+              type="email"
+              placeholder="m@example.com"
+              required
+            />
+          </div>
+          <div className="grid gap-2">
+            <div className="flex items-center">
+              <Label htmlFor="password">Password</Label>
+              <Link
+                href="/forgot-password"
+                className="ml-auto inline-block text-sm underline text-muted-foreground hover:text-foreground"
+              >
+                Forgot your password?
+              </Link>
+            </div>
+            <Input id="password" name="password" type="password" required />
+          </div>
+          {state?.error && (
+            <div className="text-sm font-medium text-destructive">
+              {state.error}
+            </div>
+          )}
+          <Button type="submit" className="w-full" disabled={isPending}>
+            {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Login
+          </Button>
+        </form>
+      </CardContent>
+      <CardFooter className="flex flex-col items-center justify-center space-y-2">
+        <div className="text-sm text-muted-foreground text-center">
+          Don&apos;t have an account?{" "}
+          <Link href="/signup" className="underline underline-offset-4 hover:text-primary">
+            Sign up
+          </Link>
+        </div>
+      </CardFooter>
+    </Card>
+  );
+}

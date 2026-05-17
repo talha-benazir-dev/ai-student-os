@@ -169,4 +169,57 @@
     scrollbar-width: thin;
     scrollbar-color: oklch(0.35 0.05 285) transparent;
   }
+
+  /* Landing page — scoped under .landing-page only */
+  .landing-page {
+    font-feature-settings: "ss01", "cv11";
+  }
+
+  .landing-page .shimmer {
+    background: linear-gradient(
+      90deg,
+      rgba(155, 124, 255, 0) 0%,
+      rgba(155, 124, 255, 0.35) 50%,
+      rgba(155, 124, 255, 0) 100%
+    );
+    background-size: 200% 100%;
+    animation: landing-shimmer 3s linear infinite;
+  }
+
+  .landing-page .floaty {
+    animation: landing-floaty 6s ease-in-out infinite;
+  }
+
+  .landing-page .pulse-glow {
+    animation: landing-pulse-glow 4s ease-in-out infinite;
+  }
+}
+
+@keyframes landing-shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes landing-floaty {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes landing-pulse-glow {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 0.9;
+  }
 }
