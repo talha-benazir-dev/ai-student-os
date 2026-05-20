@@ -25,27 +25,54 @@ export async function updateSession(request: NextRequest) {
     },
   );
 
-  // Refresh session — DO NOT remove this
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Protect routes
-  if (!user && request.nextUrl.pathname.startsWith("/dashboard")) {
+  const path = request.nextUrl.pathname;
+
+  if (!user && path === "/onboarding") {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
   }
 
-  // Redirect authenticated users from login/signup to dashboard
-  if (
-    user &&
-    (request.nextUrl.pathname === "/login" ||
-      request.nextUrl.pathname === "/signup")
-  ) {
+  // Protect /dashboard — redirect to login if not authenticated
+  if (!user && path.startsWith("/dashboard")) {
     const url = request.nextUrl.clone();
-    url.pathname = "/dashboard";
+    url.pathname = "/login";
     return NextResponse.redirect(url);
+  }
+
+  if (user) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("onboarded")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    const onboarded = profile?.onboarded === true;
+
+    // Redirect logged-in users away from login/signup
+    if (path === "/login" || path === "/signup") {
+      const url = request.nextUrl.clone();
+      url.pathname = onboarded ? "/dashboard" : "/onboarding";
+      return NextResponse.redirect(url);
+    }
+
+    // Redirect to onboarding if not completed and trying to access dashboard
+    if (!onboarded && path.startsWith("/dashboard")) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/onboarding";
+      return NextResponse.redirect(url);
+    }
+
+    // Redirect to dashboard if already onboarded and visiting /onboarding
+    if (onboarded && path === "/onboarding") {
+      const url = request.nextUrl.clone();
+      url.pathname = "/dashboard";
+      return NextResponse.redirect(url);
+    }
   }
 
   return supabaseResponse;

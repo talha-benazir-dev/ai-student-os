@@ -1,7 +1,24 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { ensureProfile } from "@/features/onboarding/actions/onboarding.actions";
+
+async function redirectAfterAuth() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/login");
+  }
+
+  const { data: profile } = await ensureProfile(user.id);
+  revalidatePath("/", "layout");
+  redirect(profile?.onboarded === true ? "/dashboard" : "/onboarding");
+}
 
 export async function login(prevState: any, formData: FormData) {
   const supabase = await createClient();
@@ -22,7 +39,7 @@ export async function login(prevState: any, formData: FormData) {
     return { error: error.message };
   }
 
-  redirect("/dashboard");
+  await redirectAfterAuth();
 }
 
 export async function signup(prevState: any, formData: FormData) {
@@ -44,7 +61,7 @@ export async function signup(prevState: any, formData: FormData) {
     return { error: error.message };
   }
 
-  redirect("/dashboard");
+  await redirectAfterAuth();
 }
 
 export async function logout() {

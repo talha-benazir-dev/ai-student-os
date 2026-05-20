@@ -144,12 +144,18 @@
   }
   body {
     @apply bg-background text-foreground antialiased;
+  }
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
     background-image: radial-gradient(
       120% 80% at 50% -20%,
       oklch(0.28 0.08 295 / 18%),
       transparent 55%
     );
-    background-attachment: fixed;
+    pointer-events: none;
   }
   html {
     @apply font-sans;

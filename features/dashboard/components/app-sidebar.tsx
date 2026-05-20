@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { memo } from "react";
 import {
   LayoutDashboard,
   FileText,
@@ -33,9 +34,43 @@ const nav: NavItem[] = [
   { to: "/analytics", label: "Analytics", icon: BarChart3 },
 ];
 
-function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
+// Isolated NavLink: only this re-renders on pathname change, not the whole sidebar
+function NavLink({
+  to,
+  label,
+  icon: Icon,
+  badge,
+  onClick,
+}: NavItem & { onClick?: () => void }) {
   const pathname = usePathname();
+  const active = pathname === to;
+  return (
+    <Link
+      href={to}
+      prefetch={true}
+      onClick={onClick}
+      className={cn(
+        "group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all",
+        active
+          ? "bg-primary/12 text-foreground border border-primary/20 shadow-[inset_0_1px_0_oklch(1_0_0/6%)]"
+          : "text-muted-foreground hover:text-foreground hover:bg-accent/50",
+      )}
+    >
+      {active && (
+        <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-0.5 rounded-r bg-primary" />
+      )}
+      <Icon className={cn("h-4 w-4 shrink-0", active ? "text-primary" : "")} />
+      <span className="flex-1">{label}</span>
+      {badge && (
+        <span className="text-[9px] tracking-widest px-1.5 py-0.5 rounded border border-primary/30 text-primary bg-primary/10">
+          {badge}
+        </span>
+      )}
+    </Link>
+  );
+}
 
+function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <>
       <div className="flex items-center gap-2.5 px-5 h-16 border-b border-border">
@@ -56,38 +91,15 @@ function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
           Workspace
         </div>
         <nav className="flex flex-col gap-0.5">
-          {nav.map(({ to, label, icon: Icon, badge }) => {
-            const active = pathname === to;
-            return (
-              <Link
-                key={to}
-                href={to}
-                onClick={onNavigate}
-                className={cn(
-                  "group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all",
-                  active
-                    ? "bg-primary/12 text-foreground border border-primary/20 shadow-[inset_0_1px_0_oklch(1_0_0/6%)]"
-                    : "text-muted-foreground hover:text-foreground hover:bg-accent/50",
-                )}
-              >
-                {active && (
-                  <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-0.5 rounded-r bg-primary" />
-                )}
-                <Icon className={cn("h-4 w-4", active ? "text-primary" : "")} />
-                <span className="flex-1">{label}</span>
-                {badge && (
-                  <span className="text-[9px] tracking-widest px-1.5 py-0.5 rounded border border-primary/30 text-primary bg-primary/10">
-                    {badge}
-                  </span>
-                )}
-              </Link>
-            );
-          })}
+          {nav.map((item) => (
+            <NavLink key={item.to} {...item} onClick={onNavigate} />
+          ))}
         </nav>
       </div>
       <div className="mt-auto px-3 pb-4 space-y-2">
         <Link
           href="/settings"
+          prefetch={true}
           onClick={onNavigate}
           className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors"
         >
@@ -100,8 +112,7 @@ function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
           <div className="min-w-0 flex-1">
             <div className="text-sm font-medium truncate">Zara Ahmed</div>
             <div className="text-[11px] text-muted-foreground flex items-center gap-1">
-              Pro plan · <Flame className="h-3 w-3 text-orange-500" /> 7-day
-              streak
+              Pro plan · <Flame className="h-3 w-3 text-orange-500" /> 7-day streak
             </div>
           </div>
         </div>
@@ -110,13 +121,13 @@ function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
   );
 }
 
-export function AppSidebar() {
+export const AppSidebar = memo(function AppSidebar() {
   return (
-    <aside className="hidden lg:flex w-[248px] shrink-0 flex-col border-r border-border bg-sidebar">
+    <aside className="hidden lg:flex w-[248px] shrink-0 flex-col border-r border-border bg-sidebar sticky top-0 h-screen">
       <SidebarBody />
     </aside>
   );
-}
+});
 
 export function MobileSidebar({
   open,

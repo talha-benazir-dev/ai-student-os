@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
 import { LoginForm } from "@/features/auth/components/login-form";
+import { redirectIfAuthenticated } from "@/features/auth/lib/redirect-if-authenticated";
 
 export const metadata: Metadata = {
   title: "Login — Nucleus",
   description: "Login to your Nucleus account.",
 };
 
-export default function LoginPage() {
+export default async function LoginPage() {
+  await redirectIfAuthenticated();
   return (
     <div className="flex min-h-screen w-full flex-col items-center justify-center px-4 sm:px-0 bg-background relative overflow-hidden">
       {/* Dynamic Background Glow matching landing page */}

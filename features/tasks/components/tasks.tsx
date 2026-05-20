@@ -11,6 +11,7 @@ import {
 import {
   AlertCircle,
   Calendar,
+  CalendarDays,
   CheckCircle2,
   ClipboardList,
   Pencil,
@@ -18,8 +19,14 @@ import {
   Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Calendar as DateCalendar } from "@/components/ui/calendar";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import type { Task } from "@/features/tasks/types";
 import {
@@ -53,6 +60,29 @@ function getTodayISO(): string {
   const m = String(now.getMonth() + 1).padStart(2, "0");
   const d = String(now.getDate()).padStart(2, "0");
   return `${y}-${m}-${d}`;
+}
+
+function parseISODate(iso: string): Date | undefined {
+  if (!iso) return undefined;
+  const [y, m, d] = iso.split("-").map(Number);
+  if (!y || !m || !d) return undefined;
+  return new Date(y, m - 1, d);
+}
+
+function toISODate(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+function formatDueDateLabel(iso: string): string {
+  if (!iso) return "Due date";
+  return new Date(`${iso}T12:00:00`).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
 }
 
 function sortTasks(tasks: Task[]): Task[] {
@@ -124,6 +154,110 @@ const priorityBadgeClass: Record<Task["priority"], string> = {
   medium: "bg-yellow-500/15 text-yellow-400",
   high: "bg-red-500/15 text-red-400",
 };
+
+function DueDateInput({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const hasDate = Boolean(value);
+  const selected = parseISODate(value);
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          aria-label="Due date"
+          className={cn(
+            "inline-flex items-center gap-2 h-8 shrink-0 rounded-full pl-2.5 pr-3 text-xs font-medium cursor-pointer",
+            "transition-all duration-150 ease-in-out",
+            "focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7c5cfc]/45",
+            hasDate
+              ? "bg-[#7c5cfc]/12 text-[#7c5cfc] ring-1 ring-[#7c5cfc]/30 hover:bg-[#7c5cfc]/18"
+              : "bg-white/5 text-white/45 ring-1 ring-[#ffffff10] hover:bg-white/[0.07] hover:ring-[#7c5cfc]/25",
+          )}
+        >
+          <CalendarDays
+            className={cn(
+              "h-3.5 w-3.5 shrink-0 transition-colors duration-150",
+              hasDate ? "text-[#7c5cfc]" : "text-white/35",
+            )}
+            aria-hidden
+          />
+          <span className="whitespace-nowrap">{formatDueDateLabel(value)}</span>
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        align="start"
+        sideOffset={6}
+        className={cn(
+          "w-auto p-0 overflow-hidden rounded-xl",
+          "bg-[#0f0f17] border border-[#ffffff10]",
+          "shadow-[0_16px_48px_-12px_rgba(0,0,0,0.65)]",
+          "text-white/90",
+          "[&_button[data-selected-single=true]]:bg-[#7c5cfc] [&_button[data-selected-single=true]]:text-white",
+          "[&_button[data-selected-single=true]]:hover:bg-[#6b4ce8]",
+          "[&_button:not([data-selected-single=true])]:text-white/80",
+          "[&_button:not([data-selected-single=true])]:hover:bg-[#7c5cfc]/12 [&_button:not([data-selected-single=true])]:hover:text-[#7c5cfc]",
+        )}
+      >
+        <DateCalendar
+          mode="single"
+          selected={selected}
+          onSelect={(date) => {
+            if (date) {
+              onChange(toISODate(date));
+              setOpen(false);
+            }
+          }}
+          defaultMonth={selected}
+          className="bg-transparent [--cell-size:2.25rem]"
+          classNames={{
+            caption_label: "text-white/90 text-sm font-medium",
+            weekday: "text-white/40 text-[0.75rem] font-normal",
+            button_previous: cn(
+              "text-white/50 hover:text-[#7c5cfc] hover:bg-[#7c5cfc]/10",
+              "transition-colors duration-150 ease-in-out",
+            ),
+            button_next: cn(
+              "text-white/50 hover:text-[#7c5cfc] hover:bg-[#7c5cfc]/10",
+              "transition-colors duration-150 ease-in-out",
+            ),
+            today: "bg-[#7c5cfc]/15 text-[#7c5cfc] rounded-md",
+            outside: "text-white/20",
+            disabled: "text-white/20 opacity-40",
+          }}
+        />
+        <div className="flex items-center justify-between border-t border-[#ffffff10] px-3 py-2">
+          <button
+            type="button"
+            onClick={() => {
+              onChange("");
+              setOpen(false);
+            }}
+            className="text-xs font-medium text-[#7c5cfc]/80 hover:text-[#7c5cfc] transition-colors duration-150 ease-in-out"
+          >
+            Clear
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              onChange(getTodayISO());
+              setOpen(false);
+            }}
+            className="text-xs font-medium text-[#7c5cfc]/80 hover:text-[#7c5cfc] transition-colors duration-150 ease-in-out"
+          >
+            Today
+          </button>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 function PriorityPills({
   value,
@@ -221,12 +355,7 @@ function TaskInlineForm({
           className="h-8 max-w-[200px] text-sm bg-transparent border-0 text-white/80 placeholder:text-white/30 focus-visible:ring-[#7c5cfc]/50 pl-3 pr-2"
         />
         <PriorityPills value={priority} onChange={setPriority} />
-        <input
-          type="date"
-          value={dueDate}
-          onChange={(e) => setDueDate(e.target.value)}
-          className="h-8 rounded-md bg-[#111118] border border-[#ffffff10] text-white/80 text-sm px-2.5 focus:outline-none focus:ring-2 focus:ring-[#7c5cfc]/50 [color-scheme:dark]"
-        />
+        <DueDateInput value={dueDate} onChange={setDueDate} />
       </div>
       {error && (
         <p className="text-sm text-red-400" role="alert">

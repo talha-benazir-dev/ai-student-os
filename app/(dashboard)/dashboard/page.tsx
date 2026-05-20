@@ -1,5 +1,5 @@
 import { Metadata } from "next";
-import { AppShell } from "@/features/dashboard/components/app-shell";
+import { Suspense } from "react";
 import { CommandShortcut } from "@/features/dashboard/components/command-shortcut";
 import { StatCard } from "@/features/dashboard/components/start-card";
 import { StudyChart, FocusBars } from "@/features/dashboard/components/charts";
@@ -14,26 +14,98 @@ import {
   Plus,
   ArrowUpRight,
 } from "lucide-react";
+import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
   title: "Dashboard — Nucleus",
   description: "Your AI study operating system.",
 };
 
-export default function Dashboard() {
+function ChartSkeleton() {
+  return <div className="w-full h-[180px] rounded-lg bg-muted/30 animate-pulse" />;
+}
+
+function getRelativeTime(dateString: string): string {
+  if (!dateString) return "Just now";
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffMs = Math.max(0, now.getTime() - date.getTime());
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+
+  if (diffMins < 1) return "Just now";
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  if (diffDays === 1) return "Yesterday";
+  if (diffDays < 7) {
+    const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    return days[date.getDay()];
+  }
+  return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+export default async function Dashboard() {
+  const supabase = await createClient();
+  const { data: userData } = await supabase.auth.getUser();
+  const userId = userData.user?.id;
+
+  let profileName = "there";
+  let activeTasks = 0;
+  let notesCount = 0;
+  let recentNotes: any[] = [];
+
+  if (userId) {
+    const fetchProfile = async () => {
+      try {
+        const { data, error } = await supabase.from("profiles").select("name").eq("id", userId).single();
+        if (!error && data?.name) profileName = data.name;
+      } catch (e) {}
+    };
+
+    const fetchTasksCount = async () => {
+      try {
+        const { count, error } = await supabase.from("tasks").select("id", { count: "exact", head: true }).eq("user_id", userId).eq("completed", false);
+        if (!error && count !== null) activeTasks = count;
+      } catch (e) {}
+    };
+
+    const fetchNotesCount = async () => {
+      try {
+        const { count, error } = await supabase.from("notes").select("id", { count: "exact", head: true }).eq("user_id", userId);
+        if (!error && count !== null) notesCount = count;
+      } catch (e) {}
+    };
+
+    const fetchRecentNotes = async () => {
+      try {
+        const { data, error } = await supabase.from("notes").select("id, title, content, subject, updated_at").eq("user_id", userId).order("updated_at", { ascending: false }).limit(4);
+        if (!error && data) recentNotes = data;
+      } catch (e) {}
+    };
+
+    await Promise.all([
+      fetchProfile(),
+      fetchTasksCount(),
+      fetchNotesCount(),
+      fetchRecentNotes(),
+    ]);
+  }
+
+  const subtitle = activeTasks > 0 
+    ? `You have ${activeTasks} task${activeTasks === 1 ? '' : 's'} pending today. Keep pushing.` 
+    : "All clear. Nothing pending — add tasks to stay on track.";
+
   return (
-    <AppShell>
-      <div className="px-4 sm:px-6 lg:px-10 xl:px-12 py-6 sm:py-8 mx-auto w-full max-w-[1400px]">
+    <div className="px-4 sm:px-6 lg:px-10 xl:px-12 py-6 sm:py-8 mx-auto w-full max-w-[1400px]">
         {/* Header */}
         <div className="flex items-start justify-between gap-4 mb-6 sm:mb-7">
           <div className="min-w-0">
             <h1 className="text-2xl sm:text-[28px] font-semibold tracking-tight">
-              Welcome back, Zara
+              Welcome back, {profileName}
             </h1>
             <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-              {
-                "You're 12% ahead of last week. Two deep-focus blocks scheduled today."
-              }
+              {subtitle}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -67,43 +139,39 @@ export default function Dashboard() {
         </div>
 
         {/* Stat cards */}
-        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3 mb-6">
+        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 mb-6">
           <StatCard
             active
             icon={Clock}
             label="Study hours"
-            value="24.6"
+            value="--"
             unit="h"
-            delta="+12%"
           />
           <StatCard
             icon={CheckSquare}
             label="Active tasks"
-            value="18"
-            delta="+3"
-            deltaTone="neutral"
+            value={activeTasks.toString()}
+          />
+          <StatCard
+            icon={FileText}
+            label="Notes"
+            value={notesCount.toString()}
           />
           <StatCard
             icon={FileText}
             label="Documents"
-            value="42"
-            delta="+5"
-            deltaTone="neutral"
+            value="--"
           />
           <StatCard
             icon={Sparkles}
             label="AI sessions"
-            value="127"
-            delta="+24"
-            deltaTone="neutral"
+            value="--"
           />
           <StatCard
             icon={Flame}
             label="Streak"
-            value="7"
+            value="--"
             unit="days"
-            delta="🔥"
-            deltaTone="warning"
           />
         </div>
 
@@ -131,8 +199,12 @@ export default function Dashboard() {
             </div>
           </div>
           <div className="grid md:grid-cols-2 gap-2">
-            <StudyChart />
-            <FocusBars />
+            <Suspense fallback={<ChartSkeleton />}>
+              <StudyChart />
+            </Suspense>
+            <Suspense fallback={<ChartSkeleton />}>
+              <FocusBars />
+            </Suspense>
           </div>
           <div className="grid grid-cols-3 gap-3 sm:gap-6 mt-5 pt-5 border-t border-border">
             <Metric label="Focus score" value="92" sub="Excellent" />
@@ -148,34 +220,24 @@ export default function Dashboard() {
             subtitle="Picked up where you left off"
             action="View all"
           />
-          <div className="grid sm:grid-cols-2 gap-3">
-            <NoteCard
-              title="Krebs cycle — quick recap"
-              time="2h ago"
-              body="ATP yields, intermediates, regulation points. AI summary attached."
-              tags={["Biology", "Ch.7"]}
-              ai
-            />
-            <NoteCard
-              title="Linear algebra — eigenvectors"
-              time="Yesterday"
-              body="Geometric intuition + worked examples from problem set 4."
-              tags={["Math", "Lec 12"]}
-              ai
-            />
-            <NoteCard
-              title="WWII — Pacific theater"
-              time="Mon"
-              body="Timeline of major battles. Compared two textbook narratives."
-              tags={["History"]}
-            />
-            <NoteCard
-              title="Newton's laws — lab notes"
-              time="Sun"
-              body="Friction coefficients table; need to double-check μ₂."
-              tags={["Physics", "Lab"]}
-            />
-          </div>
+          {recentNotes.length > 0 ? (
+            <div className="grid sm:grid-cols-2 gap-3">
+              {recentNotes.map((note) => (
+                <NoteCard
+                  key={note.id}
+                  title={note.title || "Untitled"}
+                  time={getRelativeTime(note.updated_at)}
+                  body={note.content ? (note.content.length > 120 ? note.content.substring(0, 120) + "..." : note.content) : "No content yet."}
+                  tags={note.subject ? [note.subject] : []}
+                  ai={false}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-10 px-4 text-sm text-muted-foreground border border-dashed border-border rounded-xl">
+              No notes yet. Start writing in the Notes page.
+            </div>
+          )}
         </section>
 
         {/* Documents */}
@@ -212,7 +274,6 @@ export default function Dashboard() {
           </div>
         </section>
       </div>
-    </AppShell>
   );
 }
 

@@ -1,10 +1,8 @@
-"use client";
-
 import { Command } from "lucide-react";
 
 /**
- * Keyboard shortcut hint (⌘K). Client-only styling avoids hydration mismatch
- * from next/font injecting inline font-family on <kbd> during SSR.
+ * Keyboard shortcut hint (⌘K). suppressHydrationWarning on <kbd>
+ * handles any next/font inline style mismatch — no use client needed.
  */
 export function CommandShortcut() {
   return (

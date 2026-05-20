@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import FlashcardsPage from "@/features/flashcard/components/flashcard";
+import FlashcardsPage from "@/features/flashcards/components/flashcards";
 
 export const metadata: Metadata = {
   title: "Flashcards — Nucleus",

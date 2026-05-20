@@ -1,0 +1,21 @@
+export type StudyStage =
+  | "high_school"
+  | "undergraduate"
+  | "postgraduate"
+  | "self_learning";
+
+export type Profile = {
+  id: string;
+  name: string;
+  study_stage: StudyStage;
+  subjects: string[];
+  onboarded: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type OnboardingData = {
+  name: string;
+  study_stage: StudyStage;
+  subjects: string[];
+};

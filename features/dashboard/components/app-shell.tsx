@@ -1,8 +1,9 @@
 "use client";
 
 import { ReactNode, useState } from "react";
+import { usePathname } from "next/navigation";
 import { AppSidebar, MobileSidebar } from "./app-sidebar";
-import { AIPanel, AIPanelSheet } from "./ai-panel";
+import { AIPanelSheet } from "./ai-panel";
 import { Menu, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 // import { cn } from "@/lib/utils";
@@ -16,6 +17,7 @@ export function AppShell({
 }) {
   const [navOpen, setNavOpen] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
+  const pathname = usePathname();
 
   return (
     <div className="flex min-h-screen bg-background">
@@ -35,15 +37,12 @@ export function AppShell({
           </Button>
 
           <div className="flex items-center gap-2">
-            <div className="flex h-6 w-6 items-center justify-center rounded bg-primary/10 text-primary">
-              <Sparkles className="h-3.5 w-3.5" />
-            </div>
             <span className="text-sm font-semibold tracking-tight">
               Nucleus
             </span>
           </div>
 
-          {showAI ? (
+          {showAI && pathname === "/dashboard" ? (
             <Button
               variant="ghost"
               size="icon"
@@ -61,7 +60,19 @@ export function AppShell({
         <main className="flex-1 min-w-0 overflow-x-hidden">{children}</main>
       </div>
 
-      {showAI && <AIPanel />}
+      {showAI && pathname === "/dashboard" && (
+        <button
+          onClick={() => setAiOpen(true)}
+          className="fixed bottom-6 right-6 z-40 h-12 w-12 rounded-full bg-gradient-violet text-white flex items-center justify-center shadow-[0_0_20px_-2px_oklch(0.66_0.21_295/0.6)] hover:shadow-[0_0_28px_0px_oklch(0.66_0.21_295/0.8)] hover:scale-105 transition-all active:scale-95 duration-200 group cursor-pointer"
+          aria-label="Open Nucleus AI"
+        >
+          <Sparkles className="h-5 w-5" />
+          <span className="absolute right-14 bg-card border border-border text-foreground text-xs font-medium px-2.5 py-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap shadow-md pointer-events-none">
+            Ask Nucleus AI
+          </span>
+        </button>
+      )}
+
       {showAI && <AIPanelSheet open={aiOpen} onOpenChange={setAiOpen} />}
     </div>
   );
