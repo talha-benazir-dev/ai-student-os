@@ -47,15 +47,7 @@ export function LoginForm() {
             />
           </div>
           <div className="grid gap-2">
-            <div className="flex items-center">
-              <Label htmlFor="password">Password</Label>
-              <Link
-                href="/forgot-password"
-                className="ml-auto inline-block text-sm underline text-muted-foreground hover:text-foreground"
-              >
-                Forgot your password?
-              </Link>
-            </div>
+            <Label htmlFor="password">Password</Label>
             <Input id="password" name="password" type="password" required />
           </div>
           {state?.error && (
