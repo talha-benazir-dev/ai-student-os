@@ -336,10 +336,7 @@ function TaskInlineForm({
   };
 
   return (
-    <div
-      className="space-y-3"
-      onKeyDown={handleKeyDown}
-    >
+    <div className="space-y-3" onKeyDown={handleKeyDown}>
       <Input
         ref={titleRef}
         value={title}
@@ -498,7 +495,7 @@ function TaskRow({
       <div className="flex-1 min-w-0">
         <p
           className={cn(
-            "text-sm font-medium text-white/90 truncate",
+            "text-sm font-medium text-white/90 break-words",
             task.completed && "line-through text-white/40",
           )}
         >
@@ -605,40 +602,37 @@ export default function TasksPage() {
     return sortTasks(filtered);
   }, [tasks, activeTab, today]);
 
-  const handleToggle = useCallback(
-    async (task: Task) => {
-      if (task.id.startsWith("temp-")) return;
+  const handleToggle = useCallback(async (task: Task) => {
+    if (task.id.startsWith("temp-")) return;
 
-      const previous = task;
-      const nextCompleted = !task.completed;
+    const previous = task;
+    const nextCompleted = !task.completed;
 
-      setRowError(null);
+    setRowError(null);
+    setTasks((prev) =>
+      prev.map((t) =>
+        t.id === task.id
+          ? {
+              ...t,
+              completed: nextCompleted,
+              updated_at: new Date().toISOString(),
+            }
+          : t,
+      ),
+    );
+
+    const { data, error } = await toggleTask(task.id, nextCompleted);
+
+    if (error || !data) {
       setTasks((prev) =>
-        prev.map((t) =>
-          t.id === task.id
-            ? {
-                ...t,
-                completed: nextCompleted,
-                updated_at: new Date().toISOString(),
-              }
-            : t,
-        ),
+        prev.map((t) => (t.id === previous.id ? previous : t)),
       );
+      setRowError(SAVE_ERROR);
+      return;
+    }
 
-      const { data, error } = await toggleTask(task.id, nextCompleted);
-
-      if (error || !data) {
-        setTasks((prev) =>
-          prev.map((t) => (t.id === previous.id ? previous : t)),
-        );
-        setRowError(SAVE_ERROR);
-        return;
-      }
-
-      setTasks((prev) => prev.map((t) => (t.id === data.id ? data : t)));
-    },
-    [],
-  );
+    setTasks((prev) => prev.map((t) => (t.id === data.id ? data : t)));
+  }, []);
 
   const handleCreate = useCallback(
     async (values: {
@@ -681,9 +675,7 @@ export default function TasksPage() {
         return;
       }
 
-      setTasks((prev) =>
-        prev.map((t) => (t.id === tempId ? data : t)),
-      );
+      setTasks((prev) => prev.map((t) => (t.id === tempId ? data : t)));
     },
     [],
   );
@@ -758,7 +750,7 @@ export default function TasksPage() {
 
   return (
     <div className="flex flex-col min-h-[calc(100dvh-3.5rem)] lg:min-h-[100dvh] bg-[#0a0a0f]">
-      <div className="w-full max-w-[900px] mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 flex flex-col flex-1">
+      <div className="w-full max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 flex flex-col flex-1">
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
           <div>
             <h1 className="text-2xl sm:text-[28px] font-semibold tracking-tight text-white/95">
@@ -797,7 +789,9 @@ export default function TasksPage() {
                 onClick={() => setActiveTab(tab.id)}
                 className={cn(
                   "relative flex items-center gap-2 px-4 py-2.5 text-sm font-medium whitespace-nowrap transition-all duration-150 ease-in-out",
-                  isActive ? "text-white/95" : "text-white/40 hover:text-white/65",
+                  isActive
+                    ? "text-white/95"
+                    : "text-white/40 hover:text-white/65",
                 )}
               >
                 {tab.label}
