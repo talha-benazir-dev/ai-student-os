@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { memo } from "react";
+import { memo, useEffect, useState } from "react";
 import {
   LayoutDashboard,
   FileText,
@@ -16,6 +16,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { getSettings } from "@/features/settings/actions/settings.actions";
+import type { UserSettings } from "@/features/settings/types";
 
 type NavItem = {
   to: string;
@@ -71,6 +73,18 @@ function NavLink({
 }
 
 function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
+  const [settings, setSettings] = useState<UserSettings | null>(null);
+
+  useEffect(() => {
+    async function fetchSettings() {
+      const result = await getSettings();
+      if (result.data) {
+        setSettings(result.data);
+      }
+    }
+    fetchSettings();
+  }, []);
+
   return (
     <>
       <div className="flex items-center gap-2.5 px-5 h-16 border-b border-border">
@@ -107,12 +121,19 @@ function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
         </Link>
         <div className="rounded-xl border border-border bg-card/60 p-3 flex items-center gap-3">
           <div className="h-9 w-9 rounded-full bg-gradient-violet flex items-center justify-center text-xs font-semibold text-primary-foreground shadow-[0_0_16px_-4px_oklch(0.66_0.21_295/0.8)]">
-            Z
+            {settings?.name?.[0] || "Z"}
           </div>
           <div className="min-w-0 flex-1">
-            <div className="text-sm font-medium truncate">Zara Ahmed</div>
+            <div className="text-sm font-medium truncate">
+              {settings?.name || "Zara Ahmed"}
+            </div>
             <div className="text-[11px] text-muted-foreground flex items-center gap-1">
-              Pro plan · <Flame className="h-3 w-3 text-orange-500" /> 7-day streak
+              {settings?.plan === "pro"
+                ? "Pro plan"
+                : settings?.plan === "enterprise"
+                  ? "Enterprise plan"
+                  : "Free plan"}{" "}
+              · <Flame className="h-3 w-3 text-orange-500" /> 7-day streak
             </div>
           </div>
         </div>

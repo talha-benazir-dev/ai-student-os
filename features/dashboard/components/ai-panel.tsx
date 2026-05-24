@@ -152,7 +152,7 @@ export function AIPanelSheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="right"
-        className="p-0 w-full sm:w-[380px] bg-sidebar border-l-border"
+        className="p-0 w-full sm:w-[380px] bg-sidebar border-l-border [&>button]:hidden"
       >
         <SheetTitle className="sr-only">Nucleus AI Panel</SheetTitle>
         <PanelHeader onClose={() => onOpenChange(false)} />
