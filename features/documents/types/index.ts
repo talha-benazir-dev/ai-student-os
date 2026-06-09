@@ -1,4 +1,4 @@
-export interface Document {
+export type Document = {
   id: string;
   user_id: string;
   title: string;
@@ -7,5 +7,6 @@ export interface Document {
   page_count: number | null;
   subject: string;
   ai_summary: string | null;
+  cloudinary_public_id: string | null;
   created_at: string;
-}
+};
