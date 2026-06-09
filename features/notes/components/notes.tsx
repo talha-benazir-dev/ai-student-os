@@ -1,9 +1,9 @@
 "use client";
 
-import "@excalidraw/excalidraw/index.css";
 import dynamic from "next/dynamic";
 import type {
   AppState,
+  BinaryFiles,
   ExcalidrawInitialDataState,
 } from "@excalidraw/excalidraw/types";
 import type { OrderedExcalidrawElement } from "@excalidraw/excalidraw/element/types";
@@ -23,11 +23,23 @@ import {
   PenLine,
   Plus,
   Sparkles,
+  Trash2,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Dialog,
   DialogContent,
@@ -43,15 +55,13 @@ import { cn } from "@/lib/utils";
 import type { Note, NoteType } from "@/features/notes/types";
 import {
   createNote,
+  deleteNote,
   getNotes,
   updateNote,
 } from "@/features/notes/actions/notes.actions";
 
-const Excalidraw = dynamic(
-  () =>
-    import("@excalidraw/excalidraw").then((mod) => ({
-      default: mod.Excalidraw,
-    })),
+const ExcalidrawEditor = dynamic(
+  () => import("@/features/notes/components/excalidraw-editor"),
   { ssr: false },
 );
 
@@ -85,12 +95,13 @@ function displayTitle(title: string): string {
   return trimmed || "Untitled";
 }
 
-function NoteTypeBadge({ type }: { type: NoteType }) {
+function NoteTypeBadge({ type }: { type?: NoteType }) {
+  const resolved = type ?? "text";
   const config = {
     text: { label: "Text", className: "bg-blue-500/15 text-blue-400" },
     readme: { label: "MD", className: "bg-green-500/15 text-green-400" },
     canvas: { label: "Canvas", className: "bg-purple-500/15 text-purple-400" },
-  }[type];
+  }[resolved];
 
   return (
     <span
@@ -101,6 +112,21 @@ function NoteTypeBadge({ type }: { type: NoteType }) {
     >
       {config.label}
     </span>
+  );
+}
+
+function EditorCloseButton({ onClose }: { onClose: () => void }) {
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      size="icon"
+      onClick={onClose}
+      aria-label="Close note"
+      className="h-8 w-8 text-white/45 hover:text-white/90 hover:bg-white/10"
+    >
+      <X className="h-4 w-4" />
+    </Button>
   );
 }
 
@@ -318,48 +344,77 @@ const NoteListItem = memo(function NoteListItem({
   note,
   isActive,
   onSelect,
+  onDeleteRequest,
 }: {
   note: Note;
   isActive: boolean;
   onSelect: (id: string) => void;
+  onDeleteRequest: (note: Note) => void;
 }) {
   return (
-    <button
-      type="button"
-      onClick={() => onSelect(note.id)}
+    <div
       className={cn(
-        "w-full text-left rounded-lg px-3 py-2.5 transition-all border border-transparent",
+        "group relative flex items-start gap-1 rounded-lg transition-all border border-transparent",
         isActive
-          ? "bg-[#16161f] border-l-2 border-l-[#7c5cfc] border-[#ffffff10]"
+          ? "bg-[#16161f] border-l-2 border-l-[#7c5cfc] border-[#ffffff10] shadow-[0_0_24px_-8px_rgba(124,92,252,0.35)]"
           : "hover:bg-[#14141c] border-l-2 border-l-transparent",
       )}
     >
-      <div className="flex items-center gap-2 min-w-0">
-        <p className="text-sm font-medium text-white/90 truncate flex-1 min-w-0">
-          {displayTitle(note.title)}
+      <button
+        type="button"
+        onClick={() => onSelect(note.id)}
+        className={cn(
+          "flex-1 min-w-0 text-left py-2.5 pl-3 pr-3 transition-colors",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7c5cfc]/50 rounded-lg",
+          isActive && "pl-[10px]",
+        )}
+      >
+        <div className="flex items-center gap-1.5 min-w-0">
+          <p className="text-sm font-medium text-white/90 truncate flex-1 min-w-0">
+            {displayTitle(note.title)}
+          </p>
+          <NoteTypeBadge type={note.type} />
+        </div>
+        {note.subject.trim() ? (
+          <p className="text-xs text-[#7c5cfc]/80 mt-0.5 truncate pr-8">
+            {note.subject}
+          </p>
+        ) : (
+          <p className="text-xs text-white/30 mt-0.5 pr-8">No subject</p>
+        )}
+        <p className="text-[11px] text-white/40 mt-1 pr-8">
+          {formatRelativeTime(note.updated_at)}
         </p>
-        <NoteTypeBadge type={note.type} />
-      </div>
-      {note.subject.trim() ? (
-        <p className="text-xs text-[#7c5cfc]/80 mt-0.5 truncate">
-          {note.subject}
-        </p>
-      ) : (
-        <p className="text-xs text-white/30 mt-0.5">No subject</p>
-      )}
-      <p className="text-[11px] text-white/40 mt-1">
-        {formatRelativeTime(note.updated_at)}
-      </p>
-    </button>
+      </button>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        onClick={(e) => {
+          e.stopPropagation();
+          onDeleteRequest(note);
+        }}
+        aria-label={`Delete ${displayTitle(note.title)}`}
+        className={cn(
+          "absolute right-3 bottom-2.5 h-7 w-7 text-white/35 hover:text-red-400 hover:bg-red-400/10 transition-all duration-200",
+          "opacity-0 group-hover:opacity-100 focus-visible:opacity-100 cursor-pointer",
+          isActive && "opacity-100",
+        )}
+      >
+        <Trash2 className="h-3.5 w-3.5" />
+      </Button>
+    </div>
   );
 });
 
 const TextNoteEditor = memo(function TextNoteEditor({
   note,
   onSaved,
+  onClose,
 }: {
   note: Note;
   onSaved: (note: Note) => void;
+  onClose: () => void;
 }) {
   const { title, setTitle, content, setContent, subject, setSubject, saveStatus } =
     useNoteAutoSave(note, onSaved);
@@ -372,7 +427,7 @@ const TextNoteEditor = memo(function TextNoteEditor({
   };
 
   return (
-    <section className="flex flex-col flex-1 min-w-0 min-h-0 bg-[#0a0a0f]">
+    <section className="flex flex-col h-full w-full min-w-0 min-h-0 bg-[#0a0a0f]">
       <header className="flex items-start justify-between gap-4 px-6 sm:px-10 pt-6 pb-4 border-b border-[#ffffff10] shrink-0">
         <div className="flex-1 min-w-0 space-y-3">
           <label htmlFor={`note-title-${note.id}`} className="sr-only">
@@ -399,12 +454,13 @@ const TextNoteEditor = memo(function TextNoteEditor({
             className="w-full max-w-md bg-transparent text-sm text-[#7c5cfc]/90 placeholder:text-white/30 focus:outline-none"
           />
         </div>
-        <div className="shrink-0 pt-1">
+        <div className="flex items-center gap-2 shrink-0 pt-1">
           <SaveStatusIndicator status={saveStatus} />
+          <EditorCloseButton onClose={onClose} />
         </div>
       </header>
 
-      <div className="flex-1 min-h-0 px-6 sm:px-10 py-4">
+      <div className="flex-1 min-h-0 overflow-hidden px-6 sm:px-10 py-4">
         <label htmlFor={`note-content-${note.id}`} className="sr-only">
           Note content
         </label>
@@ -413,7 +469,7 @@ const TextNoteEditor = memo(function TextNoteEditor({
           value={content}
           onChange={(e) => setContent(e.target.value)}
           placeholder="Start writing…"
-          className="h-full min-h-[280px] resize-none border-0 bg-transparent shadow-none text-base sm:text-[17px] leading-relaxed text-white/85 placeholder:text-white/25 focus-visible:ring-0 p-0"
+          className="h-full min-h-0 resize-none border-0 bg-transparent shadow-none text-base sm:text-[17px] leading-relaxed text-white/85 placeholder:text-white/25 focus-visible:ring-0 p-0 rounded-none"
         />
       </div>
 
@@ -429,9 +485,11 @@ const TextNoteEditor = memo(function TextNoteEditor({
 const ReadmeNoteEditor = memo(function ReadmeNoteEditor({
   note,
   onSaved,
+  onClose,
 }: {
   note: Note;
   onSaved: (note: Note) => void;
+  onClose: () => void;
 }) {
   const { title, setTitle, content, setContent, saveStatus } = useNoteAutoSave(
     note,
@@ -439,7 +497,7 @@ const ReadmeNoteEditor = memo(function ReadmeNoteEditor({
   );
 
   return (
-    <section className="flex flex-col flex-1 min-w-0 min-h-0 bg-[#0a0a0f]">
+    <section className="flex flex-col h-full w-full min-w-0 min-h-0 bg-[#0a0a0f]">
       <header className="flex items-center justify-between gap-4 px-6 sm:px-10 pt-6 pb-4 border-b border-[#ffffff10] shrink-0">
         <label htmlFor={`readme-title-${note.id}`} className="sr-only">
           Note title
@@ -452,12 +510,15 @@ const ReadmeNoteEditor = memo(function ReadmeNoteEditor({
           placeholder="Untitled"
           className="flex-1 min-w-0 bg-transparent text-2xl sm:text-3xl font-semibold tracking-tight text-white/95 placeholder:text-white/25 focus:outline-none"
         />
-        <SaveStatusIndicator status={saveStatus} />
+        <div className="flex items-center gap-2 shrink-0">
+          <SaveStatusIndicator status={saveStatus} />
+          <EditorCloseButton onClose={onClose} />
+        </div>
       </header>
 
-      <div className="flex-1 min-h-0">
+      <div className="flex-1 min-h-0 overflow-hidden">
         <ResizablePanelGroup orientation="horizontal" className="h-full">
-          <ResizablePanel defaultSize={50} minSize={25}>
+          <ResizablePanel defaultSize="50%" minSize="25%">
             <label htmlFor={`readme-content-${note.id}`} className="sr-only">
               Markdown content
             </label>
@@ -469,9 +530,9 @@ const ReadmeNoteEditor = memo(function ReadmeNoteEditor({
               className="w-full h-full resize-none border-0 bg-[#0a0a0f] font-mono text-sm leading-relaxed text-white/85 placeholder:text-white/25 focus:outline-none p-6"
             />
           </ResizablePanel>
-          <ResizableHandle className="bg-[#ffffff10]" />
-          <ResizablePanel defaultSize={50} minSize={25}>
-            <ScrollArea className="h-full">
+          <ResizableHandle withHandle className="bg-[#ffffff10] w-px" />
+          <ResizablePanel defaultSize="50%" minSize="25%">
+            <ScrollArea className="h-full bg-[#0f0f17]">
               <div className="p-6 prose prose-invert max-w-none readme-preview">
                 <ReactMarkdown
                   components={{
@@ -551,38 +612,47 @@ const ReadmeNoteEditor = memo(function ReadmeNoteEditor({
   );
 });
 
-function parseCanvasContent(content: string): ExcalidrawInitialDataState {
-  if (!content.trim()) {
-    return { elements: [], appState: {} };
-  }
+const canvasContentUtils = () =>
+  import("@/features/notes/utils/canvas-content");
+
+function getInitialData(content: string): ExcalidrawInitialDataState {
   try {
     const parsed = JSON.parse(content) as {
-      elements?: readonly OrderedExcalidrawElement[];
+      elements?: OrderedExcalidrawElement[];
       appState?: Partial<AppState>;
     };
     return {
       elements: parsed.elements ?? [],
-      appState: parsed.appState ?? {},
+      appState: {
+        ...(parsed.appState ?? {}),
+        collaborators: new Map(),
+      },
     };
   } catch {
-    return { elements: [], appState: {} };
+    return {
+      elements: [],
+      appState: {
+        collaborators: new Map(),
+      },
+    };
   }
 }
 
 const CanvasNoteEditor = memo(function CanvasNoteEditor({
   note,
   onSaved,
+  onClose,
 }: {
   note: Note;
   onSaved: (note: Note) => void;
+  onClose: () => void;
 }) {
   const { title, setTitle, setContent, saveStatus } = useNoteAutoSave(
     note,
     onSaved,
   );
-
   const initialData = useMemo(
-    () => parseCanvasContent(note.content),
+    () => getInitialData(note.content),
     [note.id],
   );
 
@@ -590,14 +660,17 @@ const CanvasNoteEditor = memo(function CanvasNoteEditor({
     (
       elements: readonly OrderedExcalidrawElement[],
       appState: AppState,
+      files: BinaryFiles,
     ) => {
-      setContent(JSON.stringify({ elements, appState }));
+      void canvasContentUtils().then(({ serializeCanvasContent }) => {
+        setContent(serializeCanvasContent(elements, appState, files));
+      });
     },
     [setContent],
   );
 
   return (
-    <section className="flex flex-col flex-1 min-w-0 min-h-0 bg-[#0a0a0f]">
+    <section className="flex flex-col h-full w-full min-w-0 min-h-0 bg-[#0a0a0f]">
       <header className="flex items-center justify-between gap-4 px-6 sm:px-10 pt-6 pb-4 border-b border-[#ffffff10] shrink-0">
         <label htmlFor={`canvas-title-${note.id}`} className="sr-only">
           Note title
@@ -610,15 +683,17 @@ const CanvasNoteEditor = memo(function CanvasNoteEditor({
           placeholder="Untitled"
           className="flex-1 min-w-0 bg-transparent text-2xl sm:text-3xl font-semibold tracking-tight text-white/95 placeholder:text-white/25 focus:outline-none"
         />
-        <SaveStatusIndicator status={saveStatus} />
+        <div className="flex items-center gap-2 shrink-0">
+          <SaveStatusIndicator status={saveStatus} />
+          <EditorCloseButton onClose={onClose} />
+        </div>
       </header>
 
-      <div className="flex-1 min-h-0 relative">
-        <Excalidraw
+      <div className="flex-1 min-h-0 relative overflow-hidden">
+        <ExcalidrawEditor
           key={note.id}
           initialData={initialData}
           onChange={handleCanvasChange}
-          theme="dark"
         />
       </div>
     </section>
@@ -628,23 +703,25 @@ const CanvasNoteEditor = memo(function CanvasNoteEditor({
 const NoteEditor = memo(function NoteEditor({
   note,
   onSaved,
+  onClose,
 }: {
   note: Note;
   onSaved: (note: Note) => void;
+  onClose: () => void;
 }) {
   switch (note.type) {
     case "readme":
-      return <ReadmeNoteEditor note={note} onSaved={onSaved} />;
+      return <ReadmeNoteEditor note={note} onSaved={onSaved} onClose={onClose} />;
     case "canvas":
-      return <CanvasNoteEditor note={note} onSaved={onSaved} />;
+      return <CanvasNoteEditor note={note} onSaved={onSaved} onClose={onClose} />;
     default:
-      return <TextNoteEditor note={note} onSaved={onSaved} />;
+      return <TextNoteEditor note={note} onSaved={onSaved} onClose={onClose} />;
   }
 });
 
 function EditorEmptyState() {
   return (
-    <div className="flex flex-1 items-center justify-center bg-[#0a0a0f] p-8">
+    <div className="flex h-full w-full items-center justify-center bg-[#0a0a0f] p-8">
       <div className="text-center max-w-sm">
         <div className="inline-flex h-14 w-14 rounded-2xl bg-[#7c5cfc]/10 border border-[#7c5cfc]/25 items-center justify-center mb-5">
           <Sparkles className="h-6 w-6 text-[#7c5cfc]" aria-hidden />
@@ -665,6 +742,8 @@ export default function NotesPage() {
   const [isCreating, setIsCreating] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [noteToDelete, setNoteToDelete] = useState<Note | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const initialSelectDone = useRef(false);
 
   useEffect(() => {
@@ -680,9 +759,13 @@ export default function NotesPage() {
         setLoadError(error);
         setNotes([]);
       } else {
-        setNotes(data ?? []);
-        if (!initialSelectDone.current && data && data.length > 0) {
-          setSelectedId(data[0].id);
+        const normalized = (data ?? []).map((n) => ({
+          ...n,
+          type: n.type ?? "text",
+        }));
+        setNotes(normalized);
+        if (!initialSelectDone.current && normalized.length > 0) {
+          setSelectedId(normalized[0].id);
           initialSelectDone.current = true;
         }
       }
@@ -731,6 +814,54 @@ export default function NotesPage() {
     [isCreating],
   );
 
+  const handleClose = useCallback(() => {
+    setSelectedId(null);
+  }, []);
+
+  const requestDelete = useCallback((note: Note) => {
+    setNoteToDelete(note);
+  }, []);
+
+  const handleDeleted = useCallback((id: string) => {
+    setNotes((prev) => {
+      const next = prev.filter((n) => n.id !== id);
+      setSelectedId((current) => (current === id ? null : current));
+      return next;
+    });
+  }, []);
+
+  const handleRestore = useCallback((note: Note) => {
+    setNotes((prev) => {
+      const exists = prev.some((n) => n.id === note.id);
+      const next = exists ? prev : [note, ...prev];
+      return [...next].sort(
+        (a, b) =>
+          new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime(),
+      );
+    });
+    setSelectedId(note.id);
+  }, []);
+
+  const confirmDelete = useCallback(async () => {
+    if (!noteToDelete) return;
+
+    const target = noteToDelete;
+    const id = target.id;
+
+    setIsDeleting(true);
+    handleDeleted(id);
+    const { error } = await deleteNote(id);
+    setIsDeleting(false);
+    setNoteToDelete(null);
+
+    if (error) {
+      toast.error(error);
+      handleRestore(target);
+    } else {
+      toast.success("Note deleted");
+    }
+  }, [noteToDelete, handleDeleted, handleRestore]);
+
   return (
     <div className="flex flex-col h-[calc(100dvh-3.5rem)] lg:h-[100dvh] max-h-[100dvh] bg-[#0a0a0f]">
       {loadError && (
@@ -742,14 +873,19 @@ export default function NotesPage() {
         </div>
       )}
 
-      <ResizablePanelGroup orientation="horizontal" className="flex-1 min-h-0">
+      <ResizablePanelGroup
+        id="notes-layout"
+        orientation="horizontal"
+        className="flex-1 min-h-0"
+      >
         <ResizablePanel
-          defaultSize={28}
-          minSize={20}
-          maxSize={40}
-          className="bg-[#0a0a0f] border-r border-[#ffffff10]"
+          id="notes-list"
+          defaultSize={280}
+          minSize={240}
+          maxSize={420}
+          className="bg-[#0f0f17]"
         >
-          <div className="flex flex-col h-full">
+          <div className="flex flex-col h-full border-r border-[#ffffff10]">
             <div className="flex items-center justify-between px-4 py-4 border-b border-[#ffffff10] shrink-0">
               <h1 className="text-base font-semibold text-white">Notes</h1>
               <Button
@@ -757,7 +893,7 @@ export default function NotesPage() {
                 size="sm"
                 onClick={() => setPickerOpen(true)}
                 disabled={isCreating}
-                className="h-8 bg-[#7c5cfc] hover:bg-[#6b4ce8] text-white"
+                className="h-8 bg-[#7c5cfc] hover:bg-[#6b4ce8] text-white shadow-[0_0_20px_-6px_rgba(124,92,252,0.6)]"
               >
                 <Plus className="h-3.5 w-3.5 mr-1" aria-hidden />
                 New
@@ -765,7 +901,7 @@ export default function NotesPage() {
             </div>
 
             <ScrollArea className="flex-1 min-h-0">
-              <div className="p-3 space-y-1">
+              <div className="p-3 space-y-1 min-w-0">
                 {isLoading ? (
                   <div className="px-3 py-8 text-center text-sm text-white/40">
                     Loading notes…
@@ -783,6 +919,7 @@ export default function NotesPage() {
                       note={note}
                       isActive={note.id === selectedId}
                       onSelect={setSelectedId}
+                      onDeleteRequest={requestDelete}
                     />
                   ))
                 )}
@@ -791,14 +928,20 @@ export default function NotesPage() {
           </div>
         </ResizablePanel>
 
-        <ResizableHandle className="bg-[#ffffff10]" />
+        <ResizableHandle withHandle className="bg-[#ffffff10] w-px" />
 
-        <ResizablePanel defaultSize={72} minSize={40}>
-          {selectedNote ? (
-            <NoteEditor note={selectedNote} onSaved={handleNoteSaved} />
-          ) : (
-            <EditorEmptyState />
-          )}
+        <ResizablePanel id="notes-editor" minSize="40%">
+          <div className="h-full w-full min-w-0 overflow-hidden bg-[#0a0a0f]">
+            {selectedNote ? (
+              <NoteEditor
+                note={selectedNote}
+                onSaved={handleNoteSaved}
+                onClose={handleClose}
+              />
+            ) : (
+              <EditorEmptyState />
+            )}
+          </div>
         </ResizablePanel>
       </ResizablePanelGroup>
 
@@ -808,6 +951,38 @@ export default function NotesPage() {
         onSelect={(type) => void handleCreate(type)}
         isCreating={isCreating}
       />
+
+      <AlertDialog
+        open={noteToDelete !== null}
+        onOpenChange={(open) => {
+          if (!open) setNoteToDelete(null);
+        }}
+      >
+        <AlertDialogContent className="bg-[#0f0f17] border-[#ffffff10]">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this note?</AlertDialogTitle>
+            <AlertDialogDescription>
+              &ldquo;{displayTitle(noteToDelete?.title ?? "")}&rdquo; will be
+              permanently removed. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="border-[#ffffff10]">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                void confirmDelete();
+              }}
+              disabled={isDeleting}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
