@@ -1,7 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import type { Note } from "@/features/notes/types";
+import type { Note, NoteType } from "@/features/notes/types";
 
 type ActionResult<T> = {
   data: T | null;
@@ -32,9 +32,7 @@ export async function getNotes(): Promise<ActionResult<Note[]>> {
 }
 
 export async function createNote(
-  title: string,
-  content: string,
-  subject: string,
+  type: NoteType = "text",
 ): Promise<ActionResult<Note>> {
   const supabase = await createClient();
   const {
@@ -50,9 +48,10 @@ export async function createNote(
     .from("notes")
     .insert({
       user_id: user.id,
-      title: title ?? "",
-      content: content ?? "",
-      subject: subject ?? "",
+      title: "Untitled",
+      content: "",
+      subject: "",
+      type,
     })
     .select()
     .single();

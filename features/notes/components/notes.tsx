@@ -1,5 +1,12 @@
 "use client";
 
+import "@excalidraw/excalidraw/index.css";
+import dynamic from "next/dynamic";
+import type {
+  AppState,
+  ExcalidrawInitialDataState,
+} from "@excalidraw/excalidraw/types";
+import type { OrderedExcalidrawElement } from "@excalidraw/excalidraw/element/types";
 import {
   memo,
   useCallback,
@@ -9,36 +16,44 @@ import {
   useState,
   type KeyboardEvent,
 } from "react";
+import ReactMarkdown from "react-markdown";
 import {
+  FileCode,
   FileText,
+  PenLine,
   Plus,
-  Search,
   Sparkles,
-  Trash2,
-  X,
 } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  ResizableHandle,
+  ResizablePanel,
+  ResizablePanelGroup,
+} from "@/components/ui/resizable";
 import { cn } from "@/lib/utils";
-import type { Note } from "@/features/notes/types";
+import type { Note, NoteType } from "@/features/notes/types";
 import {
   createNote,
-  deleteNote,
   getNotes,
   updateNote,
 } from "@/features/notes/actions/notes.actions";
+
+const Excalidraw = dynamic(
+  () =>
+    import("@excalidraw/excalidraw").then((mod) => ({
+      default: mod.Excalidraw,
+    })),
+  { ssr: false },
+);
 
 type SaveStatus = "idle" | "saving" | "saved" | "error";
 
@@ -70,199 +85,55 @@ function displayTitle(title: string): string {
   return trimmed || "Untitled";
 }
 
-function noteMatchesQuery(note: Note, query: string): boolean {
-  const q = query.trim().toLowerCase();
-  if (!q) return true;
-  return (
-    note.title.toLowerCase().includes(q) ||
-    note.content.toLowerCase().includes(q) ||
-    note.subject.toLowerCase().includes(q)
-  );
-}
+function NoteTypeBadge({ type }: { type: NoteType }) {
+  const config = {
+    text: { label: "Text", className: "bg-blue-500/15 text-blue-400" },
+    readme: { label: "MD", className: "bg-green-500/15 text-green-400" },
+    canvas: { label: "Canvas", className: "bg-purple-500/15 text-purple-400" },
+  }[type];
 
-const NoteListItem = memo(function NoteListItem({
-  note,
-  isActive,
-  onSelect,
-  onDeleteRequest,
-}: {
-  note: Note;
-  isActive: boolean;
-  onSelect: (id: string) => void;
-  onDeleteRequest: (note: Note) => void;
-}) {
   return (
-    <div
+    <span
       className={cn(
-        "group relative flex items-start gap-1 rounded-lg transition-all duration-200 border border-transparent",
-        isActive
-          ? "bg-[#16161f] border-l-2 border-l-[#7c5cfc] border-[#ffffff10] shadow-[0_0_24px_-8px_rgba(124,92,252,0.35)]"
-          : "hover:bg-[#14141c] border-l-2 border-l-transparent",
+        "text-[10px] font-medium px-1.5 py-0.5 rounded-full shrink-0",
+        config.className,
       )}
     >
-      <button
-        type="button"
-        onClick={() => onSelect(note.id)}
-        className={cn(
-          "flex-1 min-w-0 text-left py-2.5 pl-3 pr-1 transition-colors",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7c5cfc]/50 rounded-lg",
-          isActive && "pl-[10px]",
-        )}
-      >
-        <p className="text-sm font-medium text-white/90 truncate pr-6">
-          {displayTitle(note.title)}
-        </p>
-        {note.subject.trim() ? (
-          <p className="text-xs text-[#7c5cfc]/80 mt-0.5 truncate">
-            {note.subject}
-          </p>
-        ) : (
-          <p className="text-xs text-white/30 mt-0.5">No subject</p>
-        )}
-        <p className="text-[11px] text-white/40 mt-1">
-          {formatRelativeTime(note.updated_at)}
-        </p>
-      </button>
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon"
-        onClick={(e) => {
-          e.stopPropagation();
-          onDeleteRequest(note);
-        }}
-        aria-label={`Delete ${displayTitle(note.title)}`}
-        className={cn(
-          "h-7 w-7 shrink-0 mt-1.5 mr-1.5 text-white/35 hover:text-red-400 hover:bg-red-400/10",
-          "opacity-0 group-hover:opacity-100 focus-visible:opacity-100",
-          isActive && "opacity-100",
-        )}
-      >
-        <Trash2 className="h-3.5 w-3.5" />
-      </Button>
-    </div>
+      {config.label}
+    </span>
   );
-});
+}
 
-const NotesSidebar = memo(function NotesSidebar({
-  notes,
-  filteredNotes,
-  selectedId,
-  searchQuery,
-  isLoading,
-  isCreating,
-  onSearchChange,
-  onSelect,
-  onCreate,
-  onDeleteRequest,
-}: {
-  notes: Note[];
-  filteredNotes: Note[];
-  selectedId: string | null;
-  searchQuery: string;
-  isLoading: boolean;
-  isCreating: boolean;
-  onSearchChange: (value: string) => void;
-  onSelect: (id: string) => void;
-  onCreate: () => void;
-  onDeleteRequest: (note: Note) => void;
-}) {
-  const hasNotes = notes.length > 0;
-  const hasResults = filteredNotes.length > 0;
+function SaveStatusIndicator({ status }: { status: SaveStatus }) {
+  const label =
+    status === "saving"
+      ? "Saving..."
+      : status === "saved"
+        ? "Saved"
+        : status === "error"
+          ? "Error saving"
+          : null;
+
+  if (!label) return null;
 
   return (
-    <aside
-      className="flex flex-col w-full lg:w-[280px] shrink-0 border-r border-[#ffffff10] bg-[#0a0a0f]"
-      aria-label="Notes list"
+    <span
+      className={cn(
+        "text-xs tabular-nums",
+        status === "error" ? "text-red-400" : "text-white/40",
+      )}
+      role="status"
+      aria-live="polite"
     >
-      <div className="p-4 space-y-3 border-b border-[#ffffff10]">
-        <div className="relative">
-          <Search
-            className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/35 pointer-events-none"
-            aria-hidden
-          />
-          <Input
-            type="search"
-            placeholder="Search notes…"
-            value={searchQuery}
-            onChange={(e) => onSearchChange(e.target.value)}
-            aria-label="Search notes"
-            className="pl-9 h-9 bg-[#111118] border-[#ffffff10] text-white/90 placeholder:text-white/35 focus-visible:ring-[#7c5cfc]/40"
-          />
-        </div>
-        <Button
-          type="button"
-          onClick={onCreate}
-          disabled={isCreating}
-          className="w-full bg-[#7c5cfc] hover:bg-[#6b4ce8] text-white shadow-[0_0_20px_-6px_rgba(124,92,252,0.6)]"
-        >
-          <Plus className="h-4 w-4" aria-hidden />
-          New Note
-        </Button>
-      </div>
-
-      <ScrollArea className="flex-1 min-h-0">
-        <div className="p-3 space-y-1">
-          {isLoading ? (
-            <div className="px-3 py-8 text-center text-sm text-white/40">
-              Loading notes…
-            </div>
-          ) : !hasNotes ? (
-            <SidebarEmptyState />
-          ) : !hasResults ? (
-            <SearchEmptyState query={searchQuery} />
-          ) : (
-            filteredNotes.map((note) => (
-              <NoteListItem
-                key={note.id}
-                note={note}
-                isActive={note.id === selectedId}
-                onSelect={onSelect}
-                onDeleteRequest={onDeleteRequest}
-              />
-            ))
-          )}
-        </div>
-      </ScrollArea>
-    </aside>
-  );
-});
-
-function SidebarEmptyState() {
-  return (
-    <div className="px-3 py-10 text-center">
-      <div className="inline-flex h-10 w-10 rounded-xl bg-[#7c5cfc]/10 border border-[#7c5cfc]/25 items-center justify-center mb-3">
-        <FileText className="h-4 w-4 text-[#7c5cfc]" aria-hidden />
-      </div>
-      <p className="text-sm font-medium text-white/80">No notes yet</p>
-      <p className="text-xs text-white/40 mt-1 leading-relaxed">
-        Create your first note to start capturing ideas.
-      </p>
-    </div>
+      {label}
+    </span>
   );
 }
 
-function SearchEmptyState({ query }: { query: string }) {
-  return (
-    <div className="px-3 py-10 text-center">
-      <p className="text-sm font-medium text-white/80">No matches</p>
-      <p className="text-xs text-white/40 mt-1">
-        Nothing found for &ldquo;{query.trim()}&rdquo;
-      </p>
-    </div>
-  );
-}
-
-const NoteEditor = memo(function NoteEditor({
-  note,
-  onSaved,
-  onClose,
-}: {
-  note: Note;
-  onSaved: (note: Note) => void;
-  onClose: () => void;
-}) {
-  const isPending = note.id.startsWith("temp-");
+function useNoteAutoSave(
+  note: Note,
+  onSaved: (note: Note) => void,
+) {
   const [title, setTitle] = useState(note.title);
   const [content, setContent] = useState(note.content);
   const [subject, setSubject] = useState(note.subject);
@@ -277,8 +148,6 @@ const NoteEditor = memo(function NoteEditor({
   const savedFadeRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isSavingRef = useRef(false);
   const noteIdRef = useRef(note.id);
-  const prevNoteIdRef = useRef(note.id);
-  const persistRef = useRef<(() => Promise<void>) | null>(null);
 
   const clearTimers = useCallback(() => {
     if (saveTimerRef.current) {
@@ -292,7 +161,7 @@ const NoteEditor = memo(function NoteEditor({
   }, []);
 
   const persist = useCallback(async () => {
-    if (isPending || isSavingRef.current) return;
+    if (isSavingRef.current) return;
 
     const payload = { title, content, subject };
     const last = lastSavedRef.current;
@@ -327,25 +196,9 @@ const NoteEditor = memo(function NoteEditor({
     savedFadeRef.current = setTimeout(() => {
       setSaveStatus((s) => (s === "saved" ? "idle" : s));
     }, 2000);
-  }, [content, isPending, note.id, onSaved, subject, title]);
+  }, [content, note.id, onSaved, subject, title]);
 
   useEffect(() => {
-    persistRef.current = persist;
-  }, [persist]);
-
-  // Sync local draft when switching notes; preserve draft when temp id becomes real.
-  useEffect(() => {
-    const prevId = prevNoteIdRef.current;
-    prevNoteIdRef.current = note.id;
-
-    if (prevId.startsWith("temp-") && !note.id.startsWith("temp-")) {
-      noteIdRef.current = note.id;
-      queueMicrotask(() => {
-        void persistRef.current?.();
-      });
-      return;
-    }
-
     if (noteIdRef.current === note.id) return;
 
     noteIdRef.current = note.id;
@@ -358,12 +211,10 @@ const NoteEditor = memo(function NoteEditor({
       subject: note.subject,
     };
     setSaveStatus("idle");
-    // note.title/content/subject intentionally omitted — only re-sync when id changes
-  }, [note.id]);
+    clearTimers();
+  }, [note.id, note.title, note.content, note.subject, clearTimers]);
 
   useEffect(() => {
-    if (isPending) return;
-
     clearTimers();
     saveTimerRef.current = setTimeout(() => {
       void persist();
@@ -375,14 +226,143 @@ const NoteEditor = memo(function NoteEditor({
         saveTimerRef.current = null;
       }
     };
-  }, [title, content, subject, isPending, persist, clearTimers]);
+  }, [title, content, subject, persist, clearTimers]);
 
   useEffect(() => () => clearTimers(), [clearTimers]);
 
-  const handleSaveNow = () => {
-    clearTimers();
-    void persist();
+  return {
+    title,
+    setTitle,
+    content,
+    setContent,
+    subject,
+    setSubject,
+    saveStatus,
   };
+}
+
+const NOTE_TYPE_OPTIONS: {
+  type: NoteType;
+  icon: typeof FileText;
+  label: string;
+  description: string;
+}[] = [
+  {
+    type: "text",
+    icon: FileText,
+    label: "Text Note",
+    description: "Rich text editor with formatting",
+  },
+  {
+    type: "readme",
+    icon: FileCode,
+    label: "README",
+    description: "Markdown with live preview",
+  },
+  {
+    type: "canvas",
+    icon: PenLine,
+    label: "Canvas",
+    description: "Freehand drawing with Excalidraw",
+  },
+];
+
+function NoteTypePickerModal({
+  open,
+  onOpenChange,
+  onSelect,
+  isCreating,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSelect: (type: NoteType) => void;
+  isCreating: boolean;
+}) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="bg-[#0f0f17] border-[#ffffff10] max-w-2xl">
+        <DialogHeader>
+          <DialogTitle className="text-white">Create a new note</DialogTitle>
+        </DialogHeader>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+          {NOTE_TYPE_OPTIONS.map(({ type, icon: Icon, label, description }) => (
+            <button
+              key={type}
+              type="button"
+              disabled={isCreating}
+              onClick={() => onSelect(type)}
+              className={cn(
+                "flex flex-col items-start gap-3 rounded-xl border border-[#ffffff10] bg-[#0a0a0f] p-4 text-left transition-colors",
+                "hover:border-[#7c5cfc]/50 hover:bg-[#16161f] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7c5cfc]/50",
+                isCreating && "opacity-50 pointer-events-none",
+              )}
+            >
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#7c5cfc]/10 border border-[#7c5cfc]/25">
+                <Icon className="h-5 w-5 text-[#7c5cfc]" aria-hidden />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-white">{label}</p>
+                <p className="text-xs text-white/45 mt-1 leading-relaxed">
+                  {description}
+                </p>
+              </div>
+            </button>
+          ))}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+const NoteListItem = memo(function NoteListItem({
+  note,
+  isActive,
+  onSelect,
+}: {
+  note: Note;
+  isActive: boolean;
+  onSelect: (id: string) => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect(note.id)}
+      className={cn(
+        "w-full text-left rounded-lg px-3 py-2.5 transition-all border border-transparent",
+        isActive
+          ? "bg-[#16161f] border-l-2 border-l-[#7c5cfc] border-[#ffffff10]"
+          : "hover:bg-[#14141c] border-l-2 border-l-transparent",
+      )}
+    >
+      <div className="flex items-center gap-2 min-w-0">
+        <p className="text-sm font-medium text-white/90 truncate flex-1 min-w-0">
+          {displayTitle(note.title)}
+        </p>
+        <NoteTypeBadge type={note.type} />
+      </div>
+      {note.subject.trim() ? (
+        <p className="text-xs text-[#7c5cfc]/80 mt-0.5 truncate">
+          {note.subject}
+        </p>
+      ) : (
+        <p className="text-xs text-white/30 mt-0.5">No subject</p>
+      )}
+      <p className="text-[11px] text-white/40 mt-1">
+        {formatRelativeTime(note.updated_at)}
+      </p>
+    </button>
+  );
+});
+
+const TextNoteEditor = memo(function TextNoteEditor({
+  note,
+  onSaved,
+}: {
+  note: Note;
+  onSaved: (note: Note) => void;
+}) {
+  const { title, setTitle, content, setContent, subject, setSubject, saveStatus } =
+    useNoteAutoSave(note, onSaved);
 
   const handleTitleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
@@ -391,23 +371,9 @@ const NoteEditor = memo(function NoteEditor({
     }
   };
 
-  const statusLabel =
-    isPending
-      ? "Creating…"
-      : saveStatus === "saving"
-        ? "Saving…"
-        : saveStatus === "saved"
-          ? "Saved"
-          : saveStatus === "error"
-            ? "Error saving"
-            : null;
-
   return (
-    <section
-      className="flex flex-col flex-1 min-w-0 bg-[#0a0a0f]"
-      aria-label="Note editor"
-    >
-      <header className="flex items-start justify-between gap-4 px-6 sm:px-10 pt-6 pb-4 border-b border-[#ffffff10]">
+    <section className="flex flex-col flex-1 min-w-0 min-h-0 bg-[#0a0a0f]">
+      <header className="flex items-start justify-between gap-4 px-6 sm:px-10 pt-6 pb-4 border-b border-[#ffffff10] shrink-0">
         <div className="flex-1 min-w-0 space-y-3">
           <label htmlFor={`note-title-${note.id}`} className="sr-only">
             Note title
@@ -433,39 +399,8 @@ const NoteEditor = memo(function NoteEditor({
             className="w-full max-w-md bg-transparent text-sm text-[#7c5cfc]/90 placeholder:text-white/30 focus:outline-none"
           />
         </div>
-        <div className="flex items-center gap-2 shrink-0 pt-1">
-          {statusLabel && (
-            <span
-              className={cn(
-                "text-xs tabular-nums mr-1",
-                saveStatus === "error"
-                  ? "text-red-400"
-                  : "text-white/40",
-              )}
-              role="status"
-              aria-live="polite"
-            >
-              {statusLabel}
-            </span>
-          )}
-          <Button
-            type="button"
-            onClick={handleSaveNow}
-            disabled={isPending || saveStatus === "saving"}
-            className="h-8 px-3.5 bg-[#7c5cfc] hover:bg-[#6b4ce8] text-white text-xs font-medium shadow-[0_0_16px_-4px_rgba(124,92,252,0.5)]"
-          >
-            Save
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            onClick={onClose}
-            aria-label="Close note"
-            className="h-8 w-8 text-white/45 hover:text-white/90 hover:bg-white/10"
-          >
-            <X className="h-4 w-4" />
-          </Button>
+        <div className="shrink-0 pt-1">
+          <SaveStatusIndicator status={saveStatus} />
         </div>
       </header>
 
@@ -482,13 +417,229 @@ const NoteEditor = memo(function NoteEditor({
         />
       </div>
 
-      <footer className="px-6 sm:px-10 py-4 border-t border-[#ffffff10]">
+      <footer className="px-6 sm:px-10 py-4 border-t border-[#ffffff10] shrink-0">
         <p className="text-xs text-white/35">
           Created {formatCreatedDate(note.created_at)}
         </p>
       </footer>
     </section>
   );
+});
+
+const ReadmeNoteEditor = memo(function ReadmeNoteEditor({
+  note,
+  onSaved,
+}: {
+  note: Note;
+  onSaved: (note: Note) => void;
+}) {
+  const { title, setTitle, content, setContent, saveStatus } = useNoteAutoSave(
+    note,
+    onSaved,
+  );
+
+  return (
+    <section className="flex flex-col flex-1 min-w-0 min-h-0 bg-[#0a0a0f]">
+      <header className="flex items-center justify-between gap-4 px-6 sm:px-10 pt-6 pb-4 border-b border-[#ffffff10] shrink-0">
+        <label htmlFor={`readme-title-${note.id}`} className="sr-only">
+          Note title
+        </label>
+        <input
+          id={`readme-title-${note.id}`}
+          type="text"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="Untitled"
+          className="flex-1 min-w-0 bg-transparent text-2xl sm:text-3xl font-semibold tracking-tight text-white/95 placeholder:text-white/25 focus:outline-none"
+        />
+        <SaveStatusIndicator status={saveStatus} />
+      </header>
+
+      <div className="flex-1 min-h-0">
+        <ResizablePanelGroup orientation="horizontal" className="h-full">
+          <ResizablePanel defaultSize={50} minSize={25}>
+            <label htmlFor={`readme-content-${note.id}`} className="sr-only">
+              Markdown content
+            </label>
+            <textarea
+              id={`readme-content-${note.id}`}
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              placeholder="# Write markdown here…"
+              className="w-full h-full resize-none border-0 bg-[#0a0a0f] font-mono text-sm leading-relaxed text-white/85 placeholder:text-white/25 focus:outline-none p-6"
+            />
+          </ResizablePanel>
+          <ResizableHandle className="bg-[#ffffff10]" />
+          <ResizablePanel defaultSize={50} minSize={25}>
+            <ScrollArea className="h-full">
+              <div className="p-6 prose prose-invert max-w-none readme-preview">
+                <ReactMarkdown
+                  components={{
+                    h1: ({ children }) => (
+                      <h1 className="text-white text-2xl font-bold mb-4 mt-6 first:mt-0">
+                        {children}
+                      </h1>
+                    ),
+                    h2: ({ children }) => (
+                      <h2 className="text-white text-xl font-semibold mb-3 mt-5">
+                        {children}
+                      </h2>
+                    ),
+                    h3: ({ children }) => (
+                      <h3 className="text-white text-lg font-semibold mb-2 mt-4">
+                        {children}
+                      </h3>
+                    ),
+                    h4: ({ children }) => (
+                      <h4 className="text-white text-base font-semibold mb-2 mt-3">
+                        {children}
+                      </h4>
+                    ),
+                    h5: ({ children }) => (
+                      <h5 className="text-white text-sm font-semibold mb-2 mt-3">
+                        {children}
+                      </h5>
+                    ),
+                    h6: ({ children }) => (
+                      <h6 className="text-white text-sm font-medium mb-2 mt-3">
+                        {children}
+                      </h6>
+                    ),
+                    p: ({ children }) => (
+                      <p className="text-zinc-300 mb-3 leading-relaxed">{children}</p>
+                    ),
+                    a: ({ children, href }) => (
+                      <a
+                        href={href}
+                        className="text-[#7c5cfc] hover:underline"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        {children}
+                      </a>
+                    ),
+                    code: ({ className, children }) => {
+                      const isBlock = className?.includes("language-");
+                      if (isBlock) {
+                        return (
+                          <code className="block bg-zinc-800 rounded p-3 text-sm text-zinc-200 overflow-x-auto my-3">
+                            {children}
+                          </code>
+                        );
+                      }
+                      return (
+                        <code className="bg-zinc-800 rounded px-1.5 py-0.5 text-sm text-zinc-200">
+                          {children}
+                        </code>
+                      );
+                    },
+                    pre: ({ children }) => (
+                      <pre className="bg-zinc-800 rounded p-3 overflow-x-auto my-3">
+                        {children}
+                      </pre>
+                    ),
+                  }}
+                >
+                  {content || "_Nothing to preview yet._"}
+                </ReactMarkdown>
+              </div>
+            </ScrollArea>
+          </ResizablePanel>
+        </ResizablePanelGroup>
+      </div>
+    </section>
+  );
+});
+
+function parseCanvasContent(content: string): ExcalidrawInitialDataState {
+  if (!content.trim()) {
+    return { elements: [], appState: {} };
+  }
+  try {
+    const parsed = JSON.parse(content) as {
+      elements?: readonly OrderedExcalidrawElement[];
+      appState?: Partial<AppState>;
+    };
+    return {
+      elements: parsed.elements ?? [],
+      appState: parsed.appState ?? {},
+    };
+  } catch {
+    return { elements: [], appState: {} };
+  }
+}
+
+const CanvasNoteEditor = memo(function CanvasNoteEditor({
+  note,
+  onSaved,
+}: {
+  note: Note;
+  onSaved: (note: Note) => void;
+}) {
+  const { title, setTitle, setContent, saveStatus } = useNoteAutoSave(
+    note,
+    onSaved,
+  );
+
+  const initialData = useMemo(
+    () => parseCanvasContent(note.content),
+    [note.id],
+  );
+
+  const handleCanvasChange = useCallback(
+    (
+      elements: readonly OrderedExcalidrawElement[],
+      appState: AppState,
+    ) => {
+      setContent(JSON.stringify({ elements, appState }));
+    },
+    [setContent],
+  );
+
+  return (
+    <section className="flex flex-col flex-1 min-w-0 min-h-0 bg-[#0a0a0f]">
+      <header className="flex items-center justify-between gap-4 px-6 sm:px-10 pt-6 pb-4 border-b border-[#ffffff10] shrink-0">
+        <label htmlFor={`canvas-title-${note.id}`} className="sr-only">
+          Note title
+        </label>
+        <input
+          id={`canvas-title-${note.id}`}
+          type="text"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="Untitled"
+          className="flex-1 min-w-0 bg-transparent text-2xl sm:text-3xl font-semibold tracking-tight text-white/95 placeholder:text-white/25 focus:outline-none"
+        />
+        <SaveStatusIndicator status={saveStatus} />
+      </header>
+
+      <div className="flex-1 min-h-0 relative">
+        <Excalidraw
+          key={note.id}
+          initialData={initialData}
+          onChange={handleCanvasChange}
+          theme="dark"
+        />
+      </div>
+    </section>
+  );
+});
+
+const NoteEditor = memo(function NoteEditor({
+  note,
+  onSaved,
+}: {
+  note: Note;
+  onSaved: (note: Note) => void;
+}) {
+  switch (note.type) {
+    case "readme":
+      return <ReadmeNoteEditor note={note} onSaved={onSaved} />;
+    case "canvas":
+      return <CanvasNoteEditor note={note} onSaved={onSaved} />;
+    default:
+      return <TextNoteEditor note={note} onSaved={onSaved} />;
+  }
 });
 
 function EditorEmptyState() {
@@ -500,8 +651,7 @@ function EditorEmptyState() {
         </div>
         <h2 className="text-lg font-medium text-white/90">Select a note</h2>
         <p className="text-sm text-white/40 mt-2 leading-relaxed">
-          Pick a note from the sidebar or create a new one to begin writing in
-          your calm workspace.
+          Pick a note from the list or create a new one to begin.
         </p>
       </div>
     </div>
@@ -511,12 +661,10 @@ function EditorEmptyState() {
 export default function NotesPage() {
   const [notes, setNotes] = useState<Note[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [noteToDelete, setNoteToDelete] = useState<Note | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const initialSelectDone = useRef(false);
 
   useEffect(() => {
@@ -547,27 +695,10 @@ export default function NotesPage() {
     };
   }, []);
 
-  const filteredNotes = useMemo(
-    () => notes.filter((n) => noteMatchesQuery(n, searchQuery)),
-    [notes, searchQuery],
-  );
-
   const selectedNote = useMemo(
     () => notes.find((n) => n.id === selectedId) ?? null,
     [notes, selectedId],
   );
-
-  const handleSelect = useCallback((id: string) => {
-    setSelectedId(id);
-  }, []);
-
-  const handleClose = useCallback(() => {
-    setSelectedId(null);
-  }, []);
-
-  const requestDelete = useCallback((note: Note) => {
-    setNoteToDelete(note);
-  }, []);
 
   const handleNoteSaved = useCallback((updated: Note) => {
     setNotes((prev) => {
@@ -579,101 +710,26 @@ export default function NotesPage() {
     });
   }, []);
 
-  const handleCreate = useCallback(async () => {
-    if (isCreating) return;
+  const handleCreate = useCallback(
+    async (type: NoteType) => {
+      if (isCreating) return;
 
-    const tempId = `temp-${crypto.randomUUID()}`;
-    const now = new Date().toISOString();
-    const optimistic: Note = {
-      id: tempId,
-      user_id: "",
-      title: "",
-      content: "",
-      subject: "",
-      created_at: now,
-      updated_at: now,
-    };
+      setIsCreating(true);
+      const { data, error } = await createNote(type);
+      setIsCreating(false);
+      setPickerOpen(false);
 
-    setIsCreating(true);
-    setNotes((prev) => [optimistic, ...prev]);
-    setSelectedId(tempId);
-    setSearchQuery("");
-
-    const { data, error } = await createNote("", "", "");
-    setIsCreating(false);
-
-    if (error || !data) {
-      setNotes((prev) => prev.filter((n) => n.id !== tempId));
-      setSelectedId((current) => (current === tempId ? null : current));
-      return;
-    }
-
-    setNotes((prev) => {
-      const draft = prev.find((n) => n.id === tempId);
-      const merged: Note = {
-        ...data,
-        title: draft?.title ?? data.title,
-        content: draft?.content ?? data.content,
-        subject: draft?.subject ?? data.subject,
-      };
-      return [merged, ...prev.filter((n) => n.id !== tempId)];
-    });
-    setSelectedId(data.id);
-  }, [isCreating]);
-
-  const handleRestore = useCallback((note: Note) => {
-    setNotes((prev) => {
-      const exists = prev.some((n) => n.id === note.id);
-      const next = exists ? prev : [note, ...prev];
-      return [...next].sort(
-        (a, b) =>
-          new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime(),
-      );
-    });
-    setSelectedId(note.id);
-  }, []);
-
-  const handleDeleted = useCallback((id: string) => {
-    setNotes((prev) => {
-      const next = prev.filter((n) => n.id !== id);
-      setSelectedId((current) => (current === id ? null : current));
-      return next;
-    });
-  }, []);
-
-  const confirmDelete = useCallback(async () => {
-    if (!noteToDelete) return;
-
-    const target = noteToDelete;
-    const id = target.id;
-
-    if (id.startsWith("temp-")) {
-      handleDeleted(id);
-      setNoteToDelete(null);
-      return;
-    }
-
-    setIsDeleting(true);
-    handleDeleted(id);
-    const { error } = await deleteNote(id);
-    setIsDeleting(false);
-    setNoteToDelete(null);
-
-    if (error) {
-      handleRestore(target);
-    }
-  }, [noteToDelete, handleDeleted, handleRestore]);
-
-  useEffect(() => {
-    const onKeyDown = (e: globalThis.KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "n") {
-        e.preventDefault();
-        void handleCreate();
+      if (error || !data) {
+        toast.error(error ?? "Failed to create note");
+        return;
       }
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [handleCreate]);
+
+      setNotes((prev) => [data, ...prev]);
+      setSelectedId(data.id);
+      toast.success("Note created");
+    },
+    [isCreating],
+  );
 
   return (
     <div className="flex flex-col h-[calc(100dvh-3.5rem)] lg:h-[100dvh] max-h-[100dvh] bg-[#0a0a0f]">
@@ -685,61 +741,73 @@ export default function NotesPage() {
           {loadError}
         </div>
       )}
-      <div className="flex flex-col lg:flex-row flex-1 min-h-0">
-        <NotesSidebar
-          notes={notes}
-          filteredNotes={filteredNotes}
-          selectedId={selectedId}
-          searchQuery={searchQuery}
-          isLoading={isLoading}
-          isCreating={isCreating}
-          onSearchChange={setSearchQuery}
-          onSelect={handleSelect}
-          onCreate={() => void handleCreate()}
-          onDeleteRequest={requestDelete}
-        />
-        {selectedNote ? (
-          <NoteEditor
-            note={selectedNote}
-            onSaved={handleNoteSaved}
-            onClose={handleClose}
-          />
-        ) : (
-          <EditorEmptyState />
-        )}
-      </div>
 
-      <AlertDialog
-        open={noteToDelete !== null}
-        onOpenChange={(open) => {
-          if (!open) setNoteToDelete(null);
-        }}
-      >
-        <AlertDialogContent className="bg-[#111118] border-[#ffffff10]">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete this note?</AlertDialogTitle>
-            <AlertDialogDescription>
-              &ldquo;{displayTitle(noteToDelete?.title ?? "")}&rdquo; will be
-              permanently removed. This cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="border-[#ffffff10]">
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={(e) => {
-                e.preventDefault();
-                void confirmDelete();
-              }}
-              disabled={isDeleting}
-              className="bg-red-600 hover:bg-red-700"
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ResizablePanelGroup orientation="horizontal" className="flex-1 min-h-0">
+        <ResizablePanel
+          defaultSize={28}
+          minSize={20}
+          maxSize={40}
+          className="bg-[#0a0a0f] border-r border-[#ffffff10]"
+        >
+          <div className="flex flex-col h-full">
+            <div className="flex items-center justify-between px-4 py-4 border-b border-[#ffffff10] shrink-0">
+              <h1 className="text-base font-semibold text-white">Notes</h1>
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => setPickerOpen(true)}
+                disabled={isCreating}
+                className="h-8 bg-[#7c5cfc] hover:bg-[#6b4ce8] text-white"
+              >
+                <Plus className="h-3.5 w-3.5 mr-1" aria-hidden />
+                New
+              </Button>
+            </div>
+
+            <ScrollArea className="flex-1 min-h-0">
+              <div className="p-3 space-y-1">
+                {isLoading ? (
+                  <div className="px-3 py-8 text-center text-sm text-white/40">
+                    Loading notes…
+                  </div>
+                ) : notes.length === 0 ? (
+                  <div className="flex items-center justify-center px-3 py-16 text-center">
+                    <p className="text-sm text-white/40">
+                      No notes yet. Create your first note.
+                    </p>
+                  </div>
+                ) : (
+                  notes.map((note) => (
+                    <NoteListItem
+                      key={note.id}
+                      note={note}
+                      isActive={note.id === selectedId}
+                      onSelect={setSelectedId}
+                    />
+                  ))
+                )}
+              </div>
+            </ScrollArea>
+          </div>
+        </ResizablePanel>
+
+        <ResizableHandle className="bg-[#ffffff10]" />
+
+        <ResizablePanel defaultSize={72} minSize={40}>
+          {selectedNote ? (
+            <NoteEditor note={selectedNote} onSaved={handleNoteSaved} />
+          ) : (
+            <EditorEmptyState />
+          )}
+        </ResizablePanel>
+      </ResizablePanelGroup>
+
+      <NoteTypePickerModal
+        open={pickerOpen}
+        onOpenChange={setPickerOpen}
+        onSelect={(type) => void handleCreate(type)}
+        isCreating={isCreating}
+      />
     </div>
   );
 }
