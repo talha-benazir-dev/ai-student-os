@@ -1,7 +1,12 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import type { Task } from "@/features/tasks/types";
+import type {
+  CreateTaskInput,
+  Task,
+  UpdateTaskInput,
+} from "@/features/tasks/types";
 
 type ActionResult<T> = {
   data: T | null;
@@ -32,10 +37,7 @@ export async function getTasks(): Promise<ActionResult<Task[]>> {
 }
 
 export async function createTask(
-  title: string,
-  priority: Task["priority"],
-  due_date: string | null,
-  subject: string,
+  input: CreateTaskInput,
 ): Promise<ActionResult<Task>> {
   const supabase = await createClient();
   const {
@@ -51,11 +53,13 @@ export async function createTask(
     .from("tasks")
     .insert({
       user_id: user.id,
-      title: title ?? "",
+      title: input.title.trim(),
       completed: false,
-      priority: priority ?? "medium",
-      due_date: due_date || null,
-      subject: subject ?? "",
+      priority: input.priority ?? "medium",
+      due_date: input.due_date || null,
+      reward: input.reward ?? "",
+      importance_points: input.importance_points ?? 10,
+      cluster_id: input.cluster_id ?? null,
     })
     .select()
     .single();
@@ -64,15 +68,13 @@ export async function createTask(
     return { data: null, error: error.message };
   }
 
+  revalidatePath("/tasks");
   return { data: data as Task, error: null };
 }
 
 export async function updateTask(
   id: string,
-  title: string,
-  priority: Task["priority"],
-  due_date: string | null,
-  subject: string,
+  input: UpdateTaskInput,
 ): Promise<ActionResult<Task>> {
   const supabase = await createClient();
   const {
@@ -84,15 +86,22 @@ export async function updateTask(
     return { data: null, error: "You must be signed in to update tasks." };
   }
 
+  const updates: Record<string, unknown> = {
+    updated_at: new Date().toISOString(),
+  };
+
+  if (input.title !== undefined) updates.title = input.title.trim();
+  if (input.priority !== undefined) updates.priority = input.priority;
+  if (input.due_date !== undefined) updates.due_date = input.due_date || null;
+  if (input.reward !== undefined) updates.reward = input.reward;
+  if (input.importance_points !== undefined) {
+    updates.importance_points = input.importance_points;
+  }
+  if (input.cluster_id !== undefined) updates.cluster_id = input.cluster_id;
+
   const { data, error } = await supabase
     .from("tasks")
-    .update({
-      title: title ?? "",
-      priority: priority ?? "medium",
-      due_date: due_date || null,
-      subject: subject ?? "",
-      updated_at: new Date().toISOString(),
-    })
+    .update(updates)
     .eq("id", id)
     .select()
     .single();
@@ -101,6 +110,7 @@ export async function updateTask(
     return { data: null, error: error.message };
   }
 
+  revalidatePath("/tasks");
   return { data: data as Task, error: null };
 }
 
@@ -132,6 +142,7 @@ export async function toggleTask(
     return { data: null, error: error.message };
   }
 
+  revalidatePath("/tasks");
   return { data: data as Task, error: null };
 }
 
@@ -154,5 +165,6 @@ export async function deleteTask(
     return { data: null, error: error.message };
   }
 
+  revalidatePath("/tasks");
   return { data: { id }, error: null };
 }

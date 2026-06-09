@@ -20,6 +20,19 @@ type Props = {
 
 export default function ExcalidrawEditor({ initialData, onChange }: Props) {
   return (
-    <Excalidraw initialData={initialData} onChange={onChange} theme="dark" />
+    <Excalidraw
+      initialData={initialData}
+      onChange={onChange}
+      theme="dark"
+      UIOptions={{
+        canvasActions: {
+          // Hide things that don't fit your app structure
+          loadScene: false, // Hide their manual file upload icon
+          saveToActiveFile: false, // Hide default save icon since you auto-save to Supabase
+          toggleTheme: false, // Hide theme toggle to lock it to Nucleus dark theme
+          changeViewBackgroundColor: true, // Keep true if you want students to change panel colors
+        },
+      }}
+    />
   );
 }
