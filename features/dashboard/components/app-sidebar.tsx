@@ -13,11 +13,14 @@ import {
   BarChart3,
   Settings,
   Flame,
+  ChevronRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { getSettings } from "@/features/settings/actions/settings.actions";
 import type { UserSettings } from "@/features/settings/types";
+import { getClusters } from "@/features/clusters/actions/clusters.actions";
+import type { Cluster } from "@/features/clusters/types";
 
 type NavItem = {
   to: string;
@@ -141,12 +144,18 @@ function SidebarBody({
 }) {
   const [settings, setSettings] = useState<UserSettings | null>(null);
   const [logoHovered, setLogoHovered] = useState(false);
+  const [clusters, setClusters] = useState<Cluster[]>([]);
+  const [clustersOpen, setClustersOpen] = useState(true);
 
   useEffect(() => {
     async function fetchSettings() {
       const result = await getSettings();
       if (result.data) {
         setSettings(result.data);
+      }
+      const clustersResult = await getClusters();
+      if (clustersResult.data) {
+        setClusters(clustersResult.data);
       }
     }
     fetchSettings();
@@ -213,6 +222,52 @@ function SidebarBody({
             />
           ))}
         </nav>
+        {!collapsed && clusters.length > 0 && (
+          <div className="mt-4">
+            <button
+              onClick={() => setClustersOpen((prev) => !prev)}
+              className="w-full flex items-center justify-between px-3 pb-2 text-[10px] uppercase tracking-[0.14em] text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <span>Clusters</span>
+              <ChevronRight
+                className={cn(
+                  "h-3 w-3 transition-transform duration-200",
+                  clustersOpen && "rotate-90",
+                )}
+              />
+            </button>
+            {clustersOpen && (
+              <div className="flex flex-col gap-0.5">
+                {clusters.map((cluster) => (
+                  <Link
+                    key={cluster.id}
+                    href={`/clusters/${cluster.id}`}
+                    prefetch={true}
+                    onClick={onNavigate}
+                    className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-all duration-200"
+                  >
+                    <span
+                      className="h-2 w-2 rounded-full shrink-0"
+                      style={{ backgroundColor: cluster.color }}
+                    />
+                    <span className="flex-1 truncate">{cluster.name}</span>
+                  </Link>
+                ))}
+                <Link
+                  href="/clusters"
+                  prefetch={true}
+                  onClick={onNavigate}
+                  className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-all duration-200"
+                >
+                  <span className="h-2 w-2 rounded-full shrink-0 border border-muted-foreground/40" />
+                  <span className="flex-1 truncate text-muted-foreground/60">
+                    Manage clusters
+                  </span>
+                </Link>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <div
@@ -311,10 +366,7 @@ export function MobileSidebar({
         side="left"
         className="p-0 w-[270px] bg-sidebar border-r-border"
       >
-        <SidebarBody
-          onNavigate={() => onOpenChange(false)}
-          collapsed={false}
-        />
+        <SidebarBody onNavigate={() => onOpenChange(false)} collapsed={false} />
       </SheetContent>
     </Sheet>
   );

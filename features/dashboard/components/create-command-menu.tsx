@@ -1,12 +1,21 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+  type ReactNode,
+} from "react";
 import { useRouter } from "next/navigation";
 import {
   CheckSquare,
+  Command as CommandIcon,
   FileText,
   Layers,
   Plus,
+  Search,
   Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -72,24 +81,30 @@ const CREATE_ACTIONS: CreateAction[] = [
   },
 ];
 
-export function DashboardCreateMenu() {
+type CommandPaletteContextValue = {
+  openCommand: () => void;
+};
+
+const CommandPaletteContext = createContext<CommandPaletteContextValue | null>(
+  null,
+);
+
+function useCommandPalette() {
+  const ctx = useContext(CommandPaletteContext);
+  if (!ctx) {
+    throw new Error(
+      "useCommandPalette must be used within CommandPaletteProvider",
+    );
+  }
+  return ctx;
+}
+
+export function CommandPaletteProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
   const [commandOpen, setCommandOpen] = useState(false);
   const [clusterModalOpen, setClusterModalOpen] = useState(false);
 
   const openCommand = useCallback(() => setCommandOpen(true), []);
-
-  useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
-        e.preventDefault();
-        openCommand();
-      }
-    };
-
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [openCommand]);
 
   const runAction = useCallback(
     (item: CreateAction) => {
@@ -107,16 +122,37 @@ export function DashboardCreateMenu() {
     [router],
   );
 
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      const mod = e.metaKey || e.ctrlKey;
+      if (!mod) return;
+
+      const key = e.key.toLowerCase();
+
+      if (key === "k") {
+        e.preventDefault();
+        setCommandOpen(true);
+        return;
+      }
+
+      if (!commandOpen) return;
+
+      const action = CREATE_ACTIONS.find(
+        (item) => item.shortcut?.toLowerCase() === key,
+      );
+      if (action) {
+        e.preventDefault();
+        runAction(action);
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [commandOpen, runAction]);
+
   return (
-    <>
-      <Button
-        type="button"
-        onClick={openCommand}
-        className="h-9 px-3 rounded-lg bg-gradient-violet text-white text-sm font-medium gap-1.5 shadow-[0_0_20px_-4px_oklch(0.66_0.21_295/0.6)] hover:scale-[1.02] transition hover:bg-gradient-violet"
-      >
-        <Plus className="h-4 w-4" />
-        New
-      </Button>
+    <CommandPaletteContext.Provider value={{ openCommand }}>
+      {children}
 
       <CommandDialog open={commandOpen} onOpenChange={setCommandOpen}>
         <CommandInput placeholder="Create something in Nucleus…" />
@@ -186,6 +222,54 @@ export function DashboardCreateMenu() {
         onOpenChange={setClusterModalOpen}
         onSuccess={() => router.refresh()}
       />
-    </>
+    </CommandPaletteContext.Provider>
+  );
+}
+
+export function DashboardCreateMenu() {
+  const { openCommand } = useCommandPalette();
+
+  return (
+    <Button
+      type="button"
+      onClick={openCommand}
+      className="h-9 px-3 rounded-lg bg-gradient-violet text-white text-sm font-medium gap-1.5 shadow-[0_0_20px_-4px_oklch(0.66_0.21_295/0.6)] hover:scale-[1.02] transition hover:bg-gradient-violet"
+    >
+      <Plus className="h-4 w-4" />
+      New
+    </Button>
+  );
+}
+
+export function DashboardCommandSearch() {
+  const { openCommand } = useCommandPalette();
+
+  return (
+    <div className="relative mb-6 sm:mb-7 group">
+      <button
+        type="button"
+        onClick={openCommand}
+        className="relative w-full rounded-xl border border-border bg-card hover:border-primary/30 focus-visible:border-primary/40 focus-visible:shadow-[0_0_0_3px_oklch(0.66_0.21_295/0.12)] transition text-left cursor-pointer"
+      >
+        <Search className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+        <span className="block w-full bg-transparent pl-10 sm:pl-11 pr-16 sm:pr-32 py-3 sm:py-3.5 text-sm text-muted-foreground">
+          Search or ask Nucleus AI…
+        </span>
+        <div className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 flex items-center gap-2 pointer-events-none">
+          <span className="text-xs text-muted-foreground hidden lg:inline">
+            Try
+          </span>
+          <span className="text-xs px-2 py-1 rounded-md bg-primary/10 border border-primary/20 text-primary-soft hidden lg:inline">
+            summarize biology ch.3
+          </span>
+          <kbd
+            suppressHydrationWarning
+            className="font-mono text-[10px] text-muted-foreground border border-border rounded px-1.5 py-0.5 flex items-center gap-0.5"
+          >
+            <CommandIcon className="h-2.5 w-2.5" /> K
+          </kbd>
+        </div>
+      </button>
+    </div>
   );
 }

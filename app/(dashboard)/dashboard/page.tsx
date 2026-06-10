@@ -1,13 +1,15 @@
 import { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
-import { CommandShortcut } from "@/features/dashboard/components/command-shortcut";
-import { DashboardCreateMenu } from "@/features/dashboard/components/create-command-menu";
+import {
+  CommandPaletteProvider,
+  DashboardCommandSearch,
+  DashboardCreateMenu,
+} from "@/features/dashboard/components/create-command-menu";
 import { StatCard } from "@/features/dashboard/components/start-card";
 import { StudyChart, FocusBars } from "@/features/dashboard/components/charts";
 import { RecentNotesSection } from "@/features/dashboard/components/recent-notes";
 import {
-  Search,
   Clock,
   CheckSquare,
   FileText,
@@ -124,7 +126,8 @@ export default async function Dashboard() {
       : "All clear. Nothing pending — add tasks to stay on track.";
 
   return (
-    <div className="px-4 sm:px-6 lg:px-10 xl:px-12 py-6 sm:py-8 mx-auto w-full max-w-[1400px]">
+    <CommandPaletteProvider>
+    <div className="px-4 sm:px-6 lg:px-10 xl:px-12 py-6 sm:py-8 mx-auto w-full max-w-350">
       {/* Header */}
       <div className="flex items-start justify-between gap-4 mb-6 sm:mb-7">
         <div className="min-w-0">
@@ -143,25 +146,7 @@ export default async function Dashboard() {
         </div>
       </div>
 
-      {/* Search / command */}
-      <div className="relative mb-6 sm:mb-7 group">
-        <div className="relative rounded-xl border border-border bg-card hover:border-primary/30 focus-within:border-primary/40 focus-within:shadow-[0_0_0_3px_oklch(0.66_0.21_295/0.12)] transition">
-          <Search className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <input
-            placeholder="Search or ask Nucleus AI…"
-            className="w-full bg-transparent pl-10 sm:pl-11 pr-16 sm:pr-32 py-3 sm:py-3.5 text-sm placeholder:text-muted-foreground focus:outline-none"
-          />
-          <div className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
-            <span className="text-xs text-muted-foreground hidden lg:inline">
-              Try
-            </span>
-            <span className="text-xs px-2 py-1 rounded-md bg-primary/10 border border-primary/20 text-primary-soft hidden lg:inline">
-              {"summarize biology ch.3"}
-            </span>
-            <CommandShortcut />
-          </div>
-        </div>
-      </div>
+      <DashboardCommandSearch />
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3 mb-6">
@@ -251,6 +236,7 @@ export default async function Dashboard() {
         )}
       </section>
     </div>
+    </CommandPaletteProvider>
   );
 }
 

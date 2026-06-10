@@ -167,10 +167,7 @@ function NoteClusterSelect({
   className?: string;
 }) {
   return (
-    <Select
-      value={clusterSelectValue(value)}
-      onValueChange={onChange}
-    >
+    <Select value={clusterSelectValue(value)} onValueChange={onChange}>
       <SelectTrigger
         className={cn(
           "h-8 w-[140px] border-[#ffffff10] bg-transparent text-white text-xs shadow-none",
@@ -399,31 +396,33 @@ function NoteTypePickerModal({
             />
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            {NOTE_TYPE_OPTIONS.map(({ type, icon: Icon, label, description }) => (
-              <button
-                key={type}
-                type="button"
-                disabled={isCreating}
-                onClick={() =>
-                  onSelect(type, clusterIdFromSelectValue(clusterId))
-                }
-                className={cn(
-                  "flex flex-col items-start gap-3 rounded-xl border border-[#ffffff10] bg-[#0a0a0f] p-4 text-left transition-colors",
-                  "hover:border-[#7c5cfc]/50 hover:bg-[#16161f] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7c5cfc]/50",
-                  isCreating && "opacity-50 pointer-events-none",
-                )}
-              >
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#7c5cfc]/10 border border-[#7c5cfc]/25">
-                  <Icon className="h-5 w-5 text-[#7c5cfc]" aria-hidden />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-white">{label}</p>
-                  <p className="text-xs text-white/45 mt-1 leading-relaxed">
-                    {description}
-                  </p>
-                </div>
-              </button>
-            ))}
+            {NOTE_TYPE_OPTIONS.map(
+              ({ type, icon: Icon, label, description }) => (
+                <button
+                  key={type}
+                  type="button"
+                  disabled={isCreating}
+                  onClick={() =>
+                    onSelect(type, clusterIdFromSelectValue(clusterId))
+                  }
+                  className={cn(
+                    "flex flex-col items-start gap-3 rounded-xl border border-[#ffffff10] bg-[#0a0a0f] p-4 text-left transition-colors",
+                    "hover:border-[#7c5cfc]/50 hover:bg-[#16161f] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7c5cfc]/50",
+                    isCreating && "opacity-50 pointer-events-none",
+                  )}
+                >
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#7c5cfc]/10 border border-[#7c5cfc]/25">
+                    <Icon className="h-5 w-5 text-[#7c5cfc]" aria-hidden />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-white">{label}</p>
+                    <p className="text-xs text-white/45 mt-1 leading-relaxed">
+                      {description}
+                    </p>
+                  </div>
+                </button>
+              ),
+            )}
           </div>
         </div>
       </DialogContent>
@@ -741,7 +740,9 @@ const ReadmeNoteEditor = memo(function ReadmeNoteEditor({
                       </h6>
                     ),
                     p: ({ children }) => (
-                      <p className="text-zinc-300 mb-3 leading-relaxed">{children}</p>
+                      <p className="text-zinc-300 mb-3 leading-relaxed">
+                        {children}
+                      </p>
                     ),
                     a: ({ children, href }) => (
                       <a
@@ -829,10 +830,7 @@ const CanvasNoteEditor = memo(function CanvasNoteEditor({
     note,
     onSaved,
   );
-  const initialData = useMemo(
-    () => getInitialData(note.content),
-    [note.id],
-  );
+  const initialData = useMemo(() => getInitialData(note.content), [note.id]);
 
   const handleCanvasChange = useCallback(
     (
@@ -870,7 +868,7 @@ const CanvasNoteEditor = memo(function CanvasNoteEditor({
         />
       </header>
 
-      <div className="flex-1 min-h-0 relative overflow-hidden">
+      <div className="flex-1 min-h-0 relative w-full h-full overflow-visible">
         <ExcalidrawEditor
           key={note.id}
           initialData={initialData}
@@ -1180,7 +1178,7 @@ export default function NotesPage({
         <ResizableHandle withHandle className="bg-[#ffffff10] w-px" />
 
         <ResizablePanel id="notes-editor" minSize="40%">
-          <div className="h-full w-full min-w-0 overflow-hidden bg-[#0a0a0f]">
+          <div className="h-full w-full min-w-0 overflow-visible bg-[#0a0a0f]">
             {activeNote ? (
               <NoteEditor
                 note={activeNote}

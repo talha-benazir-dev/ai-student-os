@@ -1,0 +1,238 @@
+"use client";
+
+import Link from "next/link";
+import {
+  ArrowLeft,
+  CheckSquare,
+  FileText,
+  FolderOpen,
+  Layers,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import type { Cluster } from "@/features/clusters/types";
+import type { Note } from "@/features/notes/types";
+import type { Task } from "@/features/tasks/types";
+import type { Flashcard } from "@/features/flashcards/types";
+import type { Document } from "@/features/documents/types";
+
+interface ClusterViewProps {
+  cluster: Cluster;
+  initialNotes: Note[];
+  initialTasks: Task[];
+  initialFlashcards: Flashcard[];
+  initialDocuments: Document[];
+}
+
+interface SectionCardProps {
+  icon: React.ComponentType<{ className?: string }>;
+  sectionTitle: string;
+  count: number;
+  featurePath: string;
+  children: React.ReactNode;
+}
+
+function SectionCard({
+  icon: Icon,
+  sectionTitle,
+  count,
+  featurePath,
+  children,
+}: SectionCardProps) {
+  return (
+    <div className="rounded-xl border border-border bg-card">
+      <div className="flex items-center justify-between border-b border-border px-5 py-4">
+        <div className="flex items-center gap-2">
+          <Icon className="h-4 w-4 text-primary" />
+          <span className="text-sm font-medium">{sectionTitle}</span>
+          <span className="text-xs text-muted-foreground">({count})</span>
+        </div>
+        <Link
+          href={`/${featurePath}`}
+          className="text-xs text-muted-foreground transition-colors hover:text-foreground"
+        >
+          View all →
+        </Link>
+      </div>
+      <div className="p-5">{children}</div>
+    </div>
+  );
+}
+
+export function ClusterView({
+  cluster,
+  initialNotes,
+  initialTasks,
+  initialFlashcards,
+  initialDocuments,
+}: ClusterViewProps) {
+  const totalCount =
+    initialNotes.length +
+    initialTasks.length +
+    initialFlashcards.length +
+    initialDocuments.length;
+
+  return (
+    <div className="mx-auto max-w-6xl px-6 py-8">
+      <div className="mb-8 flex items-center gap-4">
+        <Link
+          href="/clusters"
+          className="text-muted-foreground transition-colors hover:text-foreground"
+          aria-label="Back to clusters"
+        >
+          <ArrowLeft className="h-4 w-4" />
+        </Link>
+        <span
+          className="h-3 w-3 shrink-0 rounded-full"
+          style={{ backgroundColor: cluster.color }}
+        />
+        <div>
+          <h1 className="text-2xl font-semibold">{cluster.name}</h1>
+          <p className="text-sm text-muted-foreground">{totalCount} items</p>
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-6">
+        <SectionCard
+          icon={FileText}
+          sectionTitle="Notes"
+          count={initialNotes.length}
+          featurePath="notes"
+        >
+          {initialNotes.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No notes in this cluster.
+            </p>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {initialNotes.map((note) => (
+                <div
+                  key={note.id}
+                  className="flex items-center justify-between border-b border-border/50 py-2 last:border-0"
+                >
+                  <span className="truncate text-sm">
+                    {note.title || "Untitled"}
+                  </span>
+                  <span className="ml-4 shrink-0 text-xs text-muted-foreground">
+                    {note.type}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </SectionCard>
+
+        <SectionCard
+          icon={CheckSquare}
+          sectionTitle="Tasks"
+          count={initialTasks.length}
+          featurePath="tasks"
+        >
+          {initialTasks.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No tasks in this cluster.
+            </p>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {initialTasks.map((task) => (
+                <div
+                  key={task.id}
+                  className="flex items-center gap-3 border-b border-border/50 py-2 last:border-0"
+                >
+                  <div
+                    className={cn(
+                      "h-1.5 w-1.5 shrink-0 rounded-full",
+                      task.priority === "high"
+                        ? "bg-red-400"
+                        : task.priority === "medium"
+                          ? "bg-yellow-400"
+                          : "bg-green-400",
+                    )}
+                  />
+                  <span
+                    className={cn(
+                      "flex-1 truncate text-sm",
+                      task.completed &&
+                        "text-muted-foreground line-through",
+                    )}
+                  >
+                    {task.title}
+                  </span>
+                  {task.due_date && (
+                    <span className="shrink-0 text-xs text-muted-foreground">
+                      {task.due_date}
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </SectionCard>
+
+        <SectionCard
+          icon={Layers}
+          sectionTitle="Flashcards"
+          count={initialFlashcards.length}
+          featurePath="flashcards"
+        >
+          {initialFlashcards.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No flashcards in this cluster.
+            </p>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {initialFlashcards.map((card) => (
+                <div
+                  key={card.id}
+                  className="flex items-center justify-between border-b border-border/50 py-2 last:border-0"
+                >
+                  <span className="flex-1 truncate text-sm">{card.front}</span>
+                  <span
+                    className={cn(
+                      "ml-4 shrink-0 rounded-full px-2 py-0.5 text-xs",
+                      card.difficulty === "easy"
+                        ? "bg-green-500/15 text-green-400"
+                        : card.difficulty === "hard"
+                          ? "bg-red-500/15 text-red-400"
+                          : "bg-yellow-500/15 text-yellow-400",
+                    )}
+                  >
+                    {card.difficulty}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </SectionCard>
+
+        <SectionCard
+          icon={FolderOpen}
+          sectionTitle="Documents"
+          count={initialDocuments.length}
+          featurePath="documents"
+        >
+          {initialDocuments.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No documents in this cluster.
+            </p>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {initialDocuments.map((doc) => (
+                <div
+                  key={doc.id}
+                  className="flex items-center justify-between border-b border-border/50 py-2 last:border-0"
+                >
+                  <span className="flex-1 truncate text-sm">{doc.title}</span>
+                  <span className="ml-4 shrink-0 text-xs text-muted-foreground">
+                    {doc.file_size
+                      ? `${(doc.file_size / 1024 / 1024).toFixed(1)} MB`
+                      : "—"}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </SectionCard>
+      </div>
+    </div>
+  );
+}

@@ -64,6 +64,7 @@ export async function createCluster(
   revalidatePath("/notes");
   revalidatePath("/flashcards");
   revalidatePath("/documents");
+  revalidatePath("/clusters");
   return { data: data as Cluster, error: null };
 }
 
@@ -90,5 +91,40 @@ export async function deleteCluster(
   revalidatePath("/notes");
   revalidatePath("/flashcards");
   revalidatePath("/documents");
+  revalidatePath("/clusters");
   return { data: { id }, error: null };
+}
+
+export async function updateCluster(
+  id: string,
+  name: string,
+  color: string,
+): Promise<ActionResult<Cluster>> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return { data: null, error: "You must be signed in to update clusters." };
+  }
+
+  const { data, error } = await supabase
+    .from("clusters")
+    .update({ name: name.trim(), color })
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) {
+    return { data: null, error: error.message };
+  }
+
+  revalidatePath("/tasks");
+  revalidatePath("/notes");
+  revalidatePath("/flashcards");
+  revalidatePath("/documents");
+  revalidatePath("/clusters");
+  return { data: data as Cluster, error: null };
 }
