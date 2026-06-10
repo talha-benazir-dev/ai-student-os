@@ -14,9 +14,11 @@ import type { Note } from "@/features/notes/types";
 import type { Task } from "@/features/tasks/types";
 import type { Flashcard } from "@/features/flashcards/types";
 import type { Document } from "@/features/documents/types";
+import { formatStudyHours } from "@/features/study-sessions/utils/format-study-hours";
 
 interface ClusterViewProps {
   cluster: Cluster;
+  studyMinutes: number;
   initialNotes: Note[];
   initialTasks: Task[];
   initialFlashcards: Flashcard[];
@@ -60,6 +62,7 @@ function SectionCard({
 
 export function ClusterView({
   cluster,
+  studyMinutes,
   initialNotes,
   initialTasks,
   initialFlashcards,
@@ -73,21 +76,29 @@ export function ClusterView({
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-8">
-      <div className="mb-8 flex items-center gap-4">
-        <Link
-          href="/clusters"
-          className="text-muted-foreground transition-colors hover:text-foreground"
-          aria-label="Back to clusters"
-        >
-          <ArrowLeft className="h-4 w-4" />
-        </Link>
-        <span
-          className="h-3 w-3 shrink-0 rounded-full"
-          style={{ backgroundColor: cluster.color }}
-        />
-        <div>
-          <h1 className="text-2xl font-semibold">{cluster.name}</h1>
-          <p className="text-sm text-muted-foreground">{totalCount} items</p>
+      <div className="mb-8 flex items-start justify-between gap-4">
+        <div className="flex min-w-0 items-center gap-4">
+          <Link
+            href="/clusters"
+            className="text-muted-foreground transition-colors hover:text-foreground"
+            aria-label="Back to clusters"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Link>
+          <span
+            className="h-3 w-3 shrink-0 rounded-full"
+            style={{ backgroundColor: cluster.color }}
+          />
+          <div className="min-w-0">
+            <h1 className="text-2xl font-semibold">{cluster.name}</h1>
+            <p className="text-sm text-muted-foreground">{totalCount} items</p>
+          </div>
+        </div>
+        <div className="shrink-0 text-right">
+          <p className="text-lg font-mono tabular-nums font-medium">
+            {formatStudyHours(studyMinutes)}
+          </p>
+          <p className="text-xs text-muted-foreground">studied</p>
         </div>
       </div>
 

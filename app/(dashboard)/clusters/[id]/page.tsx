@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getClusters } from "@/features/clusters/actions/clusters.actions";
 import { ClusterView } from "@/features/clusters/components/cluster-view";
+import { getClusterStudyMinutes } from "@/features/study-sessions/actions/study-sessions.actions";
 
 export default async function ClusterPage({
   params,
@@ -19,12 +20,14 @@ export default async function ClusterPage({
 
   const [
     { data: clustersData },
+    { data: studyMinutes },
     { data: notes },
     { data: tasks },
     { data: flashcards },
     { data: documents },
   ] = await Promise.all([
     getClusters(),
+    getClusterStudyMinutes(id),
     supabase
       .from("notes")
       .select("*")
@@ -57,6 +60,7 @@ export default async function ClusterPage({
   return (
     <ClusterView
       cluster={cluster}
+      studyMinutes={studyMinutes ?? 0}
       initialNotes={notes ?? []}
       initialTasks={tasks ?? []}
       initialFlashcards={flashcards ?? []}

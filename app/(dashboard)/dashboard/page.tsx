@@ -1,5 +1,4 @@
 import { Metadata } from "next";
-import { Suspense } from "react";
 import Link from "next/link";
 import {
   CommandPaletteProvider,
@@ -7,8 +6,21 @@ import {
   DashboardCreateMenu,
 } from "@/features/dashboard/components/create-command-menu";
 import { StatCard } from "@/features/dashboard/components/start-card";
-import { StudyChart, FocusBars } from "@/features/dashboard/components/charts";
 import { RecentNotesSection } from "@/features/dashboard/components/recent-notes";
+import {
+  getDashboardWidgets,
+  getDailyStudyTime,
+  getTaskCompletionRate,
+  getActivityHeatmap,
+  getClusterBreakdown,
+} from "@/features/analytics/actions/analytics.actions";
+import { WIDGET_LABELS, type WidgetId } from "@/features/analytics/types/widgets";
+import {
+  DailyStudyTimeChart,
+  TaskCompletionChart,
+  ActivityHeatmap,
+  ClusterBreakdownChart,
+} from "@/features/analytics/components/charts";
 import {
   Clock,
   CheckSquare,
@@ -19,19 +31,13 @@ import {
   ArrowUpRight,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
-import { getWeeklyStudyMinutes } from "@/features/study-sessions/actions/study-sessions.actions";
+import { getStreakData } from "@/features/study-sessions/actions/study-sessions.actions";
 import { StudyTimer } from "@/features/study-sessions/components/study-timer";
 
 export const metadata: Metadata = {
   title: "Dashboard — Nucleus",
   description: "Your AI study operating system.",
 };
-
-function ChartSkeleton() {
-  return (
-    <div className="w-full h-[180px] rounded-lg bg-muted/30 animate-pulse" />
-  );
-}
 
 export default async function Dashboard() {
   const supabase = await createClient();
@@ -45,6 +51,12 @@ export default async function Dashboard() {
   let recentNotes: any[] = [];
   let recentDocuments: any[] = [];
   let weeklyStudyMinutes = 0;
+  let streakData = { current_streak: 0, longest_streak: 0 };
+  let pinnedWidgets: WidgetId[] = ["daily_study_time", "activity_heatmap"];
+  let dailyStudy: { date: string; minutes: number }[] = [];
+  let taskCompletion: { date: string; completed: number }[] = [];
+  let heatmap: { date: string; minutes: number }[] = [];
+  let clusterBreakdown: { name: string; minutes: number; color: string }[] = [];
 
   if (userId) {
     const fetchProfile = async () => {
@@ -129,8 +141,25 @@ export default async function Dashboard() {
         .then(({ data }) => {
           weeklyStudyMinutes = (data ?? []).reduce((sum, s) => sum + (s.duration_minutes ?? 0), 0);
         }),
+      getStreakData().then(({ data }) => {
+        if (data) streakData = data;
+      }),
+      getDashboardWidgets().then(({ data }) => {
+        pinnedWidgets = (data ?? ["daily_study_time", "activity_heatmap"]) as WidgetId[];
+      }),
+      getDailyStudyTime(30).then(({ data }) => { dailyStudy = data ?? []; }),
+      getTaskCompletionRate(30).then(({ data }) => { taskCompletion = data ?? []; }),
+      getActivityHeatmap().then(({ data }) => { heatmap = data ?? []; }),
+      getClusterBreakdown().then(({ data }) => { clusterBreakdown = data ?? []; }),
     ]);
   }
+
+  const chartMap: Record<WidgetId, React.ReactNode> = {
+    daily_study_time: <DailyStudyTimeChart data={dailyStudy} />,
+    task_completion_rate: <TaskCompletionChart data={taskCompletion} />,
+    activity_heatmap: <ActivityHeatmap data={heatmap} />,
+    cluster_breakdown: <ClusterBreakdownChart data={clusterBreakdown} />,
+  };
 
   const studyHours = weeklyStudyMinutes > 0
     ? (weeklyStudyMinutes / 60).toFixed(1)
@@ -179,43 +208,33 @@ export default async function Dashboard() {
           label="Documents"
           value={documentsCount.toString()}
         />
-        <StatCard icon={Flame} label="Streak" value="--" unit="days" />
+        <StatCard
+          icon={Flame}
+          label="Streak"
+          value={streakData.current_streak.toString()}
+          unit="days"
+          delta={"best " + streakData.longest_streak}
+          deltaTone="neutral"
+        />
       </div>
 
-      {/* Analytics */}
+      {/* Analytics — pinned widgets */}
       <section className="rounded-2xl border border-border bg-card p-4 sm:p-6 mb-6">
         <div className="flex items-start justify-between gap-3 mb-4 flex-wrap">
           <div className="min-w-0">
             <h2 className="text-base font-semibold">Productivity analytics</h2>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Weekly study hours · deep vs. light focus
+              Your 2 pinned charts · <a href="/analytics" className="text-primary/70 hover:text-primary transition">manage in Analytics</a>
             </p>
           </div>
-          <div className="inline-flex rounded-lg border border-border bg-background p-0.5 text-xs">
-            <button className="px-2.5 py-1 rounded-md bg-primary/15 text-primary-soft border border-primary/25">
-              7D
-            </button>
-            <button className="px-2.5 py-1 rounded-md text-muted-foreground hover:text-foreground">
-              30D
-            </button>
-            <button className="px-2.5 py-1 rounded-md text-muted-foreground hover:text-foreground">
-              90D
-            </button>
-          </div>
         </div>
-        <div className="grid md:grid-cols-2 gap-2">
-          <Suspense fallback={<ChartSkeleton />}>
-            <StudyChart />
-          </Suspense>
-          <Suspense fallback={<ChartSkeleton />}>
-            <FocusBars />
-          </Suspense>
-        </div>
-        <div className="grid grid-cols-3 gap-3 sm:gap-6 mt-5 pt-5 border-t border-border">
-          <div className="col-span-3 flex items-center justify-center gap-2 py-2 text-xs text-muted-foreground">
-            <span className="w-1.5 h-1.5 rounded-full bg-primary/40 inline-block" />
-            Detailed analytics coming in a future update
-          </div>
+        <div className="grid md:grid-cols-2 gap-4">
+          {pinnedWidgets.map((id) => (
+            <div key={id} className="rounded-xl border border-border/60 bg-background/40 p-4">
+              <p className="text-xs font-medium text-muted-foreground mb-3">{WIDGET_LABELS[id].title}</p>
+              {chartMap[id]}
+            </div>
+          ))}
         </div>
       </section>
 

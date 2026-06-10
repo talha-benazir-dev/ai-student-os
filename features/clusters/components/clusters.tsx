@@ -21,6 +21,7 @@ import {
   updateCluster,
 } from "@/features/clusters/actions/clusters.actions";
 import type { Cluster } from "@/features/clusters/types";
+import { formatStudyHours } from "@/features/study-sessions/utils/format-study-hours";
 import { useClusters } from "@/providers/clusters-provider";
 
 const COLOR_PRESETS = [
@@ -36,9 +37,13 @@ const DEFAULT_COLOR = "#7c5cfc";
 
 interface ClustersClientProps {
   initialClusters: Cluster[];
+  studyMinutesByCluster: Record<string, number>;
 }
 
-export function ClustersClient({ initialClusters }: ClustersClientProps) {
+export function ClustersClient({
+  initialClusters,
+  studyMinutesByCluster,
+}: ClustersClientProps) {
   const {
     addCluster,
     updateCluster: updateClusterCtx,
@@ -179,7 +184,10 @@ export function ClustersClient({ initialClusters }: ClustersClientProps) {
                       {cluster.name}
                     </span>
                   </div>
-                  <div className="flex shrink-0 items-center gap-1">
+                  <div className="flex shrink-0 items-center gap-2">
+                    <span className="text-xs font-mono tabular-nums text-muted-foreground">
+                      {formatStudyHours(studyMinutesByCluster[cluster.id] ?? 0)}
+                    </span>
                     <button
                       type="button"
                       onClick={() => handleEdit(cluster)}
@@ -198,7 +206,6 @@ export function ClustersClient({ initialClusters }: ClustersClientProps) {
                     </button>
                   </div>
                 </div>
-                {/* item counts — coming in unified view */}
               </div>
             ))}
           </div>

@@ -16,7 +16,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { getSettings } from "@/features/settings/actions/settings.actions";
 import type { UserSettings } from "@/features/settings/types";
 import { useClusters } from "@/providers/clusters-provider";
@@ -361,6 +361,7 @@ export function MobileSidebar({
         side="left"
         className="p-0 w-[270px] bg-sidebar border-r-border"
       >
+        <SheetTitle className="sr-only">Navigation</SheetTitle>
         <SidebarBody onNavigate={() => onOpenChange(false)} collapsed={false} />
       </SheetContent>
     </Sheet>
