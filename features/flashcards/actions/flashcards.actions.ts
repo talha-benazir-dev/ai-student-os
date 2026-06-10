@@ -1,7 +1,8 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import type { Flashcard } from "../types";
+import type { Flashcard, FlashcardUpdate } from "../types";
 
 type ActionResult<T> = {
   data: T | null;
@@ -10,7 +11,10 @@ type ActionResult<T> = {
 
 export async function getFlashcards(): Promise<ActionResult<Flashcard[]>> {
   const supabase = await createClient();
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
 
   if (authError || !user) {
     return { data: null, error: "You must be signed in to view flashcards." };
@@ -27,7 +31,10 @@ export async function getFlashcards(): Promise<ActionResult<Flashcard[]>> {
 
 export async function getDueFlashcards(): Promise<ActionResult<Flashcard[]>> {
   const supabase = await createClient();
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
 
   if (authError || !user) {
     return { data: null, error: "You must be signed in to view flashcards." };
@@ -48,10 +55,13 @@ export async function getDueFlashcards(): Promise<ActionResult<Flashcard[]>> {
 export async function createFlashcard(
   front: string,
   back: string,
-  subject: string
+  cluster_id: string | null = null,
 ): Promise<ActionResult<Flashcard>> {
   const supabase = await createClient();
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
 
   if (authError || !user) {
     return { data: null, error: "You must be signed in to create flashcards." };
@@ -65,7 +75,7 @@ export async function createFlashcard(
       user_id: user.id,
       front,
       back,
-      subject: subject || "",
+      cluster_id,
       difficulty: "medium",
       next_review: today,
       interval_days: 1,
@@ -75,43 +85,59 @@ export async function createFlashcard(
     .single();
 
   if (error) return { data: null, error: error.message };
+
+  revalidatePath("/flashcards");
   return { data: data as Flashcard, error: null };
 }
 
 export async function updateFlashcard(
   id: string,
-  front: string,
-  back: string,
-  subject: string
+  fields: FlashcardUpdate,
 ): Promise<ActionResult<Flashcard>> {
   const supabase = await createClient();
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
 
   if (authError || !user) {
     return { data: null, error: "You must be signed in to update flashcards." };
   }
 
+  const updates: Record<string, unknown> = {};
+
+  if (fields.front !== undefined) updates.front = fields.front;
+  if (fields.back !== undefined) updates.back = fields.back;
+  if (fields.cluster_id !== undefined) updates.cluster_id = fields.cluster_id;
+  if (fields.difficulty !== undefined) updates.difficulty = fields.difficulty;
+  if (fields.next_review !== undefined) updates.next_review = fields.next_review;
+  if (fields.interval_days !== undefined) {
+    updates.interval_days = fields.interval_days;
+  }
+  if (fields.repetitions !== undefined) updates.repetitions = fields.repetitions;
+
   const { data, error } = await supabase
     .from("flashcards")
-    .update({
-      front,
-      back,
-      subject: subject || "",
-    })
+    .update(updates)
     .eq("id", id)
     .select()
     .single();
 
   if (error) return { data: null, error: error.message };
+
+  revalidatePath("/flashcards");
   return { data: data as Flashcard, error: null };
 }
 
 export async function reviewFlashcard(
   id: string,
-  rating: "easy" | "medium" | "hard"
+  rating: "easy" | "medium" | "hard",
 ): Promise<ActionResult<Flashcard>> {
   const supabase = await createClient();
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
 
   if (authError || !user) {
     return { data: null, error: "You must be signed in to review flashcards." };
@@ -158,14 +184,19 @@ export async function reviewFlashcard(
     .single();
 
   if (error) return { data: null, error: error.message };
+
+  revalidatePath("/flashcards");
   return { data: data as Flashcard, error: null };
 }
 
 export async function deleteFlashcard(
-  id: string
+  id: string,
 ): Promise<ActionResult<{ id: string }>> {
   const supabase = await createClient();
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
 
   if (authError || !user) {
     return { data: null, error: "You must be signed in to delete flashcards." };
@@ -174,5 +205,7 @@ export async function deleteFlashcard(
   const { error } = await supabase.from("flashcards").delete().eq("id", id);
 
   if (error) return { data: null, error: error.message };
+
+  revalidatePath("/flashcards");
   return { data: { id }, error: null };
 }

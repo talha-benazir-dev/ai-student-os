@@ -1,3 +1,7 @@
+import type { Cluster } from "@/features/clusters/types";
+
+export type { Cluster };
+
 export type NoteType = "text" | "readme" | "canvas";
 
 export type Note = {
@@ -5,7 +9,7 @@ export type Note = {
   user_id: string;
   title: string;
   content: string;
-  subject: string;
+  cluster_id: string | null;
   type: NoteType;
   created_at: string;
   updated_at: string;
@@ -15,13 +19,13 @@ export type NoteInsert = {
   user_id: string;
   title?: string;
   content?: string;
-  subject?: string;
+  cluster_id?: string | null;
   type?: NoteType;
 };
 
 export type NoteUpdate = {
   title?: string;
   content?: string;
-  subject?: string;
+  cluster_id?: string | null;
   updated_at?: string;
 };

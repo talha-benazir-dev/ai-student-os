@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createHash } from "crypto";
 
@@ -24,7 +25,7 @@ export async function createDocument(
   title: string,
   file_url: string,
   file_size: number,
-  subject: string,
+  cluster_id: string | null = null,
   cloudinary_public_id: string,
 ) {
   const supabase = await createClient();
@@ -42,7 +43,7 @@ export async function createDocument(
         title,
         file_url,
         file_size,
-        subject,
+        cluster_id,
         cloudinary_public_id,
         page_count: null,
         ai_summary: null,
@@ -51,6 +52,35 @@ export async function createDocument(
     .select()
     .single();
 
+  return { data, error };
+}
+
+export async function updateDocument(
+  id: string,
+  fields: { cluster_id?: string | null },
+) {
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+  if (userError || !user) {
+    return { data: null, error: userError || new Error("User not found") };
+  }
+
+  const updates: Record<string, unknown> = {};
+  if (fields.cluster_id !== undefined) updates.cluster_id = fields.cluster_id;
+
+  const { data, error } = await supabase
+    .from("documents")
+    .update(updates)
+    .eq("id", id)
+    .eq("user_id", user.id)
+    .select()
+    .single();
+
+  revalidatePath("/documents");
   return { data, error };
 }
 

@@ -1,18 +1,24 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import {
   Plus,
-  X,
   Pencil,
   Trash2,
   BookOpen,
-  ChevronLeft,
   Layers,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -20,10 +26,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import type { Flashcard } from "../types";
+import type { Cluster, Flashcard } from "../types";
 import {
-  getFlashcards,
-  getDueFlashcards,
   createFlashcard,
   updateFlashcard,
   reviewFlashcard,
@@ -32,16 +36,33 @@ import {
 
 type Mode = "LIBRARY" | "REVIEW" | "SUMMARY";
 
-type FilterTab = "all" | "easy" | "medium" | "hard";
+type DifficultyFilter = "all" | "easy" | "medium" | "hard";
+
+type ClusterFilter = "all" | "general" | string;
+
+const GENERAL_CLUSTER_VALUE = "__general__";
 
 const SAVE_ERROR = "Failed to save. Please try again.";
 
-// --- LIBRARY COMPONENTS ---
+interface FlashcardsPageProps {
+  initialCards: Flashcard[];
+  initialClusters: Cluster[];
+  autoOpenCreate?: boolean;
+}
+
+function clusterSelectValue(clusterId: string | null): string {
+  return clusterId ?? GENERAL_CLUSTER_VALUE;
+}
+
+function clusterIdFromSelectValue(value: string): string | null {
+  return value === GENERAL_CLUSTER_VALUE ? null : value;
+}
 
 function FlashcardFormModal({
   isOpen,
   onClose,
   onSubmit,
+  clusters,
   initialData,
   error,
   title = "Create Flashcard",
@@ -49,15 +70,16 @@ function FlashcardFormModal({
 }: {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (front: string, back: string, subject: string) => void;
-  initialData?: { front: string; back: string; subject: string };
+  onSubmit: (front: string, back: string, clusterId: string | null) => void;
+  clusters: Cluster[];
+  initialData?: Flashcard;
   error: string | null;
   title?: string;
   submitLabel?: string;
 }) {
   const [front, setFront] = useState("");
   const [back, setBack] = useState("");
-  const [subject, setSubject] = useState("");
+  const [selectedCluster, setSelectedCluster] = useState(GENERAL_CLUSTER_VALUE);
   const frontRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -66,11 +88,11 @@ function FlashcardFormModal({
         if (initialData) {
           setFront(initialData.front);
           setBack(initialData.back);
-          setSubject(initialData.subject);
+          setSelectedCluster(clusterSelectValue(initialData.cluster_id));
         } else {
           setFront("");
           setBack("");
-          setSubject("");
+          setSelectedCluster(GENERAL_CLUSTER_VALUE);
         }
         frontRef.current?.focus();
       }, 100);
@@ -116,15 +138,29 @@ function FlashcardFormModal({
           </div>
 
           <div className="space-y-2">
-            <label className="text-[11px] font-semibold text-white/30 uppercase tracking-[0.1em]">
-              Subject (Optional)
-            </label>
-            <Input
-              placeholder="e.g. Biology, Calc II..."
-              value={subject}
-              onChange={(e) => setSubject(e.target.value)}
-              className="bg-white/[0.03] border-[#ffffff10] text-white focus-visible:ring-[#7c5cfc]/50 h-10 px-4 rounded-xl text-sm"
-            />
+            <Label className="text-[11px] font-semibold text-white/30 uppercase tracking-[0.1em]">
+              Cluster
+            </Label>
+            <Select value={selectedCluster} onValueChange={setSelectedCluster}>
+              <SelectTrigger className="bg-white/[0.03] border-[#ffffff10] text-white h-10 rounded-xl text-sm">
+                <SelectValue placeholder="General" />
+              </SelectTrigger>
+              <SelectContent className="border-[#ffffff10] bg-[#0f0f17] text-white">
+                <SelectItem value={GENERAL_CLUSTER_VALUE}>General</SelectItem>
+                {clusters.map((cluster) => (
+                  <SelectItem key={cluster.id} value={cluster.id}>
+                    <span className="flex items-center gap-2">
+                      <span
+                        className="h-2 w-2 rounded-full shrink-0"
+                        style={{ backgroundColor: cluster.color }}
+                        aria-hidden
+                      />
+                      {cluster.name}
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
@@ -142,7 +178,12 @@ function FlashcardFormModal({
             </Button>
             <Button
               onClick={() =>
-                isValid && onSubmit(front.trim(), back.trim(), subject.trim())
+                isValid &&
+                onSubmit(
+                  front.trim(),
+                  back.trim(),
+                  clusterIdFromSelectValue(selectedCluster),
+                )
               }
               disabled={!isValid}
               className="bg-[#7c5cfc] hover:bg-[#6b4ce8] text-white px-6 font-medium shadow-[0_0_20px_-5px_rgba(124,92,252,0.5)]"
@@ -158,11 +199,13 @@ function FlashcardFormModal({
 
 function FlashcardGridItem({
   card,
+  cluster,
   onEditStart,
   onDelete,
   today,
 }: {
   card: Flashcard;
+  cluster: Cluster | null;
   onEditStart: () => void;
   onDelete: () => void;
   today: string;
@@ -199,11 +242,16 @@ function FlashcardGridItem({
         </p>
       </div>
       <div className="mt-4 flex flex-wrap items-center gap-2">
-        {card.subject && (
-          <span className="text-[11px] px-2 py-0.5 rounded-full bg-[#7c5cfc]/10 text-[#7c5cfc]/80 truncate max-w-[100px]">
-            {card.subject}
+        {cluster ? (
+          <span className="text-[11px] px-2 py-0.5 rounded-full bg-white/5 text-white/70 truncate max-w-[120px] inline-flex items-center gap-1.5">
+            <span
+              className="h-1.5 w-1.5 rounded-full shrink-0"
+              style={{ backgroundColor: cluster.color }}
+              aria-hidden
+            />
+            {cluster.name}
           </span>
-        )}
+        ) : null}
         <span
           className={cn(
             "text-[11px] px-2 py-0.5 rounded-full capitalize",
@@ -238,8 +286,6 @@ function FlashcardGridItem({
     </div>
   );
 }
-
-// --- REVIEW COMPONENTS ---
 
 function ReviewSession({
   dueCards,
@@ -312,7 +358,6 @@ function ReviewSession({
             )}
             style={{ transformStyle: "preserve-3d" }}
           >
-            {/* Front */}
             <div
               className={cn(
                 "absolute inset-0 backface-hidden rounded-2xl border border-[#7c5cfc40] bg-[#0f0f17] p-8 flex flex-col shadow-[0_0_30px_-8px_#7c5cfc60]",
@@ -329,7 +374,6 @@ function ReviewSession({
               </div>
             </div>
 
-            {/* Back */}
             <div
               className={cn(
                 "absolute inset-0 backface-hidden rotate-y-180 rounded-2xl border border-[#ffffff20] bg-[#1a1a24] p-8 flex flex-col",
@@ -388,11 +432,14 @@ function ReviewSession({
   );
 }
 
-// --- MAIN PAGE ---
-
-export default function FlashcardsPage() {
-  const [cards, setCards] = useState<Flashcard[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+export default function FlashcardsPage({
+  initialCards,
+  initialClusters,
+  autoOpenCreate = false,
+}: FlashcardsPageProps) {
+  const router = useRouter();
+  const [cards, setCards] = useState<Flashcard[]>(initialCards);
+  const [clusters] = useState<Cluster[]>(initialClusters);
   const [mode, setMode] = useState<Mode>("LIBRARY");
 
   const [showCreate, setShowCreate] = useState(false);
@@ -401,8 +448,10 @@ export default function FlashcardsPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editError, setEditError] = useState<string | null>(null);
 
-  const [activeSubject, setActiveSubject] = useState<string>("All");
-  const [activeDiff, setActiveDiff] = useState<FilterTab>("all");
+  const [activeClusterFilter, setActiveClusterFilter] =
+    useState<ClusterFilter>("all");
+  const [difficultyFilter, setDifficultyFilter] =
+    useState<DifficultyFilter>("all");
 
   const [sessionStats, setSessionStats] = useState({
     total: 0,
@@ -415,24 +464,23 @@ export default function FlashcardsPage() {
   const today = useMemo(() => new Date().toISOString().split("T")[0], []);
 
   useEffect(() => {
-    let mounted = true;
-    const load = async () => {
-      const { data } = await getFlashcards();
-      if (mounted && data) {
-        setCards(data);
-      }
-      if (mounted) setIsLoading(false);
-    };
-    load();
-    return () => {
-      mounted = false;
-    };
-  }, []);
+    if (!autoOpenCreate) return;
+    setShowCreate(true);
+    router.replace("/flashcards", { scroll: false });
+  }, [autoOpenCreate, router]);
 
-  const subjects = useMemo(() => {
-    const s = new Set(cards.map((c) => c.subject).filter(Boolean));
-    return ["All", ...Array.from(s)];
-  }, [cards]);
+  const clusterMap = useMemo(
+    () => new Map(clusters.map((c) => [c.id, c])),
+    [clusters],
+  );
+
+  const clustersWithCards = useMemo(
+    () =>
+      clusters.filter((cluster) =>
+        cards.some((c) => c.cluster_id === cluster.id),
+      ),
+    [clusters, cards],
+  );
 
   const dueCards = useMemo(() => {
     return cards
@@ -441,21 +489,32 @@ export default function FlashcardsPage() {
   }, [cards, today]);
 
   const visibleCards = useMemo(() => {
-    return cards.filter((c) => {
-      if (activeSubject !== "All" && c.subject !== activeSubject) return false;
-      if (activeDiff !== "all" && c.difficulty !== activeDiff) return false;
-      return true;
-    });
-  }, [cards, activeSubject, activeDiff]);
+    const clusterFiltered =
+      activeClusterFilter === "all"
+        ? cards
+        : activeClusterFilter === "general"
+          ? cards.filter((c) => c.cluster_id === null)
+          : cards.filter((c) => c.cluster_id === activeClusterFilter);
 
-  const handleCreate = async (front: string, back: string, subject: string) => {
+    return activeClusterFilter === "all"
+      ? clusterFiltered
+      : difficultyFilter === "all"
+        ? clusterFiltered
+        : clusterFiltered.filter((c) => c.difficulty === difficultyFilter);
+  }, [cards, activeClusterFilter, difficultyFilter]);
+
+  const handleCreate = async (
+    front: string,
+    back: string,
+    clusterId: string | null,
+  ) => {
     const tempId = `temp-${Date.now()}`;
     const optimisticCard: Flashcard = {
       id: tempId,
       user_id: "",
       front,
       back,
-      subject,
+      cluster_id: clusterId,
       difficulty: "medium",
       next_review: today,
       interval_days: 1,
@@ -467,7 +526,7 @@ export default function FlashcardsPage() {
     setShowCreate(false);
     setCreateError(null);
 
-    const { data, error } = await createFlashcard(front, back, subject);
+    const { data, error } = await createFlashcard(front, back, clusterId);
     if (error || !data) {
       setCards((prev) => prev.filter((c) => c.id !== tempId));
       setCreateError(SAVE_ERROR);
@@ -481,17 +540,18 @@ export default function FlashcardsPage() {
     id: string,
     front: string,
     back: string,
-    subject: string,
+    clusterId: string | null,
   ) => {
     const oldCard = cards.find((c) => c.id === id);
     if (!oldCard) return;
 
-    const optimistic: Flashcard = { ...oldCard, front, back, subject };
+    const updatedFields = { front, back, cluster_id: clusterId };
+    const optimistic: Flashcard = { ...oldCard, ...updatedFields };
     setCards((prev) => prev.map((c) => (c.id === id ? optimistic : c)));
     setEditingId(null);
     setEditError(null);
 
-    const { data, error } = await updateFlashcard(id, front, back, subject);
+    const { data, error } = await updateFlashcard(id, updatedFields);
     if (error || !data) {
       setCards((prev) => prev.map((c) => (c.id === id ? oldCard : c)));
       setEditingId(id);
@@ -519,7 +579,6 @@ export default function FlashcardsPage() {
     const oldCard = cards.find((c) => c.id === id);
     if (!oldCard) return;
 
-    // Optimistic local update so next time we visit library, it's correct
     let { interval_days, repetitions } = oldCard;
     if (rating === "hard") {
       interval_days = 1;
@@ -544,7 +603,6 @@ export default function FlashcardsPage() {
 
     setCards((prev) => prev.map((c) => (c.id === id ? optimistic : c)));
 
-    // Background sync
     const { data } = await reviewFlashcard(id, rating);
     if (data) {
       setCards((prev) => prev.map((c) => (c.id === id ? data : c)));
@@ -623,7 +681,6 @@ export default function FlashcardsPage() {
   return (
     <div className="flex flex-col min-h-[calc(100dvh-3.5rem)] lg:min-h-[100dvh] bg-[#0a0a0f]">
       <div className="w-full max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 flex flex-col flex-1">
-        {/* TOP BAR */}
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-8">
           <div>
             <h1 className="text-2xl sm:text-[28px] font-semibold tracking-tight text-white/95">
@@ -658,83 +715,111 @@ export default function FlashcardsPage() {
           </div>
         </div>
 
-        {/* FILTER ROW */}
         {cards.length > 0 && (
-          <div className="flex flex-col sm:flex-row gap-4 mb-6 justify-between border-b border-[#ffffff10] pb-4">
+          <div className="flex flex-col gap-3 mb-6 border-b border-[#ffffff10] pb-4">
             <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
-              {subjects.map((s) => (
+              <button
+                type="button"
+                onClick={() => setActiveClusterFilter("all")}
+                className={cn(
+                  "px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors",
+                  activeClusterFilter === "all"
+                    ? "bg-white/10 text-white"
+                    : "text-white/40 hover:text-white/80 hover:bg-white/5",
+                )}
+              >
+                All
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveClusterFilter("general")}
+                className={cn(
+                  "px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors",
+                  activeClusterFilter === "general"
+                    ? "bg-white/10 text-white"
+                    : "text-white/40 hover:text-white/80 hover:bg-white/5",
+                )}
+              >
+                General
+              </button>
+              {clustersWithCards.map((cluster) => (
                 <button
-                  key={s}
-                  onClick={() => setActiveSubject(s)}
+                  key={cluster.id}
+                  type="button"
+                  onClick={() => setActiveClusterFilter(cluster.id)}
                   className={cn(
-                    "px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors",
-                    activeSubject === s
+                    "px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors inline-flex items-center gap-1.5",
+                    activeClusterFilter === cluster.id
                       ? "bg-white/10 text-white"
                       : "text-white/40 hover:text-white/80 hover:bg-white/5",
                   )}
                 >
-                  {s}
+                  <span
+                    className="h-2 w-2 rounded-full shrink-0"
+                    style={{ backgroundColor: cluster.color }}
+                    aria-hidden
+                  />
+                  {cluster.name}
                 </button>
               ))}
             </div>
             <div className="flex items-center gap-2 shrink-0">
-              {(["all", "easy", "medium", "hard"] as FilterTab[]).map((d) => (
-                <button
-                  key={d}
-                  onClick={() => setActiveDiff(d)}
-                  className={cn(
-                    "px-3 py-1.5 rounded-full text-xs font-medium capitalize transition-colors",
-                    activeDiff === d
-                      ? "bg-[#7c5cfc]/20 text-[#7c5cfc] ring-1 ring-[#7c5cfc]/40"
-                      : "text-white/40 hover:bg-white/5",
-                  )}
-                >
-                  {d}
-                </button>
-              ))}
+              {(["all", "easy", "medium", "hard"] as DifficultyFilter[]).map(
+                (d) => (
+                  <button
+                    key={d}
+                    type="button"
+                    onClick={() => setDifficultyFilter(d)}
+                    className={cn(
+                      "px-3 py-1.5 rounded-full text-xs font-medium capitalize transition-colors",
+                      difficultyFilter === d
+                        ? "bg-[#7c5cfc]/20 text-[#7c5cfc] ring-1 ring-[#7c5cfc]/40"
+                        : "text-white/40 hover:bg-white/5",
+                    )}
+                  >
+                    {d}
+                  </button>
+                ),
+              )}
             </div>
           </div>
         )}
 
-        {/* CONTENT */}
-        {isLoading ? (
-          <div className="flex-1 flex items-center justify-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#7c5cfc]"></div>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {visibleCards.map((c) => (
-              <FlashcardGridItem
-                key={c.id}
-                card={c}
-                onEditStart={() => {
-                  setEditingId(c.id);
-                  setEditError(null);
-                }}
-                onDelete={() => handleDelete(c.id)}
-                today={today}
-              />
-            ))}
-            {visibleCards.length === 0 && cards.length > 0 && (
-              <div className="col-span-full py-12 text-center text-white/40">
-                No cards match your filters.
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {visibleCards.map((c) => (
+            <FlashcardGridItem
+              key={c.id}
+              card={c}
+              cluster={
+                c.cluster_id ? (clusterMap.get(c.cluster_id) ?? null) : null
+              }
+              onEditStart={() => {
+                setEditingId(c.id);
+                setEditError(null);
+              }}
+              onDelete={() => handleDelete(c.id)}
+              today={today}
+            />
+          ))}
+          {visibleCards.length === 0 && cards.length > 0 && (
+            <div className="col-span-full py-12 text-center text-white/40">
+              No cards match your filters.
+            </div>
+          )}
+          {cards.length === 0 && (
+            <div className="col-span-full flex flex-col items-center justify-center py-20 px-6 text-center">
+              <div className="inline-flex h-12 w-12 rounded-xl bg-[#7c5cfc]/10 border border-[#7c5cfc]/25 items-center justify-center mb-4">
+                <Layers className="h-5 w-5 text-[#7c5cfc]" />
               </div>
-            )}
-            {cards.length === 0 && (
-              <div className="col-span-full flex flex-col items-center justify-center py-20 px-6 text-center">
-                <div className="inline-flex h-12 w-12 rounded-xl bg-[#7c5cfc]/10 border border-[#7c5cfc]/25 items-center justify-center mb-4">
-                  <Layers className="h-5 w-5 text-[#7c5cfc]" />
-                </div>
-                <p className="text-base font-medium text-white/85">
-                  No flashcards yet
-                </p>
-                <p className="text-sm text-white/40 mt-1 max-w-xs">
-                  Create your first card to start mastering your material.
-                </p>
-              </div>
-            )}
-          </div>
-        )}
+              <p className="text-base font-medium text-white/85">
+                No flashcards yet
+              </p>
+              <p className="text-sm text-white/40 mt-1 max-w-xs">
+                Create your first card to start mastering your material.
+              </p>
+            </div>
+          )}
+        </div>
       </div>
 
       <FlashcardFormModal
@@ -744,11 +829,12 @@ export default function FlashcardsPage() {
           setEditingId(null);
           setEditError(null);
         }}
-        onSubmit={(front, back, subject) => {
+        clusters={clusters}
+        onSubmit={(front, back, clusterId) => {
           if (editingId) {
-            handleEditSave(editingId, front, back, subject);
+            handleEditSave(editingId, front, back, clusterId);
           } else {
-            handleCreate(front, back, subject);
+            handleCreate(front, back, clusterId);
           }
         }}
         initialData={

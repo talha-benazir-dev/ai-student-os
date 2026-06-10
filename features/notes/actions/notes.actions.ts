@@ -1,7 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import type { Note, NoteType } from "@/features/notes/types";
+import type { Note, NoteType, NoteUpdate } from "@/features/notes/types";
 
 type ActionResult<T> = {
   data: T | null;
@@ -33,6 +33,7 @@ export async function getNotes(): Promise<ActionResult<Note[]>> {
 
 export async function createNote(
   type: NoteType = "text",
+  cluster_id?: string | null,
 ): Promise<ActionResult<Note>> {
   const supabase = await createClient();
   const {
@@ -50,7 +51,7 @@ export async function createNote(
       user_id: user.id,
       title: "Untitled",
       content: "",
-      subject: "",
+      cluster_id: cluster_id ?? null,
       type,
     })
     .select()
@@ -65,9 +66,7 @@ export async function createNote(
 
 export async function updateNote(
   id: string,
-  title: string,
-  content: string,
-  subject: string,
+  fields: NoteUpdate,
 ): Promise<ActionResult<Note>> {
   const supabase = await createClient();
   const {
@@ -79,14 +78,17 @@ export async function updateNote(
     return { data: null, error: "You must be signed in to update notes." };
   }
 
+  const updates: Record<string, unknown> = {
+    updated_at: new Date().toISOString(),
+  };
+
+  if (fields.title !== undefined) updates.title = fields.title ?? "";
+  if (fields.content !== undefined) updates.content = fields.content ?? "";
+  if (fields.cluster_id !== undefined) updates.cluster_id = fields.cluster_id;
+
   const { data, error } = await supabase
     .from("notes")
-    .update({
-      title: title ?? "",
-      content: content ?? "",
-      subject: subject ?? "",
-      updated_at: new Date().toISOString(),
-    })
+    .update(updates)
     .eq("id", id)
     .select()
     .single();

@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Document } from "../types";
+import { useState, useMemo } from "react";
+import type { Cluster, Document } from "../types";
 import {
-  getDocuments,
   createDocument,
   deleteDocument,
+  updateDocument,
 } from "../actions/documents.actions";
 import {
   FileText,
@@ -30,32 +30,59 @@ function formatDate(dateString: string) {
   return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
-export function DocumentsPage() {
-  const [documents, setDocuments] = useState<Document[]>([]);
-  const [loading, setLoading] = useState(true);
+interface DocumentsPageProps {
+  initialDocuments: Document[];
+  initialClusters: Cluster[];
+}
+
+type ClusterFilter = "all" | "general" | string;
+
+const GENERAL_CLUSTER_VALUE = "";
+
+function clusterIdFromSelectValue(value: string): string | null {
+  return value === GENERAL_CLUSTER_VALUE ? null : value;
+}
+
+export function DocumentsPage({
+  initialDocuments,
+  initialClusters,
+}: DocumentsPageProps) {
+  const [documents, setDocuments] = useState<Document[]>(initialDocuments);
+  const [clusters] = useState<Cluster[]>(initialClusters);
   const [showUpload, setShowUpload] = useState(false);
   const [selectedDoc, setSelectedDoc] = useState<Document | null>(null);
   const [showPdfModal, setShowPdfModal] = useState(false);
+  const [activeClusterFilter, setActiveClusterFilter] =
+    useState<ClusterFilter>("all");
 
   // Upload state
   const [file, setFile] = useState<File | null>(null);
   const [title, setTitle] = useState("");
-  const [subject, setSubject] = useState("");
+  const [selectedCluster, setSelectedCluster] = useState(GENERAL_CLUSTER_VALUE);
   const [isUploading, setIsUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [uploadError, setUploadError] = useState("");
   const [isDragActive, setIsDragActive] = useState(false);
 
-  useEffect(() => {
-    fetchDocuments();
-  }, []);
+  const clusterMap = useMemo(
+    () => new Map(clusters.map((c) => [c.id, c])),
+    [clusters],
+  );
 
-  async function fetchDocuments() {
-    setLoading(true);
-    const { data } = await getDocuments();
-    if (data) setDocuments(data);
-    setLoading(false);
-  }
+  const clustersWithDocuments = useMemo(
+    () =>
+      clusters.filter((cluster) =>
+        documents.some((d) => d.cluster_id === cluster.id),
+      ),
+    [clusters, documents],
+  );
+
+  const visibleDocuments = useMemo(() => {
+    if (activeClusterFilter === "all") return documents;
+    if (activeClusterFilter === "general")
+      return documents.filter((d) => d.cluster_id === null);
+    return documents.filter((d) => d.cluster_id === activeClusterFilter);
+  }, [documents, activeClusterFilter]);
 
   const handleDragEnter = (e: React.DragEvent) => {
     e.preventDefault();
@@ -109,7 +136,7 @@ export function DocumentsPage() {
     setShowUpload(false);
     setFile(null);
     setTitle("");
-    setSubject("");
+    setSelectedCluster(GENERAL_CLUSTER_VALUE);
     setUploadError("");
     setProgress(0);
   };
@@ -125,7 +152,7 @@ export function DocumentsPage() {
       const formData = new FormData();
       formData.append("file", file);
       formData.append("title", title);
-      formData.append("subject", subject);
+      formData.append("cluster_id", selectedCluster);
 
       const progressInterval = setInterval(() => {
         setProgress((prev) => (prev >= 90 ? 90 : prev + 10));
@@ -148,11 +175,12 @@ export function DocumentsPage() {
 
       const { url, public_id } = await response.json();
 
+      const cluster_id = clusterIdFromSelectValue(selectedCluster);
       const { data: newDoc, error: dbError } = await createDocument(
         title,
         url,
         file.size,
-        subject,
+        cluster_id,
         public_id,
       );
 
@@ -165,7 +193,7 @@ export function DocumentsPage() {
       setShowUpload(false);
       setFile(null);
       setTitle("");
-      setSubject("");
+      setSelectedCluster(GENERAL_CLUSTER_VALUE);
     } catch (err) {
       console.error(err);
       setUploadError("Upload failed. Please try again.");
@@ -188,6 +216,24 @@ export function DocumentsPage() {
     if (error) {
       console.error(error);
       setDocuments(prevDocs);
+    }
+  };
+
+  const handleClusterChange = async (
+    docId: string,
+    clusterId: string | null,
+  ) => {
+    const oldDoc = documents.find((d) => d.id === docId);
+    if (!oldDoc) return;
+
+    setDocuments((prev) =>
+      prev.map((d) => (d.id === docId ? { ...d, cluster_id: clusterId } : d)),
+    );
+
+    const { error } = await updateDocument(docId, { cluster_id: clusterId });
+    if (error) {
+      console.error(error);
+      setDocuments((prev) => prev.map((d) => (d.id === docId ? oldDoc : d)));
     }
   };
 
@@ -276,16 +322,21 @@ export function DocumentsPage() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-zinc-400 mb-1.5">
-                      Subject <span className="text-zinc-600">(Optional)</span>
+                      Cluster <span className="text-zinc-600">(Optional)</span>
                     </label>
-                    <input
-                      type="text"
-                      value={subject}
-                      onChange={(e) => setSubject(e.target.value)}
+                    <select
+                      value={selectedCluster}
+                      onChange={(e) => setSelectedCluster(e.target.value)}
                       disabled={isUploading || !file}
                       className="w-full bg-zinc-900/50 border border-zinc-800 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-[#7c5cfc] disabled:opacity-50"
-                      placeholder="e.g. Physics 101"
-                    />
+                    >
+                      <option value="">General</option>
+                      {clusters.map((cluster) => (
+                        <option key={cluster.id} value={cluster.id}>
+                          {cluster.name}
+                        </option>
+                      ))}
+                    </select>
                   </div>
 
                   {uploadError && (
@@ -329,12 +380,52 @@ export function DocumentsPage() {
 
           {/* DOCUMENT LIST */}
           <div className="w-full mt-8">
-            {loading ? (
-              <div className="flex flex-col items-center justify-center py-20 text-zinc-500">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#7c5cfc] mb-4"></div>
-                <p>Loading documents...</p>
+            {documents.length > 0 && (
+              <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-4 mb-4">
+                <button
+                  type="button"
+                  onClick={() => setActiveClusterFilter("all")}
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
+                    activeClusterFilter === "all"
+                      ? "bg-white/10 text-white"
+                      : "text-white/40 hover:text-white/80 hover:bg-white/5"
+                  }`}
+                >
+                  All
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveClusterFilter("general")}
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
+                    activeClusterFilter === "general"
+                      ? "bg-white/10 text-white"
+                      : "text-white/40 hover:text-white/80 hover:bg-white/5"
+                  }`}
+                >
+                  General
+                </button>
+                {clustersWithDocuments.map((cluster) => (
+                  <button
+                    key={cluster.id}
+                    type="button"
+                    onClick={() => setActiveClusterFilter(cluster.id)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors inline-flex items-center gap-1.5 ${
+                      activeClusterFilter === cluster.id
+                        ? "bg-white/10 text-white"
+                        : "text-white/40 hover:text-white/80 hover:bg-white/5"
+                    }`}
+                  >
+                    <span
+                      className="h-2 w-2 rounded-full shrink-0"
+                      style={{ backgroundColor: cluster.color }}
+                      aria-hidden
+                    />
+                    {cluster.name}
+                  </button>
+                ))}
               </div>
-            ) : documents.length === 0 ? (
+            )}
+            {documents.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20 border border-dashed border-zinc-800 rounded-2xl bg-[#0f0f17]">
                 <div className="w-16 h-16 rounded-2xl bg-zinc-900 flex items-center justify-center mb-4">
                   <FileIcon className="w-8 h-8 text-zinc-600" />
@@ -355,7 +446,7 @@ export function DocumentsPage() {
               </div>
             ) : (
               <div className="flex flex-col gap-2">
-                {documents.map((doc) => (
+                {visibleDocuments.map((doc) => (
                   <div
                     key={doc.id}
                     onClick={() => setSelectedDoc(doc)}
@@ -370,9 +461,17 @@ export function DocumentsPage() {
                         {doc.title}
                       </h4>
                       <div className="flex items-center gap-3 mt-1 text-xs text-zinc-500">
-                        {doc.subject && (
-                          <span className="px-2 py-0.5 rounded-full bg-[#7c5cfc]/10 text-[#7c5cfc] font-medium">
-                            {doc.subject}
+                        {doc.cluster_id && (
+                          <span className="px-2 py-0.5 rounded-full bg-white/5 text-white/70 inline-flex items-center gap-1.5">
+                            <span
+                              className="h-1.5 w-1.5 rounded-full"
+                              style={{
+                                backgroundColor:
+                                  clusterMap.get(doc.cluster_id)?.color ||
+                                  "#7c5cfc",
+                              }}
+                            />
+                            {clusterMap.get(doc.cluster_id)?.name || "Unknown"}
                           </span>
                         )}
                         <span>
@@ -446,11 +545,25 @@ export function DocumentsPage() {
               </h2>
 
               <div className="flex flex-wrap gap-2 mb-8">
-                {selectedDoc.subject && (
-                  <span className="px-2.5 py-1 rounded-md bg-[#7c5cfc]/10 text-[#7c5cfc] text-sm font-medium border border-[#7c5cfc]/20">
-                    {selectedDoc.subject}
-                  </span>
-                )}
+                <div className="flex items-center gap-2">
+                  <select
+                    value={selectedDoc.cluster_id || ""}
+                    onChange={(e) =>
+                      handleClusterChange(
+                        selectedDoc.id,
+                        e.target.value || null,
+                      )
+                    }
+                    className="bg-zinc-900/50 border border-zinc-800 rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none focus:border-[#7c5cfc]"
+                  >
+                    <option value="">General</option>
+                    {clusters.map((cluster) => (
+                      <option key={cluster.id} value={cluster.id}>
+                        {cluster.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
                 <span className="px-2.5 py-1 rounded-md bg-zinc-900 text-zinc-300 text-sm border border-zinc-800">
                   {selectedDoc.file_size
                     ? formatBytes(selectedDoc.file_size)

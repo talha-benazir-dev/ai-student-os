@@ -1,10 +1,6 @@
-export type Cluster = {
-  id: string;
-  user_id: string;
-  name: string;
-  color: string;
-  created_at: string;
-};
+import type { Cluster } from "@/features/clusters/types";
+
+export type { Cluster };
 
 export type Task = {
   id: string;

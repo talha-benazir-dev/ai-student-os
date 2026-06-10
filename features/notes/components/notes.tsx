@@ -16,6 +16,7 @@ import {
   useState,
   type KeyboardEvent,
 } from "react";
+import { useRouter } from "next/navigation";
 import ReactMarkdown from "react-markdown";
 import {
   FileCode,
@@ -28,8 +29,16 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -52,11 +61,11 @@ import {
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
 import { cn } from "@/lib/utils";
+import type { Cluster } from "@/features/clusters/types";
 import type { Note, NoteType } from "@/features/notes/types";
 import {
   createNote,
   deleteNote,
-  getNotes,
   updateNote,
 } from "@/features/notes/actions/notes.actions";
 
@@ -65,7 +74,30 @@ const ExcalidrawEditor = dynamic(
   { ssr: false },
 );
 
+const GENERAL_CLUSTER_VALUE = "__general__";
+
 type SaveStatus = "idle" | "saving" | "saved" | "error";
+
+interface NotesPageProps {
+  initialNotes: Note[];
+  initialClusters: Cluster[];
+  autoOpenCreate?: boolean;
+}
+
+function normalizeNotes(notes: Note[]): Note[] {
+  return notes.map((n) => ({
+    ...n,
+    type: n.type ?? "text",
+    cluster_id: n.cluster_id ?? null,
+  }));
+}
+
+function sortNotesByUpdated(notes: Note[]): Note[] {
+  return [...notes].sort(
+    (a, b) =>
+      new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime(),
+  );
+}
 
 function formatRelativeTime(dateString: string): string {
   const date = new Date(dateString);
@@ -95,6 +127,14 @@ function displayTitle(title: string): string {
   return trimmed || "Untitled";
 }
 
+function clusterSelectValue(clusterId: string | null): string {
+  return clusterId ?? GENERAL_CLUSTER_VALUE;
+}
+
+function clusterIdFromSelectValue(value: string): string | null {
+  return value === GENERAL_CLUSTER_VALUE ? null : value;
+}
+
 function NoteTypeBadge({ type }: { type?: NoteType }) {
   const resolved = type ?? "text";
   const config = {
@@ -112,6 +152,49 @@ function NoteTypeBadge({ type }: { type?: NoteType }) {
     >
       {config.label}
     </span>
+  );
+}
+
+function NoteClusterSelect({
+  value,
+  clusters,
+  onChange,
+  className,
+}: {
+  value: string | null;
+  clusters: Cluster[];
+  onChange: (value: string) => void;
+  className?: string;
+}) {
+  return (
+    <Select
+      value={clusterSelectValue(value)}
+      onValueChange={onChange}
+    >
+      <SelectTrigger
+        className={cn(
+          "h-8 w-[140px] border-[#ffffff10] bg-transparent text-white text-xs shadow-none",
+          className,
+        )}
+      >
+        <SelectValue placeholder="General" />
+      </SelectTrigger>
+      <SelectContent className="border-[#ffffff10] bg-[#0f0f17] text-white">
+        <SelectItem value={GENERAL_CLUSTER_VALUE}>General</SelectItem>
+        {clusters.map((cluster) => (
+          <SelectItem key={cluster.id} value={cluster.id}>
+            <span className="flex items-center gap-2">
+              <span
+                className="h-2 w-2 rounded-full shrink-0"
+                style={{ backgroundColor: cluster.color }}
+                aria-hidden
+              />
+              {cluster.name}
+            </span>
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 }
 
@@ -156,19 +239,14 @@ function SaveStatusIndicator({ status }: { status: SaveStatus }) {
   );
 }
 
-function useNoteAutoSave(
-  note: Note,
-  onSaved: (note: Note) => void,
-) {
+function useNoteAutoSave(note: Note, onSaved: (note: Note) => void) {
   const [title, setTitle] = useState(note.title);
   const [content, setContent] = useState(note.content);
-  const [subject, setSubject] = useState(note.subject);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
 
   const lastSavedRef = useRef({
     title: note.title,
     content: note.content,
-    subject: note.subject,
   });
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const savedFadeRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -189,20 +267,16 @@ function useNoteAutoSave(
   const persist = useCallback(async () => {
     if (isSavingRef.current) return;
 
-    const payload = { title, content, subject };
+    const payload = { title, content };
     const last = lastSavedRef.current;
-    if (
-      payload.title === last.title &&
-      payload.content === last.content &&
-      payload.subject === last.subject
-    ) {
+    if (payload.title === last.title && payload.content === last.content) {
       return;
     }
 
     isSavingRef.current = true;
     setSaveStatus("saving");
 
-    const { data, error } = await updateNote(note.id, title, content, subject);
+    const { data, error } = await updateNote(note.id, { title, content });
 
     isSavingRef.current = false;
 
@@ -214,7 +288,6 @@ function useNoteAutoSave(
     lastSavedRef.current = {
       title: data.title,
       content: data.content,
-      subject: data.subject,
     };
     onSaved(data);
     setSaveStatus("saved");
@@ -222,7 +295,7 @@ function useNoteAutoSave(
     savedFadeRef.current = setTimeout(() => {
       setSaveStatus((s) => (s === "saved" ? "idle" : s));
     }, 2000);
-  }, [content, note.id, onSaved, subject, title]);
+  }, [content, note.id, onSaved, title]);
 
   useEffect(() => {
     if (noteIdRef.current === note.id) return;
@@ -230,15 +303,13 @@ function useNoteAutoSave(
     noteIdRef.current = note.id;
     setTitle(note.title);
     setContent(note.content);
-    setSubject(note.subject);
     lastSavedRef.current = {
       title: note.title,
       content: note.content,
-      subject: note.subject,
     };
     setSaveStatus("idle");
     clearTimers();
-  }, [note.id, note.title, note.content, note.subject, clearTimers]);
+  }, [note.id, note.title, note.content, clearTimers]);
 
   useEffect(() => {
     clearTimers();
@@ -252,7 +323,7 @@ function useNoteAutoSave(
         saveTimerRef.current = null;
       }
     };
-  }, [title, content, subject, persist, clearTimers]);
+  }, [title, content, persist, clearTimers]);
 
   useEffect(() => () => clearTimers(), [clearTimers]);
 
@@ -261,8 +332,6 @@ function useNoteAutoSave(
     setTitle,
     content,
     setContent,
-    subject,
-    setSubject,
     saveStatus,
   };
 }
@@ -296,47 +365,126 @@ const NOTE_TYPE_OPTIONS: {
 function NoteTypePickerModal({
   open,
   onOpenChange,
+  clusters,
   onSelect,
   isCreating,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSelect: (type: NoteType) => void;
+  clusters: Cluster[];
+  onSelect: (type: NoteType, clusterId: string | null) => void;
   isCreating: boolean;
 }) {
+  const [clusterId, setClusterId] = useState(GENERAL_CLUSTER_VALUE);
+
+  const handleOpenChange = (next: boolean) => {
+    if (!next) setClusterId(GENERAL_CLUSTER_VALUE);
+    onOpenChange(next);
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="bg-[#0f0f17] border-[#ffffff10] max-w-2xl">
         <DialogHeader>
           <DialogTitle className="text-white">Create a new note</DialogTitle>
         </DialogHeader>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
-          {NOTE_TYPE_OPTIONS.map(({ type, icon: Icon, label, description }) => (
-            <button
-              key={type}
-              type="button"
-              disabled={isCreating}
-              onClick={() => onSelect(type)}
-              className={cn(
-                "flex flex-col items-start gap-3 rounded-xl border border-[#ffffff10] bg-[#0a0a0f] p-4 text-left transition-colors",
-                "hover:border-[#7c5cfc]/50 hover:bg-[#16161f] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7c5cfc]/50",
-                isCreating && "opacity-50 pointer-events-none",
-              )}
-            >
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#7c5cfc]/10 border border-[#7c5cfc]/25">
-                <Icon className="h-5 w-5 text-[#7c5cfc]" aria-hidden />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-white">{label}</p>
-                <p className="text-xs text-white/45 mt-1 leading-relaxed">
-                  {description}
-                </p>
-              </div>
-            </button>
-          ))}
+        <div className="space-y-4 pt-2">
+          <div className="space-y-2">
+            <Label className="text-white/70">Cluster</Label>
+            <NoteClusterSelect
+              value={clusterIdFromSelectValue(clusterId)}
+              clusters={clusters}
+              onChange={setClusterId}
+              className="w-full max-w-xs"
+            />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {NOTE_TYPE_OPTIONS.map(({ type, icon: Icon, label, description }) => (
+              <button
+                key={type}
+                type="button"
+                disabled={isCreating}
+                onClick={() =>
+                  onSelect(type, clusterIdFromSelectValue(clusterId))
+                }
+                className={cn(
+                  "flex flex-col items-start gap-3 rounded-xl border border-[#ffffff10] bg-[#0a0a0f] p-4 text-left transition-colors",
+                  "hover:border-[#7c5cfc]/50 hover:bg-[#16161f] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7c5cfc]/50",
+                  isCreating && "opacity-50 pointer-events-none",
+                )}
+              >
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#7c5cfc]/10 border border-[#7c5cfc]/25">
+                  <Icon className="h-5 w-5 text-[#7c5cfc]" aria-hidden />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-white">{label}</p>
+                  <p className="text-xs text-white/45 mt-1 leading-relaxed">
+                    {description}
+                  </p>
+                </div>
+              </button>
+            ))}
+          </div>
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function SectionCountBadge({ count }: { count: number }) {
+  return (
+    <span className="text-[10px] font-medium tabular-nums px-1.5 py-0.5 rounded-full bg-white/10 text-white/50">
+      {count}
+    </span>
+  );
+}
+
+function NoteListSection({
+  title,
+  count,
+  dotColor,
+  emptyMessage,
+  notes,
+  activeNoteId,
+  onSelect,
+  onDeleteRequest,
+}: {
+  title: string;
+  count: number;
+  dotColor?: string;
+  emptyMessage: string;
+  notes: Note[];
+  activeNoteId: string | null;
+  onSelect: (note: Note) => void;
+  onDeleteRequest: (note: Note) => void;
+}) {
+  return (
+    <section className="space-y-1">
+      <div className="flex items-center gap-2 px-2 py-1.5">
+        {dotColor ? (
+          <span
+            className="h-2 w-2 rounded-full shrink-0"
+            style={{ backgroundColor: dotColor }}
+            aria-hidden
+          />
+        ) : null}
+        <h2 className="text-xs font-medium text-white/60 truncate">{title}</h2>
+        <SectionCountBadge count={count} />
+      </div>
+      {notes.length === 0 ? (
+        <p className="px-2 py-3 text-xs text-white/30">{emptyMessage}</p>
+      ) : (
+        notes.map((note) => (
+          <NoteListItem
+            key={note.id}
+            note={note}
+            isActive={note.id === activeNoteId}
+            onSelect={onSelect}
+            onDeleteRequest={onDeleteRequest}
+          />
+        ))
+      )}
+    </section>
   );
 }
 
@@ -348,7 +496,7 @@ const NoteListItem = memo(function NoteListItem({
 }: {
   note: Note;
   isActive: boolean;
-  onSelect: (id: string) => void;
+  onSelect: (note: Note) => void;
   onDeleteRequest: (note: Note) => void;
 }) {
   return (
@@ -362,7 +510,7 @@ const NoteListItem = memo(function NoteListItem({
     >
       <button
         type="button"
-        onClick={() => onSelect(note.id)}
+        onClick={() => onSelect(note)}
         className={cn(
           "flex-1 min-w-0 text-left py-2.5 pl-3 pr-3 transition-colors",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7c5cfc]/50 rounded-lg",
@@ -375,13 +523,6 @@ const NoteListItem = memo(function NoteListItem({
           </p>
           <NoteTypeBadge type={note.type} />
         </div>
-        {note.subject.trim() ? (
-          <p className="text-xs text-[#7c5cfc]/80 mt-0.5 truncate pr-8">
-            {note.subject}
-          </p>
-        ) : (
-          <p className="text-xs text-white/30 mt-0.5 pr-8">No subject</p>
-        )}
         <p className="text-[11px] text-white/40 mt-1 pr-8">
           {formatRelativeTime(note.updated_at)}
         </p>
@@ -407,17 +548,51 @@ const NoteListItem = memo(function NoteListItem({
   );
 });
 
+type EditorToolbarProps = {
+  note: Note;
+  clusters: Cluster[];
+  saveStatus: SaveStatus;
+  onClusterChange: (value: string) => void;
+  onClose: () => void;
+};
+
+function EditorToolbar({
+  note,
+  clusters,
+  saveStatus,
+  onClusterChange,
+  onClose,
+}: EditorToolbarProps) {
+  return (
+    <div className="flex items-center gap-2 shrink-0">
+      <NoteClusterSelect
+        value={note.cluster_id}
+        clusters={clusters}
+        onChange={onClusterChange}
+      />
+      <SaveStatusIndicator status={saveStatus} />
+      <EditorCloseButton onClose={onClose} />
+    </div>
+  );
+}
+
 const TextNoteEditor = memo(function TextNoteEditor({
   note,
+  clusters,
   onSaved,
   onClose,
+  onClusterChange,
 }: {
   note: Note;
+  clusters: Cluster[];
   onSaved: (note: Note) => void;
   onClose: () => void;
+  onClusterChange: (value: string) => void;
 }) {
-  const { title, setTitle, content, setContent, subject, setSubject, saveStatus } =
-    useNoteAutoSave(note, onSaved);
+  const { title, setTitle, content, setContent, saveStatus } = useNoteAutoSave(
+    note,
+    onSaved,
+  );
 
   const handleTitleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
@@ -429,7 +604,7 @@ const TextNoteEditor = memo(function TextNoteEditor({
   return (
     <section className="flex flex-col h-full w-full min-w-0 min-h-0 bg-[#0a0a0f]">
       <header className="flex items-start justify-between gap-4 px-6 sm:px-10 pt-6 pb-4 border-b border-[#ffffff10] shrink-0">
-        <div className="flex-1 min-w-0 space-y-3">
+        <div className="flex-1 min-w-0">
           <label htmlFor={`note-title-${note.id}`} className="sr-only">
             Note title
           </label>
@@ -442,22 +617,14 @@ const TextNoteEditor = memo(function TextNoteEditor({
             placeholder="Untitled"
             className="w-full bg-transparent text-2xl sm:text-3xl font-semibold tracking-tight text-white/95 placeholder:text-white/25 focus:outline-none"
           />
-          <label htmlFor={`note-subject-${note.id}`} className="sr-only">
-            Subject
-          </label>
-          <input
-            id={`note-subject-${note.id}`}
-            type="text"
-            value={subject}
-            onChange={(e) => setSubject(e.target.value)}
-            placeholder="Subject (optional)"
-            className="w-full max-w-md bg-transparent text-sm text-[#7c5cfc]/90 placeholder:text-white/30 focus:outline-none"
-          />
         </div>
-        <div className="flex items-center gap-2 shrink-0 pt-1">
-          <SaveStatusIndicator status={saveStatus} />
-          <EditorCloseButton onClose={onClose} />
-        </div>
+        <EditorToolbar
+          note={note}
+          clusters={clusters}
+          saveStatus={saveStatus}
+          onClusterChange={onClusterChange}
+          onClose={onClose}
+        />
       </header>
 
       <div className="flex-1 min-h-0 overflow-hidden px-6 sm:px-10 py-4">
@@ -484,12 +651,16 @@ const TextNoteEditor = memo(function TextNoteEditor({
 
 const ReadmeNoteEditor = memo(function ReadmeNoteEditor({
   note,
+  clusters,
   onSaved,
   onClose,
+  onClusterChange,
 }: {
   note: Note;
+  clusters: Cluster[];
   onSaved: (note: Note) => void;
   onClose: () => void;
+  onClusterChange: (value: string) => void;
 }) {
   const { title, setTitle, content, setContent, saveStatus } = useNoteAutoSave(
     note,
@@ -510,10 +681,13 @@ const ReadmeNoteEditor = memo(function ReadmeNoteEditor({
           placeholder="Untitled"
           className="flex-1 min-w-0 bg-transparent text-2xl sm:text-3xl font-semibold tracking-tight text-white/95 placeholder:text-white/25 focus:outline-none"
         />
-        <div className="flex items-center gap-2 shrink-0">
-          <SaveStatusIndicator status={saveStatus} />
-          <EditorCloseButton onClose={onClose} />
-        </div>
+        <EditorToolbar
+          note={note}
+          clusters={clusters}
+          saveStatus={saveStatus}
+          onClusterChange={onClusterChange}
+          onClose={onClose}
+        />
       </header>
 
       <div className="flex-1 min-h-0 overflow-hidden">
@@ -640,12 +814,16 @@ function getInitialData(content: string): ExcalidrawInitialDataState {
 
 const CanvasNoteEditor = memo(function CanvasNoteEditor({
   note,
+  clusters,
   onSaved,
   onClose,
+  onClusterChange,
 }: {
   note: Note;
+  clusters: Cluster[];
   onSaved: (note: Note) => void;
   onClose: () => void;
+  onClusterChange: (value: string) => void;
 }) {
   const { title, setTitle, setContent, saveStatus } = useNoteAutoSave(
     note,
@@ -683,10 +861,13 @@ const CanvasNoteEditor = memo(function CanvasNoteEditor({
           placeholder="Untitled"
           className="flex-1 min-w-0 bg-transparent text-2xl sm:text-3xl font-semibold tracking-tight text-white/95 placeholder:text-white/25 focus:outline-none"
         />
-        <div className="flex items-center gap-2 shrink-0">
-          <SaveStatusIndicator status={saveStatus} />
-          <EditorCloseButton onClose={onClose} />
-        </div>
+        <EditorToolbar
+          note={note}
+          clusters={clusters}
+          saveStatus={saveStatus}
+          onClusterChange={onClusterChange}
+          onClose={onClose}
+        />
       </header>
 
       <div className="flex-1 min-h-0 relative overflow-hidden">
@@ -702,20 +883,48 @@ const CanvasNoteEditor = memo(function CanvasNoteEditor({
 
 const NoteEditor = memo(function NoteEditor({
   note,
+  clusters,
   onSaved,
   onClose,
+  onClusterChange,
 }: {
   note: Note;
+  clusters: Cluster[];
   onSaved: (note: Note) => void;
   onClose: () => void;
+  onClusterChange: (value: string) => void;
 }) {
   switch (note.type) {
     case "readme":
-      return <ReadmeNoteEditor note={note} onSaved={onSaved} onClose={onClose} />;
+      return (
+        <ReadmeNoteEditor
+          note={note}
+          clusters={clusters}
+          onSaved={onSaved}
+          onClose={onClose}
+          onClusterChange={onClusterChange}
+        />
+      );
     case "canvas":
-      return <CanvasNoteEditor note={note} onSaved={onSaved} onClose={onClose} />;
+      return (
+        <CanvasNoteEditor
+          note={note}
+          clusters={clusters}
+          onSaved={onSaved}
+          onClose={onClose}
+          onClusterChange={onClusterChange}
+        />
+      );
     default:
-      return <TextNoteEditor note={note} onSaved={onSaved} onClose={onClose} />;
+      return (
+        <TextNoteEditor
+          note={note}
+          clusters={clusters}
+          onSaved={onSaved}
+          onClose={onClose}
+          onClusterChange={onClusterChange}
+        />
+      );
   }
 });
 
@@ -735,70 +944,60 @@ function EditorEmptyState() {
   );
 }
 
-export default function NotesPage() {
-  const [notes, setNotes] = useState<Note[]>([]);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+export default function NotesPage({
+  initialNotes,
+  initialClusters,
+  autoOpenCreate = false,
+}: NotesPageProps) {
+  const router = useRouter();
+  const normalizedInitial = useMemo(
+    () => normalizeNotes(initialNotes),
+    [initialNotes],
+  );
+
+  const [notes, setNotes] = useState<Note[]>(normalizedInitial);
+  const [clusters] = useState<Cluster[]>(initialClusters);
+  const [activeNote, setActiveNote] = useState<Note | null>(
+    normalizedInitial.length > 0 ? normalizedInitial[0] : null,
+  );
   const [isCreating, setIsCreating] = useState(false);
-  const [loadError, setLoadError] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [noteToDelete, setNoteToDelete] = useState<Note | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  const initialSelectDone = useRef(false);
 
   useEffect(() => {
-    let cancelled = false;
+    if (!autoOpenCreate) return;
+    setPickerOpen(true);
+    router.replace("/notes", { scroll: false });
+  }, [autoOpenCreate, router]);
 
-    async function load() {
-      setIsLoading(true);
-      setLoadError(null);
-      const { data, error } = await getNotes();
-      if (cancelled) return;
+  const generalNotes = useMemo(
+    () => sortNotesByUpdated(notes.filter((n) => n.cluster_id === null)),
+    [notes],
+  );
 
-      if (error) {
-        setLoadError(error);
-        setNotes([]);
-      } else {
-        const normalized = (data ?? []).map((n) => ({
-          ...n,
-          type: n.type ?? "text",
-        }));
-        setNotes(normalized);
-        if (!initialSelectDone.current && normalized.length > 0) {
-          setSelectedId(normalized[0].id);
-          initialSelectDone.current = true;
-        }
-      }
-      setIsLoading(false);
-    }
-
-    void load();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const selectedNote = useMemo(
-    () => notes.find((n) => n.id === selectedId) ?? null,
-    [notes, selectedId],
+  const clustersWithNotes = useMemo(
+    () =>
+      clusters.filter((cluster) =>
+        notes.some((n) => n.cluster_id === cluster.id),
+      ),
+    [clusters, notes],
   );
 
   const handleNoteSaved = useCallback((updated: Note) => {
     setNotes((prev) => {
       const next = prev.map((n) => (n.id === updated.id ? updated : n));
-      return [...next].sort(
-        (a, b) =>
-          new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime(),
-      );
+      return sortNotesByUpdated(next);
     });
+    setActiveNote((prev) => (prev?.id === updated.id ? updated : prev));
   }, []);
 
   const handleCreate = useCallback(
-    async (type: NoteType) => {
+    async (type: NoteType, clusterId: string | null) => {
       if (isCreating) return;
 
       setIsCreating(true);
-      const { data, error } = await createNote(type);
+      const { data, error } = await createNote(type, clusterId);
       setIsCreating(false);
       setPickerOpen(false);
 
@@ -807,39 +1006,81 @@ export default function NotesPage() {
         return;
       }
 
-      setNotes((prev) => [data, ...prev]);
-      setSelectedId(data.id);
+      setNotes((prev) => sortNotesByUpdated([data, ...prev]));
+      setActiveNote(data);
       toast.success("Note created");
     },
     [isCreating],
   );
 
   const handleClose = useCallback(() => {
-    setSelectedId(null);
+    setActiveNote(null);
   }, []);
+
+  const handleSelectNote = useCallback((note: Note) => {
+    setActiveNote(note);
+  }, []);
+
+  const handleClusterChange = useCallback(
+    async (value: string) => {
+      if (!activeNote) return;
+
+      const targetClusterId = clusterIdFromSelectValue(value);
+      const previousClusterId = activeNote.cluster_id;
+      const noteId = activeNote.id;
+
+      setNotes((prev) =>
+        prev.map((n) =>
+          n.id === noteId ? { ...n, cluster_id: targetClusterId } : n,
+        ),
+      );
+      setActiveNote((prev) =>
+        prev ? { ...prev, cluster_id: targetClusterId } : null,
+      );
+
+      const { data, error } = await updateNote(noteId, {
+        cluster_id: targetClusterId,
+      });
+
+      if (error || !data) {
+        setNotes((prev) =>
+          prev.map((n) =>
+            n.id === noteId ? { ...n, cluster_id: previousClusterId } : n,
+          ),
+        );
+        setActiveNote((prev) =>
+          prev ? { ...prev, cluster_id: previousClusterId } : null,
+        );
+        toast.error(error ?? "Failed to move note");
+        return;
+      }
+
+      const cluster = clusters.find((c) => c.id === targetClusterId);
+      toast.success(
+        targetClusterId === null
+          ? "Moved to General"
+          : `Moved to ${cluster?.name ?? "cluster"}`,
+      );
+    },
+    [activeNote, clusters],
+  );
 
   const requestDelete = useCallback((note: Note) => {
     setNoteToDelete(note);
   }, []);
 
   const handleDeleted = useCallback((id: string) => {
-    setNotes((prev) => {
-      const next = prev.filter((n) => n.id !== id);
-      setSelectedId((current) => (current === id ? null : current));
-      return next;
-    });
+    setNotes((prev) => prev.filter((n) => n.id !== id));
+    setActiveNote((current) => (current?.id === id ? null : current));
   }, []);
 
   const handleRestore = useCallback((note: Note) => {
     setNotes((prev) => {
       const exists = prev.some((n) => n.id === note.id);
       const next = exists ? prev : [note, ...prev];
-      return [...next].sort(
-        (a, b) =>
-          new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime(),
-      );
+      return sortNotesByUpdated(next);
     });
-    setSelectedId(note.id);
+    setActiveNote(note);
   }, []);
 
   const confirmDelete = useCallback(async () => {
@@ -864,15 +1105,6 @@ export default function NotesPage() {
 
   return (
     <div className="flex flex-col h-[calc(100dvh-3.5rem)] lg:h-[100dvh] max-h-[100dvh] bg-[#0a0a0f]">
-      {loadError && (
-        <div
-          className="px-4 py-2 text-sm text-red-400 bg-red-400/10 border-b border-red-400/20"
-          role="alert"
-        >
-          {loadError}
-        </div>
-      )}
-
       <ResizablePanelGroup
         id="notes-layout"
         orientation="horizontal"
@@ -901,27 +1133,44 @@ export default function NotesPage() {
             </div>
 
             <ScrollArea className="flex-1 min-h-0">
-              <div className="p-3 space-y-1 min-w-0">
-                {isLoading ? (
-                  <div className="px-3 py-8 text-center text-sm text-white/40">
-                    Loading notes…
-                  </div>
-                ) : notes.length === 0 ? (
+              <div className="p-3 space-y-4 min-w-0">
+                {notes.length === 0 ? (
                   <div className="flex items-center justify-center px-3 py-16 text-center">
                     <p className="text-sm text-white/40">
                       No notes yet. Create your first note.
                     </p>
                   </div>
                 ) : (
-                  notes.map((note) => (
-                    <NoteListItem
-                      key={note.id}
-                      note={note}
-                      isActive={note.id === selectedId}
-                      onSelect={setSelectedId}
+                  <>
+                    <NoteListSection
+                      title="General"
+                      count={generalNotes.length}
+                      emptyMessage="No general notes yet."
+                      notes={generalNotes}
+                      activeNoteId={activeNote?.id ?? null}
+                      onSelect={handleSelectNote}
                       onDeleteRequest={requestDelete}
                     />
-                  ))
+                    {clustersWithNotes.map((cluster) => {
+                      const clusterNotes = sortNotesByUpdated(
+                        notes.filter((n) => n.cluster_id === cluster.id),
+                      );
+
+                      return (
+                        <NoteListSection
+                          key={cluster.id}
+                          title={cluster.name}
+                          count={clusterNotes.length}
+                          dotColor={cluster.color}
+                          emptyMessage="No notes in this cluster."
+                          notes={clusterNotes}
+                          activeNoteId={activeNote?.id ?? null}
+                          onSelect={handleSelectNote}
+                          onDeleteRequest={requestDelete}
+                        />
+                      );
+                    })}
+                  </>
                 )}
               </div>
             </ScrollArea>
@@ -932,11 +1181,13 @@ export default function NotesPage() {
 
         <ResizablePanel id="notes-editor" minSize="40%">
           <div className="h-full w-full min-w-0 overflow-hidden bg-[#0a0a0f]">
-            {selectedNote ? (
+            {activeNote ? (
               <NoteEditor
-                note={selectedNote}
+                note={activeNote}
+                clusters={clusters}
                 onSaved={handleNoteSaved}
                 onClose={handleClose}
+                onClusterChange={(value) => void handleClusterChange(value)}
               />
             ) : (
               <EditorEmptyState />
@@ -948,7 +1199,8 @@ export default function NotesPage() {
       <NoteTypePickerModal
         open={pickerOpen}
         onOpenChange={setPickerOpen}
-        onSelect={(type) => void handleCreate(type)}
+        clusters={clusters}
+        onSelect={(type, clusterId) => void handleCreate(type, clusterId)}
         isCreating={isCreating}
       />
 

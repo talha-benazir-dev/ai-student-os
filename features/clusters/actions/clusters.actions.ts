@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import type { Cluster } from "@/features/tasks/types";
+import type { Cluster } from "@/features/clusters/types";
 
 type ActionResult<T> = {
   data: T | null;
@@ -61,6 +61,9 @@ export async function createCluster(
   }
 
   revalidatePath("/tasks");
+  revalidatePath("/notes");
+  revalidatePath("/flashcards");
+  revalidatePath("/documents");
   return { data: data as Cluster, error: null };
 }
 
@@ -84,5 +87,8 @@ export async function deleteCluster(
   }
 
   revalidatePath("/tasks");
+  revalidatePath("/notes");
+  revalidatePath("/flashcards");
+  revalidatePath("/documents");
   return { data: { id }, error: null };
 }

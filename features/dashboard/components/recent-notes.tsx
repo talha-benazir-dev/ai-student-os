@@ -16,7 +16,6 @@ type Note = {
   id: string;
   title: string;
   content: string | null;
-  subject: string | null;
   updated_at: string;
 };
 
@@ -120,7 +119,7 @@ function RecentNotesContent({ notes }: Props) {
                 title={note.title || "Untitled"}
                 time={getRelativeTime(note.updated_at)}
                 body={extractPlainText(note.content)}
-                tags={note.subject ? [note.subject] : []}
+                tags={[]}
                 ai={false}
               />
             ))}
@@ -132,7 +131,7 @@ function RecentNotesContent({ notes }: Props) {
                 key={note.id}
                 title={note.title || "Untitled"}
                 time={getRelativeTime(note.updated_at)}
-                tags={note.subject ? [note.subject] : []}
+                tags={[]}
                 ai={false}
               />
             ))}

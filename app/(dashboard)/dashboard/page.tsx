@@ -2,6 +2,7 @@ import { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
 import { CommandShortcut } from "@/features/dashboard/components/command-shortcut";
+import { DashboardCreateMenu } from "@/features/dashboard/components/create-command-menu";
 import { StatCard } from "@/features/dashboard/components/start-card";
 import { StudyChart, FocusBars } from "@/features/dashboard/components/charts";
 import { RecentNotesSection } from "@/features/dashboard/components/recent-notes";
@@ -13,7 +14,6 @@ import {
   Sparkles,
   Flame,
   Bell,
-  Plus,
   ArrowUpRight,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
@@ -78,7 +78,7 @@ export default async function Dashboard() {
       try {
         const { data, error } = await supabase
           .from("notes")
-          .select("id, title, content, subject, updated_at")
+          .select("id, title, content, updated_at")
           .eq("user_id", userId)
           .order("updated_at", { ascending: false })
           .limit(4);
@@ -139,9 +139,7 @@ export default async function Dashboard() {
           <button className="h-9 w-9 rounded-lg border border-border bg-card hover:bg-accent transition flex items-center justify-center text-muted-foreground hover:text-foreground">
             <Bell className="h-4 w-4" />
           </button>
-          <button className="h-9 px-3 rounded-lg bg-gradient-violet text-white text-sm font-medium flex items-center gap-1.5 shadow-[0_0_20px_-4px_oklch(0.66_0.21_295/0.6)] hover:scale-[1.02] transition">
-            <Plus className="h-4 w-4" /> New
-          </button>
+          <DashboardCreateMenu />
         </div>
       </div>
 

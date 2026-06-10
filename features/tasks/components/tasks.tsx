@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Gift, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -27,7 +28,6 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { createCluster } from "@/features/tasks/actions/clusters.actions";
 import {
   createTask,
   deleteTask,
@@ -38,6 +38,7 @@ import type { Cluster, Task } from "@/features/tasks/types";
 interface TasksPageProps {
   initialTasks: Task[];
   initialClusters: Cluster[];
+  autoOpenCreate?: boolean;
 }
 
 const PRIORITY_ORDER: Record<Task["priority"], number> = {
@@ -51,15 +52,6 @@ const PRIORITY_STYLES: Record<Task["priority"], string> = {
   medium: "bg-yellow-500/15 text-yellow-400",
   high: "bg-red-500/15 text-red-400",
 };
-
-const CLUSTER_COLORS = [
-  "#7c5cfc",
-  "#3b82f6",
-  "#10b981",
-  "#f59e0b",
-  "#ef4444",
-  "#ec4899",
-] as const;
 
 const GENERAL_CLUSTER_VALUE = "__general__";
 
@@ -475,100 +467,23 @@ function CreateTaskModal({
   );
 }
 
-function CreateClusterModal({
-  open,
-  onOpenChange,
-  onSubmit,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onSubmit: (values: { name: string; color: string }) => void;
-}) {
-  const [name, setName] = useState("");
-  const [color, setColor] = useState<string>(CLUSTER_COLORS[0]);
-
-  const resetForm = () => {
-    setName("");
-    setColor(CLUSTER_COLORS[0]);
-  };
-
-  const handleOpenChange = (next: boolean) => {
-    if (!next) resetForm();
-    onOpenChange(next);
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const trimmed = name.trim();
-    if (!trimmed) return;
-    onSubmit({ name: trimmed, color });
-    resetForm();
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="border-[#ffffff10] bg-[#0f0f17] sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle className="text-white">New Cluster</DialogTitle>
-        </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4 pt-2">
-          <div className="space-y-2">
-            <Label htmlFor="cluster-name" className="text-white/70">
-              Name
-            </Label>
-            <Input
-              id="cluster-name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Calculus, Exam prep"
-              className="border-[#ffffff10] bg-[#0a0a0f] text-white"
-              required
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label className="text-white/70">Color</Label>
-            <div className="flex gap-2">
-              {CLUSTER_COLORS.map((swatch) => (
-                <button
-                  key={swatch}
-                  type="button"
-                  onClick={() => setColor(swatch)}
-                  className={cn(
-                    "h-8 w-8 rounded-full transition-all",
-                    color === swatch
-                      ? "ring-2 ring-white ring-offset-2 ring-offset-[#0f0f17]"
-                      : "hover:scale-110",
-                  )}
-                  style={{ backgroundColor: swatch }}
-                  aria-label={`Select color ${swatch}`}
-                />
-              ))}
-            </div>
-          </div>
-
-          <Button
-            type="submit"
-            className="w-full bg-[#7c5cfc] text-white hover:bg-[#7c5cfc]/90"
-          >
-            Create Cluster
-          </Button>
-        </form>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
 export default function TasksPage({
   initialTasks,
   initialClusters,
+  autoOpenCreate = false,
 }: TasksPageProps) {
+  const router = useRouter();
   const [tasks, setTasks] = useState<Task[]>(initialTasks);
-  const [clusters, setClusters] = useState<Cluster[]>(initialClusters);
+  const [clusters] = useState<Cluster[]>(initialClusters);
   const [createTaskOpen, setCreateTaskOpen] = useState(false);
-  const [createClusterOpen, setCreateClusterOpen] = useState(false);
 
   const progress = useProgressData(tasks, clusters);
+
+  useEffect(() => {
+    if (!autoOpenCreate) return;
+    setCreateTaskOpen(true);
+    router.replace("/tasks", { scroll: false });
+  }, [autoOpenCreate, router]);
 
   const generalTasks = useMemo(
     () => sortTasks(tasks.filter((t) => t.cluster_id === null)),
@@ -670,36 +585,6 @@ export default function TasksPage({
     [],
   );
 
-  const handleCreateCluster = useCallback(
-    async (values: { name: string; color: string }) => {
-      const tempId = `temp-${crypto.randomUUID()}`;
-      const now = new Date().toISOString();
-
-      const optimistic: Cluster = {
-        id: tempId,
-        user_id: "",
-        name: values.name,
-        color: values.color,
-        created_at: now,
-      };
-
-      setClusters((prev) => [...prev, optimistic]);
-      setCreateClusterOpen(false);
-      toast.success("Cluster created");
-
-      const { data, error } = await createCluster(values.name, values.color);
-
-      if (error || !data) {
-        setClusters((prev) => prev.filter((c) => c.id !== tempId));
-        toast.error(error ?? "Failed to create cluster");
-        return;
-      }
-
-      setClusters((prev) => prev.map((c) => (c.id === tempId ? data : c)));
-    },
-    [],
-  );
-
   return (
     <TooltipProvider>
       <div className="w-full min-h-full bg-[#0a0a0f]">
@@ -710,25 +595,14 @@ export default function TasksPage({
             <h1 className="text-2xl font-semibold tracking-tight text-white sm:text-[28px]">
               Tasks
             </h1>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCreateClusterOpen(true)}
-                className="border-[#ffffff10] bg-transparent text-white/80 hover:bg-white/5 hover:text-white"
-              >
-                <Plus className="mr-1.5 h-3.5 w-3.5" />
-                New Cluster
-              </Button>
-              <Button
-                size="sm"
-                onClick={() => setCreateTaskOpen(true)}
-                className="bg-[#7c5cfc] text-white hover:bg-[#7c5cfc]/90"
-              >
-                <Plus className="mr-1.5 h-3.5 w-3.5" />
-                New Task
-              </Button>
-            </div>
+            <Button
+              size="sm"
+              onClick={() => setCreateTaskOpen(true)}
+              className="bg-[#7c5cfc] text-white hover:bg-[#7c5cfc]/90"
+            >
+              <Plus className="mr-1.5 h-3.5 w-3.5" />
+              New Task
+            </Button>
           </div>
 
           <section className="space-y-3">
@@ -808,11 +682,6 @@ export default function TasksPage({
             onSubmit={handleCreateTask}
           />
 
-          <CreateClusterModal
-            open={createClusterOpen}
-            onOpenChange={setCreateClusterOpen}
-            onSubmit={handleCreateCluster}
-          />
         </div>
       </div>
     </TooltipProvider>
