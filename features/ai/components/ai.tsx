@@ -1,15 +1,19 @@
+"use client";
+
+import { AIPanel } from "@/features/ai/components/ai-panel";
+
 export default function AIWorkspacePage() {
   return (
-    <div className="px-4 sm:px-6 lg:px-10 xl:px-12 py-6 sm:py-10 mx-auto w-full max-w-[1100px]">
-      <h1 className="text-2xl sm:text-[28px] font-semibold tracking-tight">AI Workspace</h1>
-      <p className="text-sm text-muted-foreground mt-1 mb-8">Your private research copilot.</p>
-      <div className="rounded-2xl border border-border bg-card p-10 min-h-[420px] flex items-center justify-center text-center">
-        <div>
-          <div className="text-base font-medium">Full conversational workspace coming online</div>
-          <p className="text-sm text-muted-foreground mt-1">Use the assistant panel from the dashboard meanwhile.</p>
-        </div>
+    <div className="mx-auto flex h-[calc(100vh-80px)] w-full max-w-[1100px] flex-col px-4 sm:px-6 lg:px-10 xl:px-12">
+      <div className="shrink-0 py-6 sm:py-8">
+        <h1 className="text-2xl font-semibold tracking-tight sm:text-[28px]">
+          AI Workspace
+        </h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Your private research copilot.
+        </p>
       </div>
+      <AIPanel className="min-h-0 flex-1" />
     </div>
   );
 }
-
