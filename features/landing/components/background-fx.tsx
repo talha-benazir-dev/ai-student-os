@@ -13,9 +13,9 @@ export function BackgroundFX() {
             "radial-gradient(ellipse at center, black 30%, transparent 75%)",
         }}
       />
-      <div className="absolute -top-40 left-1/2 -translate-x-1/2 h-[700px] w-[1100px] rounded-full bg-[#7c5cfc]/20 blur-[140px]" />
-      <div className="absolute top-[30%] -left-40 h-[420px] w-[420px] rounded-full bg-[#6a48f0]/15 blur-[120px]" />
-      <div className="absolute top-[55%] -right-40 h-[480px] w-[480px] rounded-full bg-[#9b7cff]/12 blur-[140px]" />
+      <div className="absolute -top-40 left-1/2 -translate-x-1/2 h-[700px] w-[1100px] rounded-full bg-[#7c5cfc]/20 blur-[140px] orb-1" />
+      <div className="absolute top-[30%] -left-40 h-[420px] w-[420px] rounded-full bg-[#6a48f0]/15 blur-[120px] orb-2" />
+      <div className="absolute top-[55%] -right-40 h-[480px] w-[480px] rounded-full bg-[#9b7cff]/12 blur-[140px] orb-3" />
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_55%,#0a0a0f_100%)]" />
       <div
         className="absolute inset-0 opacity-[0.025] mix-blend-overlay"

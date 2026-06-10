@@ -2,13 +2,7 @@
 
 import { useState, useMemo, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import {
-  Plus,
-  Pencil,
-  Trash2,
-  BookOpen,
-  Layers,
-} from "lucide-react";
+import { Plus, Pencil, Trash2, BookOpen, Layers } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -122,6 +116,7 @@ function FlashcardFormModal({
               value={front}
               onChange={(e) => setFront(e.target.value)}
               className="min-h-[100px] bg-white/[0.03] border-[#ffffff10] text-white focus-visible:ring-[#7c5cfc]/50 resize-none text-sm p-4 rounded-xl"
+              autoComplete="off"
             />
           </div>
 
@@ -134,6 +129,7 @@ function FlashcardFormModal({
               value={back}
               onChange={(e) => setBack(e.target.value)}
               className="min-h-[100px] bg-white/[0.03] border-[#ffffff10] text-white focus-visible:ring-[#7c5cfc]/50 resize-none text-sm p-4 rounded-xl"
+              autoComplete="off"
             />
           </div>
 
@@ -406,22 +402,22 @@ function ReviewSession({
         </div>
 
         {flipped && (
-          <div className="mt-12 flex gap-4 animate-in fade-in slide-in-from-bottom-4 duration-300">
+          <div className="mt-8 flex gap-2 sm:gap-4 animate-in fade-in slide-in-from-bottom-4 duration-300 flex-wrap justify-center px-2 sm:px-0">
             <Button
               onClick={() => handleRating("hard")}
-              className="w-32 h-12 bg-red-500/15 text-red-400 hover:bg-red-500/25 border border-red-500/30"
+              className="flex-1 min-w-24 sm:w-32 h-9 sm:h-12 text-xs sm:text-sm bg-red-500/15 text-red-400 hover:bg-red-500/25 border border-red-500/30"
             >
               Hard (1d)
             </Button>
             <Button
               onClick={() => handleRating("medium")}
-              className="w-32 h-12 bg-yellow-500/15 text-yellow-400 hover:bg-yellow-500/25 border border-yellow-500/30"
+              className="flex-1 min-w-24 sm:w-32 h-9 sm:h-12 text-xs sm:text-sm bg-yellow-500/15 text-yellow-400 hover:bg-yellow-500/25 border border-yellow-500/30"
             >
               Good
             </Button>
             <Button
               onClick={() => handleRating("easy")}
-              className="w-32 h-12 bg-green-500/15 text-green-400 hover:bg-green-500/25 border border-green-500/30"
+              className="flex-1 min-w-24 sm:w-32 h-9 sm:h-12 text-xs sm:text-sm bg-green-500/15 text-green-400 hover:bg-green-500/25 border border-green-500/30"
             >
               Easy
             </Button>
@@ -640,28 +636,28 @@ export default function FlashcardsPage({
             You reviewed {sessionStats.total} cards today.
           </p>
 
-          <div className="grid grid-cols-3 gap-4 mb-8">
-            <div className="bg-red-500/10 rounded-xl p-4 border border-red-500/20">
-              <div className="text-2xl font-semibold text-red-400 mb-1">
+          <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-8">
+            <div className="bg-red-500/10 rounded-xl p-3 sm:p-4 border border-red-500/20">
+              <div className="text-xl sm:text-2xl font-semibold text-red-400 mb-1">
                 {sessionStats.hard}
               </div>
-              <div className="text-xs uppercase text-red-400/80 font-medium">
+              <div className="text-[10px] sm:text-xs uppercase text-red-400/80 font-medium">
                 Hard
               </div>
             </div>
-            <div className="bg-yellow-500/10 rounded-xl p-4 border border-yellow-500/20">
-              <div className="text-2xl font-semibold text-yellow-400 mb-1">
+            <div className="bg-yellow-500/10 rounded-xl p-3 sm:p-4 border border-yellow-500/20">
+              <div className="text-xl sm:text-2xl font-semibold text-yellow-400 mb-1">
                 {sessionStats.medium}
               </div>
-              <div className="text-xs uppercase text-yellow-400/80 font-medium">
+              <div className="text-[10px] sm:text-xs uppercase text-yellow-400/80 font-medium">
                 Good
               </div>
             </div>
-            <div className="bg-green-500/10 rounded-xl p-4 border border-green-500/20">
-              <div className="text-2xl font-semibold text-green-400 mb-1">
+            <div className="bg-green-500/10 rounded-xl p-3 sm:p-4 border border-green-500/20">
+              <div className="text-xl sm:text-2xl font-semibold text-green-400 mb-1">
                 {sessionStats.easy}
               </div>
-              <div className="text-xs uppercase text-green-400/80 font-medium">
+              <div className="text-[10px] sm:text-xs uppercase text-green-400/80 font-medium">
                 Easy
               </div>
             </div>

@@ -19,8 +19,7 @@ import { cn } from "@/lib/utils";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { getSettings } from "@/features/settings/actions/settings.actions";
 import type { UserSettings } from "@/features/settings/types";
-import { getClusters } from "@/features/clusters/actions/clusters.actions";
-import type { Cluster } from "@/features/clusters/types";
+import { useClusters } from "@/providers/clusters-provider";
 
 type NavItem = {
   to: string;
@@ -142,9 +141,9 @@ function SidebarBody({
   collapsed?: boolean;
   onToggleCollapse?: () => void;
 }) {
+  const { clusters } = useClusters();
   const [settings, setSettings] = useState<UserSettings | null>(null);
   const [logoHovered, setLogoHovered] = useState(false);
-  const [clusters, setClusters] = useState<Cluster[]>([]);
   const [clustersOpen, setClustersOpen] = useState(true);
 
   useEffect(() => {
@@ -152,10 +151,6 @@ function SidebarBody({
       const result = await getSettings();
       if (result.data) {
         setSettings(result.data);
-      }
-      const clustersResult = await getClusters();
-      if (clustersResult.data) {
-        setClusters(clustersResult.data);
       }
     }
     fetchSettings();

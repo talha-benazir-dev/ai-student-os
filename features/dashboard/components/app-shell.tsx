@@ -6,6 +6,7 @@ import { AppSidebar, MobileSidebar } from "./app-sidebar";
 import { AIPanelSheet } from "./ai-panel";
 import { Menu, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ClustersProvider } from "@/providers/clusters-provider";
 // import { cn } from "@/lib/utils";
 
 export function AppShell({
@@ -20,6 +21,7 @@ export function AppShell({
   const pathname = usePathname();
 
   return (
+    <ClustersProvider>
     <div className="flex min-h-screen bg-background">
       <AppSidebar />
       <MobileSidebar open={navOpen} onOpenChange={setNavOpen} />
@@ -75,5 +77,6 @@ export function AppShell({
 
       {showAI && <AIPanelSheet open={aiOpen} onOpenChange={setAiOpen} />}
     </div>
+    </ClustersProvider>
   );
 }

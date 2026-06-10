@@ -127,8 +127,7 @@ function useProgressData(tasks: Task[], clusters: Cluster[]) {
         totalPoints > 0 ? (clusterTotal / totalPoints) * 100 : 0;
       const fillPercent =
         clusterTotal > 0 ? (clusterCompleted / clusterTotal) * 100 : 0;
-      const isFullyDone =
-        clusterTotal > 0 && clusterCompleted === clusterTotal;
+      const isFullyDone = clusterTotal > 0 && clusterCompleted === clusterTotal;
 
       return { cluster, segmentWidth, fillPercent, isFullyDone };
     });
@@ -198,13 +197,7 @@ function ProgressBar({
   );
 }
 
-function ClusterMiniBar({
-  tasks,
-  color,
-}: {
-  tasks: Task[];
-  color: string;
-}) {
+function ClusterMiniBar({ tasks, color }: { tasks: Task[]; color: string }) {
   const clusterTotal = tasks.reduce((sum, t) => sum + t.importance_points, 0);
   const clusterCompleted = tasks
     .filter((t) => t.completed)
@@ -350,8 +343,7 @@ function CreateTaskModal({
     onSubmit({
       title: trimmed,
       priority,
-      cluster_id:
-        clusterId === GENERAL_CLUSTER_VALUE ? null : clusterId,
+      cluster_id: clusterId === GENERAL_CLUSTER_VALUE ? null : clusterId,
       importance_points: points,
       reward: reward.trim(),
       due_date: dueDate === "" ? null : dueDate,
@@ -377,6 +369,7 @@ function CreateTaskModal({
               placeholder="What do you need to do?"
               className="border-[#ffffff10] bg-[#0a0a0f] text-white"
               required
+              autoComplete="off"
             />
           </div>
 
@@ -426,6 +419,7 @@ function CreateTaskModal({
               value={importancePoints}
               onChange={(e) => setImportancePoints(e.target.value)}
               className="border-[#ffffff10] bg-[#0a0a0f] text-white"
+              autoComplete="off"
             />
           </div>
 
@@ -439,6 +433,7 @@ function CreateTaskModal({
               onChange={(e) => setReward(e.target.value)}
               placeholder="What will you give yourself after finishing this?"
               className="border-[#ffffff10] bg-[#0a0a0f] text-white"
+              autoComplete="off"
             />
           </div>
 
@@ -452,6 +447,7 @@ function CreateTaskModal({
               value={dueDate}
               onChange={(e) => setDueDate(e.target.value)}
               className="border-[#ffffff10] bg-[#0a0a0f] text-white [color-scheme:dark]"
+              autoComplete="off"
             />
           </div>
 
@@ -521,19 +517,22 @@ export default function TasksPage({
     setTasks((prev) => prev.map((t) => (t.id === data.id ? data : t)));
   }, []);
 
-  const handleDelete = useCallback(async (task: Task) => {
-    if (task.id.startsWith("temp-")) return;
+  const handleDelete = useCallback(
+    async (task: Task) => {
+      if (task.id.startsWith("temp-")) return;
 
-    const previous = tasks;
-    setTasks((prev) => prev.filter((t) => t.id !== task.id));
+      const previous = tasks;
+      setTasks((prev) => prev.filter((t) => t.id !== task.id));
 
-    const { error } = await deleteTask(task.id);
+      const { error } = await deleteTask(task.id);
 
-    if (error) {
-      setTasks(previous);
-      toast.error(error ?? "Failed to delete task");
-    }
-  }, [tasks]);
+      if (error) {
+        setTasks(previous);
+        toast.error(error ?? "Failed to delete task");
+      }
+    },
+    [tasks],
+  );
 
   const handleCreateTask = useCallback(
     async (values: {
@@ -681,7 +680,6 @@ export default function TasksPage({
             clusters={clusters.filter((c) => !c.id.startsWith("temp-"))}
             onSubmit={handleCreateTask}
           />
-
         </div>
       </div>
     </TooltipProvider>

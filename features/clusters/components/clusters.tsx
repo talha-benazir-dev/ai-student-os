@@ -21,6 +21,7 @@ import {
   updateCluster,
 } from "@/features/clusters/actions/clusters.actions";
 import type { Cluster } from "@/features/clusters/types";
+import { useClusters } from "@/providers/clusters-provider";
 
 const COLOR_PRESETS = [
   "#7c5cfc",
@@ -38,6 +39,11 @@ interface ClustersClientProps {
 }
 
 export function ClustersClient({ initialClusters }: ClustersClientProps) {
+  const {
+    addCluster,
+    updateCluster: updateClusterCtx,
+    removeCluster,
+  } = useClusters();
   const [clusters, setClusters] = useState<Cluster[]>(initialClusters);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -80,6 +86,7 @@ export function ClustersClient({ initialClusters }: ClustersClientProps) {
     }
 
     setClusters((prev) => [...prev, data]);
+    addCluster(data);
     setIsCreateOpen(false);
     setName("");
     setColor(DEFAULT_COLOR);
@@ -104,9 +111,8 @@ export function ClustersClient({ initialClusters }: ClustersClientProps) {
       return;
     }
 
-    setClusters((prev) =>
-      prev.map((c) => (c.id === data.id ? data : c)),
-    );
+    setClusters((prev) => prev.map((c) => (c.id === data.id ? data : c)));
+    updateClusterCtx(data);
     setIsEditOpen(false);
     setSelectedCluster(null);
     toast.success("Cluster updated");
@@ -125,6 +131,7 @@ export function ClustersClient({ initialClusters }: ClustersClientProps) {
     }
 
     setClusters((prev) => prev.filter((c) => c.id !== selectedCluster.id));
+    removeCluster(selectedCluster.id);
     setIsDeleteOpen(false);
     setSelectedCluster(null);
     toast.success("Cluster deleted");
@@ -214,6 +221,7 @@ export function ClustersClient({ initialClusters }: ClustersClientProps) {
                 className="w-full"
                 disabled={loading}
                 required
+                autoComplete="off"
               />
             </div>
             <div className="space-y-2">
@@ -286,6 +294,7 @@ export function ClustersClient({ initialClusters }: ClustersClientProps) {
                 className="w-full"
                 disabled={loading}
                 required
+                autoComplete="off"
               />
             </div>
             <div className="space-y-2">

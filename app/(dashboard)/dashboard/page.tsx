@@ -19,6 +19,8 @@ import {
   ArrowUpRight,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { getWeeklyStudyMinutes } from "@/features/study-sessions/actions/study-sessions.actions";
+import { StudyTimer } from "@/features/study-sessions/components/study-timer";
 
 export const metadata: Metadata = {
   title: "Dashboard — Nucleus",
@@ -42,6 +44,7 @@ export default async function Dashboard() {
   let documentsCount = 0;
   let recentNotes: any[] = [];
   let recentDocuments: any[] = [];
+  let weeklyStudyMinutes = 0;
 
   if (userId) {
     const fetchProfile = async () => {
@@ -117,8 +120,21 @@ export default async function Dashboard() {
       fetchRecentNotes(),
       fetchDocumentsCount(),
       fetchRecentDocuments(),
+      supabase
+        .from("study_sessions")
+        .select("duration_minutes")
+        .eq("user_id", userId)
+        .not("duration_minutes", "is", null)
+        .gte("started_at", new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
+        .then(({ data }) => {
+          weeklyStudyMinutes = (data ?? []).reduce((sum, s) => sum + (s.duration_minutes ?? 0), 0);
+        }),
     ]);
   }
+
+  const studyHours = weeklyStudyMinutes > 0
+    ? (weeklyStudyMinutes / 60).toFixed(1)
+    : "--";
 
   const subtitle =
     activeTasks > 0
@@ -142,6 +158,7 @@ export default async function Dashboard() {
           <button className="h-9 w-9 rounded-lg border border-border bg-card hover:bg-accent transition flex items-center justify-center text-muted-foreground hover:text-foreground">
             <Bell className="h-4 w-4" />
           </button>
+          <StudyTimer />
           <DashboardCreateMenu />
         </div>
       </div>
@@ -150,7 +167,7 @@ export default async function Dashboard() {
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3 mb-6">
-        <StatCard active icon={Clock} label="Study hours" value="--" unit="h" />
+        <StatCard active icon={Clock} label="Study hours" value={studyHours} unit={studyHours !== "--" ? "h" : undefined} />
         <StatCard
           icon={CheckSquare}
           label="Active tasks"
