@@ -8,7 +8,7 @@ export function LandingCTA() {
   const { ref, visible } = useReveal(0.1);
   return (
     <section
-      id="pricing"
+      id="cta"
       ref={ref as RefObject<HTMLElement>}
       className="relative mx-auto max-w-7xl px-6 py-24 scroll-mt-24"
     >

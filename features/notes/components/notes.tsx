@@ -19,10 +19,12 @@ import {
 import { useRouter } from "next/navigation";
 import ReactMarkdown from "react-markdown";
 import {
+  BarChart3,
   FileCode,
   FileText,
   PenLine,
   Plus,
+  Share2,
   Sparkles,
   Trash2,
   X,
@@ -68,9 +70,21 @@ import {
   deleteNote,
   updateNote,
 } from "@/features/notes/actions/notes.actions";
+import { UPGRADE_TOAST } from "@/lib/ai/constants";
+import { usePlan } from "@/providers/plan-provider";
 
 const ExcalidrawEditor = dynamic(
   () => import("@/features/notes/components/excalidraw-editor"),
+  { ssr: false },
+);
+
+const ChartEditor = dynamic(
+  () => import("@/features/notes/components/chart-editor"),
+  { ssr: false },
+);
+
+const DiagramEditor = dynamic(
+  () => import("@/features/notes/components/diagram-editor"),
   { ssr: false },
 );
 
@@ -141,6 +155,8 @@ function NoteTypeBadge({ type }: { type?: NoteType }) {
     text: { label: "Text", className: "bg-blue-500/15 text-blue-400" },
     readme: { label: "MD", className: "bg-green-500/15 text-green-400" },
     canvas: { label: "Canvas", className: "bg-purple-500/15 text-purple-400" },
+    chart: { label: "Chart", className: "bg-violet-500/15 text-violet-400" },
+    diagram: { label: "Diagram", className: "bg-violet-500/15 text-violet-400" },
   }[resolved];
 
   return (
@@ -338,6 +354,7 @@ const NOTE_TYPE_OPTIONS: {
   icon: typeof FileText;
   label: string;
   description: string;
+  aiOnly?: boolean;
 }[] = [
   {
     type: "text",
@@ -357,6 +374,20 @@ const NOTE_TYPE_OPTIONS: {
     label: "Canvas",
     description: "Freehand drawing with Excalidraw",
   },
+  {
+    type: "chart",
+    icon: BarChart3,
+    label: "Chart",
+    description: "AI-generated data visualizations",
+    aiOnly: true,
+  },
+  {
+    type: "diagram",
+    icon: Share2,
+    label: "Diagram",
+    description: "AI-generated flowcharts and mind maps",
+    aiOnly: true,
+  },
 ];
 
 function NoteTypePickerModal({
@@ -372,7 +403,16 @@ function NoteTypePickerModal({
   onSelect: (type: NoteType, clusterId: string | null) => void;
   isCreating: boolean;
 }) {
+  const { isPro } = usePlan();
   const [clusterId, setClusterId] = useState(GENERAL_CLUSTER_VALUE);
+
+  const handleTypeSelect = (type: NoteType, aiOnly?: boolean) => {
+    if (aiOnly && !isPro) {
+      toast.error(UPGRADE_TOAST);
+      return;
+    }
+    onSelect(type, clusterIdFromSelectValue(clusterId));
+  };
 
   const handleOpenChange = (next: boolean) => {
     if (!next) setClusterId(GENERAL_CLUSTER_VALUE);
@@ -395,16 +435,14 @@ function NoteTypePickerModal({
               className="w-full max-w-xs"
             />
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {NOTE_TYPE_OPTIONS.map(
-              ({ type, icon: Icon, label, description }) => (
+              ({ type, icon: Icon, label, description, aiOnly }) => (
                 <button
                   key={type}
                   type="button"
                   disabled={isCreating}
-                  onClick={() =>
-                    onSelect(type, clusterIdFromSelectValue(clusterId))
-                  }
+                  onClick={() => handleTypeSelect(type, aiOnly)}
                   className={cn(
                     "flex flex-col items-start gap-3 rounded-xl border border-[#ffffff10] bg-[#0a0a0f] p-4 text-left transition-colors",
                     "hover:border-[#7c5cfc]/50 hover:bg-[#16161f] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7c5cfc]/50",
@@ -415,7 +453,14 @@ function NoteTypePickerModal({
                     <Icon className="h-5 w-5 text-[#7c5cfc]" aria-hidden />
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-white">{label}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-medium text-white">{label}</p>
+                      {aiOnly ? (
+                        <span className="text-[9px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-[#7c5cfc]/20 text-[#7c5cfc]">
+                          AI
+                        </span>
+                      ) : null}
+                    </div>
                     <p className="text-xs text-white/45 mt-1 leading-relaxed">
                       {description}
                     </p>
@@ -879,6 +924,114 @@ const CanvasNoteEditor = memo(function CanvasNoteEditor({
   );
 });
 
+const ChartNoteEditor = memo(function ChartNoteEditor({
+  note,
+  clusters,
+  onSaved,
+  onClose,
+  onClusterChange,
+}: {
+  note: Note;
+  clusters: Cluster[];
+  onSaved: (note: Note) => void;
+  onClose: () => void;
+  onClusterChange: (value: string) => void;
+}) {
+  const { isPro } = usePlan();
+  const { title, setTitle, content, setContent, saveStatus } = useNoteAutoSave(
+    note,
+    onSaved,
+  );
+
+  return (
+    <section className="flex flex-col h-full w-full min-w-0 min-h-0 bg-[#0a0a0f]">
+      <header className="flex items-center justify-between gap-4 px-6 sm:px-10 pt-6 pb-4 border-b border-[#ffffff10] shrink-0">
+        <label htmlFor={`chart-title-${note.id}`} className="sr-only">
+          Note title
+        </label>
+        <input
+          id={`chart-title-${note.id}`}
+          type="text"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="Untitled"
+          className="flex-1 min-w-0 bg-transparent text-2xl sm:text-3xl font-semibold tracking-tight text-white/95 placeholder:text-white/25 focus:outline-none"
+        />
+        <EditorToolbar
+          note={note}
+          clusters={clusters}
+          saveStatus={saveStatus}
+          onClusterChange={onClusterChange}
+          onClose={onClose}
+        />
+      </header>
+
+      <div className="flex-1 min-h-0 overflow-auto px-6 sm:px-10 py-4">
+        <ChartEditor
+          key={note.id}
+          content={content}
+          onChange={setContent}
+          canGenerate={isPro}
+        />
+      </div>
+    </section>
+  );
+});
+
+const DiagramNoteEditor = memo(function DiagramNoteEditor({
+  note,
+  clusters,
+  onSaved,
+  onClose,
+  onClusterChange,
+}: {
+  note: Note;
+  clusters: Cluster[];
+  onSaved: (note: Note) => void;
+  onClose: () => void;
+  onClusterChange: (value: string) => void;
+}) {
+  const { isPro } = usePlan();
+  const { title, setTitle, content, setContent, saveStatus } = useNoteAutoSave(
+    note,
+    onSaved,
+  );
+
+  return (
+    <section className="flex flex-col h-full w-full min-w-0 min-h-0 bg-[#0a0a0f]">
+      <header className="flex items-center justify-between gap-4 px-6 sm:px-10 pt-6 pb-4 border-b border-[#ffffff10] shrink-0">
+        <label htmlFor={`diagram-title-${note.id}`} className="sr-only">
+          Note title
+        </label>
+        <input
+          id={`diagram-title-${note.id}`}
+          type="text"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="Untitled"
+          className="flex-1 min-w-0 bg-transparent text-2xl sm:text-3xl font-semibold tracking-tight text-white/95 placeholder:text-white/25 focus:outline-none"
+        />
+        <EditorToolbar
+          note={note}
+          clusters={clusters}
+          saveStatus={saveStatus}
+          onClusterChange={onClusterChange}
+          onClose={onClose}
+        />
+      </header>
+
+      <div className="flex-1 min-h-0 overflow-auto px-6 sm:px-10 py-4">
+        <DiagramEditor
+          key={note.id}
+          content={content}
+          onChange={setContent}
+          canGenerate={isPro}
+        />
+      </div>
+    </section>
+  );
+});
+
 const NoteEditor = memo(function NoteEditor({
   note,
   clusters,
@@ -906,6 +1059,26 @@ const NoteEditor = memo(function NoteEditor({
     case "canvas":
       return (
         <CanvasNoteEditor
+          note={note}
+          clusters={clusters}
+          onSaved={onSaved}
+          onClose={onClose}
+          onClusterChange={onClusterChange}
+        />
+      );
+    case "chart":
+      return (
+        <ChartNoteEditor
+          note={note}
+          clusters={clusters}
+          onSaved={onSaved}
+          onClose={onClose}
+          onClusterChange={onClusterChange}
+        />
+      );
+    case "diagram":
+      return (
+        <DiagramNoteEditor
           note={note}
           clusters={clusters}
           onSaved={onSaved}

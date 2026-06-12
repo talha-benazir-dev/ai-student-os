@@ -3,6 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import type { WidgetId } from "@/features/analytics/types/widgets";
+import {
+  localDateKeyFromISO,
+  localDateRange,
+  startOfLocalDayDaysAgo,
+} from "@/features/analytics/lib/date-utils";
 
 type ActionResult<T> = { data: T | null; error: string | null };
 
@@ -47,8 +52,7 @@ export async function getDailyStudyTime(days: number = 30): Promise<ActionResult
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) return { data: null, error: "Not authenticated." };
 
-  const since = new Date();
-  since.setDate(since.getDate() - days);
+  const since = startOfLocalDayDaysAgo(days);
 
   const { data, error } = await supabase
     .from("study_sessions")
@@ -59,15 +63,11 @@ export async function getDailyStudyTime(days: number = 30): Promise<ActionResult
 
   if (error) return { data: null, error: error.message };
 
-  // Group by date
-  const map: Record<string, number> = {};
-  for (let i = 0; i < days; i++) {
-    const d = new Date();
-    d.setDate(d.getDate() - (days - 1 - i));
-    map[d.toISOString().split("T")[0]] = 0;
-  }
+  const map: Record<string, number> = Object.fromEntries(
+    localDateRange(days).map((date) => [date, 0]),
+  );
   for (const s of data ?? []) {
-    const date = s.started_at.split("T")[0];
+    const date = localDateKeyFromISO(s.started_at);
     if (map[date] !== undefined) map[date] += s.duration_minutes ?? 0;
   }
 
@@ -79,8 +79,7 @@ export async function getTaskCompletionRate(days: number = 30): Promise<ActionRe
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) return { data: null, error: "Not authenticated." };
 
-  const since = new Date();
-  since.setDate(since.getDate() - days);
+  const since = startOfLocalDayDaysAgo(days);
 
   const { data, error } = await supabase
     .from("tasks")
@@ -91,14 +90,11 @@ export async function getTaskCompletionRate(days: number = 30): Promise<ActionRe
 
   if (error) return { data: null, error: error.message };
 
-  const map: Record<string, number> = {};
-  for (let i = 0; i < days; i++) {
-    const d = new Date();
-    d.setDate(d.getDate() - (days - 1 - i));
-    map[d.toISOString().split("T")[0]] = 0;
-  }
+  const map: Record<string, number> = Object.fromEntries(
+    localDateRange(days).map((date) => [date, 0]),
+  );
   for (const t of data ?? []) {
-    const date = t.updated_at.split("T")[0];
+    const date = localDateKeyFromISO(t.updated_at);
     if (map[date] !== undefined) map[date] += 1;
   }
 

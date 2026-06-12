@@ -15,6 +15,19 @@ export async function startSession(
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) return { data: null, error: "Not authenticated." };
 
+  const { data: active } = await supabase
+    .from("study_sessions")
+    .select("id, started_at")
+    .eq("user_id", user.id)
+    .is("ended_at", null)
+    .order("started_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (active) {
+    return { data: { id: active.id, started_at: active.started_at }, error: null };
+  }
+
   const { data, error } = await supabase
     .from("study_sessions")
     .insert({
@@ -29,22 +42,49 @@ export async function startSession(
   return { data, error: null };
 }
 
+export async function getActiveSession(): Promise<
+  ActionResult<{ id: string; started_at: string; cluster_id: string | null }>
+> {
+  const supabase = await createClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) return { data: null, error: "Not authenticated." };
+
+  const { data, error } = await supabase
+    .from("study_sessions")
+    .select("id, started_at, cluster_id")
+    .eq("user_id", user.id)
+    .is("ended_at", null)
+    .order("started_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) return { data: null, error: error.message };
+  return { data, error: null };
+}
+
 export async function endSession(
-  sessionId: string,
-  durationMinutes: number
-): Promise<ActionResult<{ id: string }>> {
+  sessionId: string
+): Promise<ActionResult<{ id: string; duration_minutes: number }>> {
   const supabase = await createClient();
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) return { data: null, error: "Not authenticated." };
 
   const { data: session, error: fetchError } = await supabase
     .from("study_sessions")
-    .select("cluster_id")
+    .select("cluster_id, started_at")
     .eq("id", sessionId)
     .eq("user_id", user.id)
+    .is("ended_at", null)
     .single();
 
   if (fetchError) return { data: null, error: fetchError.message };
+
+  const durationMinutes = Math.max(
+    1,
+    Math.round(
+      (Date.now() - new Date(session.started_at).getTime()) / 60000,
+    ),
+  );
 
   const { error } = await supabase
     .from("study_sessions")
@@ -65,7 +105,7 @@ export async function endSession(
   if (session?.cluster_id) {
     revalidatePath(`/clusters/${session.cluster_id}`);
   }
-  return { data: { id: sessionId }, error: null };
+  return { data: { id: sessionId, duration_minutes: durationMinutes }, error: null };
 }
 
 // Called internally after endSession — not exported as a server action

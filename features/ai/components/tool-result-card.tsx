@@ -19,7 +19,17 @@ type ToolResultCardProps = {
   card: ToolResultCardData;
 };
 
+function isRenderableCard(
+  card: ToolResultCardData,
+): card is ToolResultCardData & { type: keyof typeof ICONS } {
+  return card.type in ICONS;
+}
+
 export function ToolResultCard({ card }: ToolResultCardProps) {
+  if (!isRenderableCard(card)) {
+    return null;
+  }
+
   const Icon = ICONS[card.type];
 
   return (

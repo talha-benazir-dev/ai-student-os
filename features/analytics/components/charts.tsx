@@ -1,10 +1,12 @@
 "use client";
 
+import { localDateKey } from "@/features/analytics/lib/date-utils";
+
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 function shortDate(dateStr: string) {
-  const d = new Date(dateStr);
-  return d.toLocaleDateString("en", { month: "short", day: "numeric" });
+  const [y, m, d] = dateStr.split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString("en", { month: "short", day: "numeric" });
 }
 
 // ── Daily Study Time ──────────────────────────────────────────────────────────
@@ -117,8 +119,9 @@ export function ActivityHeatmap({ data }: { data: { date: string; minutes: numbe
   const cells: { col: number; row: number; date: string; minutes: number }[] = [];
   for (let i = 0; i < COLS * ROWS; i++) {
     const d = new Date();
+    d.setHours(0, 0, 0, 0);
     d.setDate(d.getDate() - (COLS * ROWS - 1 - i));
-    const dateStr = d.toISOString().split("T")[0];
+    const dateStr = localDateKey(d);
     cells.push({ col: Math.floor(i / ROWS), row: i % ROWS, date: dateStr, minutes: dateMap[dateStr] ?? 0 });
   }
 

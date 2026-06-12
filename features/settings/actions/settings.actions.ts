@@ -67,10 +67,6 @@ export async function updateSettings(
     updateData.name = settingsData.name;
   }
 
-  if (settingsData.plan !== undefined) {
-    updateData.plan = settingsData.plan;
-  }
-
   if (settingsData.theme !== undefined) {
     updateData.theme = settingsData.theme;
   }

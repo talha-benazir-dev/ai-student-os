@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { Pencil, Plus, Sparkles, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,6 +23,7 @@ import {
 import type { Cluster } from "@/features/clusters/types";
 import { formatStudyHours } from "@/features/study-sessions/utils/format-study-hours";
 import { useClusters } from "@/providers/clusters-provider";
+import { useAIDrawer } from "@/providers/ai-drawer-provider";
 
 const COLOR_PRESETS = [
   "#7c5cfc",
@@ -49,6 +50,7 @@ export function ClustersClient({
     updateCluster: updateClusterCtx,
     removeCluster,
   } = useClusters();
+  const { openDrawer } = useAIDrawer();
   const [clusters, setClusters] = useState<Cluster[]>(initialClusters);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -188,6 +190,21 @@ export function ClustersClient({
                     <span className="text-xs font-mono tabular-nums text-muted-foreground">
                       {formatStudyHours(studyMinutesByCluster[cluster.id] ?? 0)}
                     </span>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openDrawer({
+                          type: "cluster",
+                          clusterIds: [cluster.id],
+                          clusterNames: [cluster.name],
+                        });
+                      }}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-violet-400 border border-[#7c5cfc30] bg-[#7c5cfc08] hover:bg-[#7c5cfc15] transition-colors"
+                    >
+                      <Sparkles className="w-3.5 h-3.5" />
+                      Autopilot
+                    </button>
                     <button
                       type="button"
                       onClick={() => handleEdit(cluster)}

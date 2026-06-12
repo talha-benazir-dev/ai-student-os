@@ -10,6 +10,5 @@ export type UserSettings = {
 
 export type UpdateSettingsData = {
   name?: string;
-  plan?: "free" | "pro" | "enterprise";
   theme?: string;
 };

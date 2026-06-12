@@ -27,6 +27,7 @@ export async function createDocument(
   file_size: number,
   cluster_id: string | null = null,
   cloudinary_public_id: string,
+  rawText: string,
 ) {
   const supabase = await createClient();
 
@@ -45,6 +46,7 @@ export async function createDocument(
         file_size,
         cluster_id,
         cloudinary_public_id,
+        raw_text: rawText,
         page_count: null,
         ai_summary: null,
       },

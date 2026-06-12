@@ -15,6 +15,11 @@ export type Message = {
   role: MessageRole
   content: string
   toolResults?: ToolResultCard[]
+  questions?: {
+    id: string
+    question: string
+    options: { label: string; value: string }[]
+  }[]
   isStreaming?: boolean
   createdAt: Date
 }

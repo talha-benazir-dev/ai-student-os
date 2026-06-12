@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createHash } from "crypto";
+import { createRequire } from "module";
 
 export async function POST(req: NextRequest) {
   try {
@@ -29,6 +30,23 @@ export async function POST(req: NextRequest) {
         { error: "Missing required fields" },
         { status: 400 },
       );
+    }
+
+    let rawText = "";
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+      console.log("PDF buffer size:", buffer.length);
+      const require = createRequire(import.meta.url);
+      const pdfParse = require("pdf-parse/lib/pdf-parse.js") as (
+        data: Buffer,
+      ) => Promise<{ text: string }>;
+      const parsed = await pdfParse(buffer);
+      console.log("Parsed text length:", parsed.text?.length);
+      rawText = parsed.text?.trim() ?? "";
+    } catch (err) {
+      console.error("PDF text extraction error:", err);
+      rawText = "";
     }
 
     const timestamp = Math.floor(Date.now() / 1000);
@@ -80,6 +98,7 @@ export async function POST(req: NextRequest) {
       {
         url: data.secure_url,
         public_id: data.public_id,
+        rawText,
       },
       { status: 200 },
     );

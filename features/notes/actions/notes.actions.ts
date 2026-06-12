@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { requireProAction } from "@/lib/ai/require-pro";
 import type { Note, NoteType, NoteUpdate } from "@/features/notes/types";
 
 type ActionResult<T> = {
@@ -31,9 +32,17 @@ export async function getNotes(): Promise<ActionResult<Note[]>> {
   return { data: (data ?? []) as Note[], error: null };
 }
 
+export type CreateNoteInput = {
+  title: string;
+  type: NoteType;
+  content: string;
+  cluster_id?: string | null;
+};
+
 export async function createNote(
-  type: NoteType = "text",
+  typeOrInput: NoteType | CreateNoteInput,
   cluster_id?: string | null,
+  overrides?: { title?: string; content?: string },
 ): Promise<ActionResult<Note>> {
   const supabase = await createClient();
   const {
@@ -45,13 +54,34 @@ export async function createNote(
     return { data: null, error: "You must be signed in to create notes." };
   }
 
+  const isInputObject =
+    typeof typeOrInput === "object" && typeOrInput !== null && "type" in typeOrInput;
+
+  const type = isInputObject ? typeOrInput.type : typeOrInput;
+  const resolvedClusterId = isInputObject
+    ? (typeOrInput.cluster_id ?? null)
+    : (cluster_id ?? null);
+  const title = isInputObject
+    ? typeOrInput.title
+    : (overrides?.title ?? "Untitled");
+  const content = isInputObject
+    ? typeOrInput.content
+    : (overrides?.content ?? "");
+
+  if (type === "chart" || type === "diagram") {
+    const gate = await requireProAction();
+    if ("error" in gate) {
+      return { data: null, error: gate.error };
+    }
+  }
+
   const { data, error } = await supabase
     .from("notes")
     .insert({
       user_id: user.id,
-      title: "Untitled",
-      content: "",
-      cluster_id: cluster_id ?? null,
+      title,
+      content,
+      cluster_id: resolvedClusterId,
       type,
     })
     .select()

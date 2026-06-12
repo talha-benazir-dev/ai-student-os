@@ -3,8 +3,18 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowUp, Check, Plus, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAIDrawer } from "@/providers/ai-drawer-provider";
+import { useClusters } from "@/providers/clusters-provider";
 
 const MAX_ROWS = 4;
+
+const slashCommands = [
+  { command: "/studypack", description: "Generate a study pack from a document" },
+  { command: "/autopilot", description: "Set up a full study plan for a cluster" },
+  { command: "/note", description: "Create a note" },
+  { command: "/task", description: "Create a task" },
+  { command: "/flashcard", description: "Create flashcards" },
+];
 
 type ClusterOption = {
   id: string;
@@ -33,14 +43,24 @@ export function ChatInput({
   onClusterSelect,
   onCurriculumToggle,
 }: ChatInputProps) {
+  const { openDrawer } = useAIDrawer();
+  const { clusters: contextClusters } = useClusters();
   const [value, setValue] = useState("");
   const [popoverOpen, setPopoverOpen] = useState(false);
+  const [slashOpen, setSlashOpen] = useState(false);
+  const [autopilotPickerOpen, setAutopilotPickerOpen] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const slashRef = useRef<HTMLDivElement>(null);
 
   const selectedCluster = clusters.find((c) => c.id === selectedClusterId);
   const showTopRow = Boolean(selectedClusterName) || curriculumMode;
+  const showSlashMenu =
+    slashOpen && /^\/\S*$/.test(value) && value.length > 0;
+  const filteredSlashCommands = slashCommands.filter(
+    (item) => value === "/" || item.command.startsWith(value),
+  );
 
   const resizeTextarea = useCallback(() => {
     const el = textareaRef.current;
@@ -74,6 +94,69 @@ export function ChatInput({
     document.addEventListener("mousedown", handleOutsideClick);
     return () => document.removeEventListener("mousedown", handleOutsideClick);
   }, [popoverOpen]);
+
+  useEffect(() => {
+    if (!slashOpen && !autopilotPickerOpen) return;
+
+    const handleOutsideClick = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (
+        slashRef.current?.contains(target) ||
+        textareaRef.current?.contains(target)
+      ) {
+        return;
+      }
+      setSlashOpen(false);
+      setAutopilotPickerOpen(false);
+    };
+
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => document.removeEventListener("mousedown", handleOutsideClick);
+  }, [slashOpen, autopilotPickerOpen]);
+
+  const handleSlashSelect = (command: string) => {
+    if (command === "/studypack") {
+      setValue("");
+      setSlashOpen(false);
+      // TODO: replace with document picker when document selector UI is built
+      openDrawer({ type: "manual" });
+      return;
+    }
+
+    if (command === "/autopilot") {
+      setValue("");
+      setSlashOpen(false);
+
+      if (contextClusters.length === 0) {
+        setValue("You have no clusters yet. Create one first.");
+        return;
+      }
+
+      if (contextClusters.length === 1) {
+        openDrawer({
+          type: "cluster",
+          clusterIds: [contextClusters[0].id],
+          clusterNames: [contextClusters[0].name],
+        });
+        return;
+      }
+
+      setAutopilotPickerOpen(true);
+      return;
+    }
+
+    setValue(`${command} `);
+    setSlashOpen(false);
+  };
+
+  const handleAutopilotClusterSelect = (cluster: ClusterOption) => {
+    openDrawer({
+      type: "cluster",
+      clusterIds: [cluster.id],
+      clusterNames: [cluster.name],
+    });
+    setAutopilotPickerOpen(false);
+  };
 
   const handleSend = () => {
     const trimmed = value.trim();
@@ -131,6 +214,56 @@ export function ChatInput({
               </button>
             </span>
           ) : null}
+        </div>
+      ) : null}
+
+      {autopilotPickerOpen ? (
+        <div
+          ref={slashRef}
+          className="rounded-2xl border border-[#ffffff10] bg-[#0f0f17] p-2 shadow-xl"
+        >
+          <p className="mb-2 px-2 text-xs font-medium text-white/40">
+            Choose a cluster for Autopilot
+          </p>
+          <div className="flex flex-col gap-0.5">
+            {contextClusters.map((cluster) => (
+              <button
+                key={cluster.id}
+                type="button"
+                onClick={() => handleAutopilotClusterSelect(cluster)}
+                className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-white hover:bg-[#ffffff08]"
+              >
+                <span
+                  className="h-2 w-2 shrink-0 rounded-full"
+                  style={{ backgroundColor: cluster.color }}
+                />
+                {cluster.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {showSlashMenu && filteredSlashCommands.length > 0 ? (
+        <div
+          ref={slashRef}
+          className="rounded-2xl border border-[#ffffff10] bg-[#0f0f17] p-2 shadow-xl"
+        >
+          <div className="flex flex-col gap-0.5">
+            {filteredSlashCommands.map((item) => (
+              <button
+                key={item.command}
+                type="button"
+                onClick={() => handleSlashSelect(item.command)}
+                className="flex cursor-pointer items-center justify-between gap-3 rounded-lg px-2 py-1.5 text-left hover:bg-[#ffffff08]"
+              >
+                <span className="text-sm font-medium text-violet-400">
+                  {item.command}
+                </span>
+                <span className="text-xs text-white/50">{item.description}</span>
+              </button>
+            ))}
+          </div>
         </div>
       ) : null}
 
@@ -219,7 +352,16 @@ export function ChatInput({
         <textarea
           ref={textareaRef}
           value={value}
-          onChange={(e) => setValue(e.target.value)}
+          onChange={(e) => {
+            const next = e.target.value;
+            setValue(next);
+            if (next.startsWith("/")) {
+              setSlashOpen(true);
+              setAutopilotPickerOpen(false);
+            } else {
+              setSlashOpen(false);
+            }
+          }}
           onKeyDown={handleKeyDown}
           placeholder="Ask anything…"
           autoComplete="off"

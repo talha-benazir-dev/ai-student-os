@@ -54,10 +54,12 @@ type OnboardingFlowProps = {
 export function OnboardingFlow({ prefillName }: OnboardingFlowProps) {
   const router = useRouter();
   const nameInputRef = useRef<HTMLInputElement>(null);
+  const countryInputRef = useRef<HTMLInputElement>(null);
   const subjectInputRef = useRef<HTMLInputElement>(null);
 
   const [step, setStep] = useState(1);
   const [name, setName] = useState(prefillName);
+  const [country, setCountry] = useState("");
   const [studyStage, setStudyStage] = useState<StudyStage | null>(null);
   const [subjects, setSubjects] = useState<string[]>([]);
   const [subjectInput, setSubjectInput] = useState("");
@@ -76,17 +78,20 @@ export function OnboardingFlow({ prefillName }: OnboardingFlowProps) {
   useEffect(() => {
     if (step === 1) {
       nameInputRef.current?.focus();
-    } else if (step === 3) {
+    } else if (step === 2) {
+      countryInputRef.current?.focus();
+    } else if (step === 4) {
       subjectInputRef.current?.focus();
     }
   }, [step]);
 
   const nameValid = name.trim().length >= 2;
+  const countryValid = country.trim().length >= 2;
   const subjectsValid = subjects.length >= 1;
 
   const handleStageSelect = (stage: StudyStage) => {
     setStudyStage(stage);
-    window.setTimeout(() => goToStep(3), 300);
+    window.setTimeout(() => goToStep(4), 300);
   };
 
   const addSubject = (raw: string) => {
@@ -113,13 +118,14 @@ export function OnboardingFlow({ prefillName }: OnboardingFlowProps) {
   };
 
   const handleSubmit = async () => {
-    if (!nameValid || !studyStage || !subjectsValid) return;
+    if (!nameValid || !countryValid || !studyStage || !subjectsValid) return;
 
     setIsSubmitting(true);
     setSubmitError(null);
 
     const { error } = await completeOnboarding({
       name: name.trim(),
+      country: country.trim(),
       study_stage: studyStage,
       subjects,
     });
@@ -144,7 +150,7 @@ export function OnboardingFlow({ prefillName }: OnboardingFlowProps) {
           Nucleus
         </h1>
         <div className="flex gap-2">
-          {[1, 2, 3].map((segment) => (
+          {[1, 2, 3, 4].map((segment) => (
             <div
               key={segment}
               className="h-1 flex-1 overflow-hidden rounded-full bg-[#ffffff10]"
@@ -169,7 +175,7 @@ export function OnboardingFlow({ prefillName }: OnboardingFlowProps) {
               : "translate-y-0 opacity-100",
           )}
         >
-          <p className="mb-2 text-xs text-white/45">Step {step} of 3</p>
+          <p className="mb-2 text-xs text-white/45">Step {step} of 4</p>
 
           {step === 1 && (
             <div className="space-y-6">
@@ -193,6 +199,27 @@ export function OnboardingFlow({ prefillName }: OnboardingFlowProps) {
           )}
 
           {step === 2 && (
+            <div className="space-y-6">
+              <StepHeader
+                heading="Where are you from?"
+                subtext="This helps Nucleus align with your curriculum."
+              />
+              <input
+                ref={countryInputRef}
+                type="text"
+                value={country}
+                onChange={(e) => setCountry(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && countryValid) goToStep(3);
+                }}
+                placeholder="Your country"
+                autoComplete="off"
+                className={INPUT_CLASS}
+              />
+            </div>
+          )}
+
+          {step === 3 && (
             <div className="space-y-6">
               <StepHeader
                 heading="Where are you in your journey?"
@@ -230,7 +257,7 @@ export function OnboardingFlow({ prefillName }: OnboardingFlowProps) {
             </div>
           )}
 
-          {step === 3 && (
+          {step === 4 && (
             <div className="space-y-6">
               <StepHeader
                 heading="What are you studying?"
@@ -322,7 +349,18 @@ export function OnboardingFlow({ prefillName }: OnboardingFlowProps) {
                 </button>
               )}
 
-              {step === 3 && (
+              {step === 2 && (
+                <button
+                  type="button"
+                  onClick={() => goToStep(3)}
+                  disabled={!countryValid}
+                  className={PRIMARY_BUTTON_CLASS}
+                >
+                  Next
+                </button>
+              )}
+
+              {step === 4 && (
                 <button
                   type="button"
                   onClick={handleSubmit}

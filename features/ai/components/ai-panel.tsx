@@ -16,11 +16,6 @@ import type { AutonomyLevel } from "@/features/ai/types";
 import { ChatThread } from "@/features/ai/components/chat-thread";
 import { ChatInput } from "@/features/ai/components/chat-input";
 
-const MODE_OPTIONS = [
-  { curriculumMode: false, label: "Normal" },
-  { curriculumMode: true, label: "Curriculum" },
-] as const;
-
 const AUTONOMY_OPTIONS: { value: AutonomyLevel; label: string }[] = [
   { value: "manual", label: "Manual" },
   { value: "assisted", label: "Assisted" },
@@ -36,14 +31,14 @@ export function AIPanel({ className }: AIPanelProps = {}) {
   const {
     messages,
     isLoading,
-    curriculumMode,
     autonomy,
     selectedClusterId,
     selectedClusterName,
+    curriculumMode,
     sendMessage,
-    setCurriculumMode,
     setAutonomy,
     setCluster,
+    setCurriculumMode,
     setProfile,
   } = useChat();
 
@@ -60,7 +55,8 @@ export function AIPanel({ className }: AIPanelProps = {}) {
         .from("profiles")
         .select("name, study_stage, subjects, country")
         .eq("id", user.id)
-        .single();
+        .limit(1)
+        .maybeSingle();
 
       if (data) {
         setProfile({
@@ -75,76 +71,27 @@ export function AIPanel({ className }: AIPanelProps = {}) {
     fetchProfile();
   }, [setProfile]);
 
-  const clusterOptions = clusters.map((c) => ({
-    id: c.id,
-    name: c.name,
-    color: c.color,
-  }));
-
   return (
     <div
       className={cn(
-        "flex w-full flex-col",
-        className ?? "h-[calc(100vh-80px)]",
+        "flex flex-col px-4 sm:px-6 lg:px-10 xl:px-12",
+        className ?? "h-[calc(100vh-64px)]",
       )}
     >
-      <div className="flex items-center gap-3 border-b border-border px-1 py-3">
-        <div className="flex items-center gap-1">
-          {MODE_OPTIONS.map((option) => (
-            <button
-              key={option.label}
-              type="button"
-              onClick={() => setCurriculumMode(option.curriculumMode)}
-              className={cn(
-                "rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors",
-                curriculumMode === option.curriculumMode
-                  ? "border-violet-500/30 bg-[#7c5cfc]/20 text-violet-400"
-                  : "border-transparent text-muted-foreground",
-              )}
-            >
-              {option.label}
-            </button>
-          ))}
-        </div>
-
-        <Select
-          value={autonomy}
-          onValueChange={(value) => setAutonomy(value as AutonomyLevel)}
-        >
-          <SelectTrigger className="h-8 w-[120px] text-xs">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {AUTONOMY_OPTIONS.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        <div className="ml-auto">
+      <div className="flex shrink-0 items-center justify-between border-b border-[#ffffff08] py-4">
+        <h1 className="text-xl font-semibold tracking-tight">AI Workspace</h1>
+        <div className="flex items-center gap-3">
           <Select
-            value={selectedClusterId ?? "none"}
-            onValueChange={(value) => {
-              if (value === "none") {
-                setCluster(null, null);
-                return;
-              }
-              const cluster = clusters.find((c) => c.id === value);
-              if (cluster) {
-                setCluster(cluster.id, cluster.name);
-              }
-            }}
+            value={autonomy}
+            onValueChange={(value) => setAutonomy(value as AutonomyLevel)}
           >
-            <SelectTrigger className="h-8 w-[160px] text-xs">
-              <SelectValue placeholder="Scope" />
+            <SelectTrigger className="h-8 w-32 rounded-lg border-[#ffffff10] bg-[#0f0f17] text-xs text-white/70">
+              <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="none">No scope</SelectItem>
-              {clusters.map((cluster) => (
-                <SelectItem key={cluster.id} value={cluster.id}>
-                  {cluster.name}
+              {AUTONOMY_OPTIONS.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -152,17 +99,17 @@ export function AIPanel({ className }: AIPanelProps = {}) {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-1 py-4">
+      <div className="flex-1 overflow-y-auto py-6">
         <ChatThread messages={messages} />
       </div>
 
-      <div className="border-t border-border px-1 py-3">
+      <div className="shrink-0 border-t border-[#ffffff08] py-4">
         <ChatInput
           onSend={sendMessage}
           isLoading={isLoading}
-          clusters={clusterOptions}
-          selectedClusterName={selectedClusterName}
+          clusters={clusters}
           selectedClusterId={selectedClusterId}
+          selectedClusterName={selectedClusterName}
           curriculumMode={curriculumMode}
           onClusterSelect={setCluster}
           onCurriculumToggle={setCurriculumMode}

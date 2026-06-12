@@ -14,7 +14,9 @@ import {
   X,
   ExternalLink,
   FileIcon,
+  Sparkles,
 } from "lucide-react";
+import { useAIDrawer } from "@/providers/ai-drawer-provider";
 
 function formatBytes(bytes: number, decimals = 1) {
   if (!+bytes) return "0 B";
@@ -63,6 +65,13 @@ export function DocumentsPage({
   const [progress, setProgress] = useState(0);
   const [uploadError, setUploadError] = useState("");
   const [isDragActive, setIsDragActive] = useState(false);
+  const [pendingStudyPack, setPendingStudyPack] = useState<{
+    documentId: string;
+    documentTitle: string;
+    rawText: string;
+  } | null>(null);
+
+  const { openDrawer } = useAIDrawer();
 
   const clusterMap = useMemo(
     () => new Map(clusters.map((c) => [c.id, c])),
@@ -173,7 +182,7 @@ export function DocumentsPage({
 
       setProgress(100);
 
-      const { url, public_id } = await response.json();
+      const { url, public_id, rawText } = await response.json();
 
       const cluster_id = clusterIdFromSelectValue(selectedCluster);
       const { data: newDoc, error: dbError } = await createDocument(
@@ -182,12 +191,21 @@ export function DocumentsPage({
         file.size,
         cluster_id,
         public_id,
+        rawText ?? "",
       );
 
       if (dbError) throw dbError;
 
       if (newDoc) {
         setDocuments([newDoc, ...documents]);
+
+        if (rawText && rawText.length > 0) {
+          setPendingStudyPack({
+            documentId: newDoc.id,
+            documentTitle: title,
+            rawText: rawText ?? "",
+          });
+        }
       }
 
       setShowUpload(false);
@@ -425,6 +443,46 @@ export function DocumentsPage({
                 ))}
               </div>
             )}
+            {pendingStudyPack ? (
+              <div className="flex items-center justify-between gap-4 px-5 py-4 rounded-2xl border border-[#7c5cfc30] bg-[#7c5cfc08] mb-4">
+                <div className="flex items-center gap-3">
+                  <Sparkles className="w-5 h-5 text-violet-400 shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium text-white">
+                      Generate a study pack?
+                    </p>
+                    <p className="text-xs text-white/50 mt-0.5">
+                      Nucleus AI can create notes, flashcards and tasks from
+                      &quot;{pendingStudyPack.documentTitle}&quot;
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setPendingStudyPack(null)}
+                    className="px-3 py-1.5 text-xs text-white/50 hover:text-white transition-colors"
+                  >
+                    Not now
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      openDrawer({
+                        type: "document",
+                        documentId: pendingStudyPack.documentId,
+                        documentTitle: pendingStudyPack.documentTitle,
+                        rawText: pendingStudyPack.rawText,
+                      });
+                      setPendingStudyPack(null);
+                    }}
+                    className="px-4 py-1.5 rounded-lg bg-[#7c5cfc] hover:bg-[#8a6dfd] text-white text-xs font-medium transition-colors"
+                  >
+                    Generate →
+                  </button>
+                </div>
+              </div>
+            ) : null}
             {documents.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20 border border-dashed border-zinc-800 rounded-2xl bg-[#0f0f17]">
                 <div className="w-16 h-16 rounded-2xl bg-zinc-900 flex items-center justify-center mb-4">

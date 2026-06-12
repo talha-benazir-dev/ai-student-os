@@ -2,6 +2,8 @@
 
 import { useCallback, useReducer, useRef } from "react";
 import { nanoid } from "nanoid";
+import { toast } from "sonner";
+import { parseAiApiError, UPGRADE_TOAST } from "@/lib/ai/constants";
 import type {
   AutonomyLevel,
   ChatState,
@@ -142,6 +144,12 @@ export function useChat() {
       });
 
       if (!response.ok) {
+        const data = (await response.json().catch(() => ({}))) as {
+          error?: string;
+        };
+        if (parseAiApiError(response.status, data) === "upgrade_required") {
+          toast.error(UPGRADE_TOAST);
+        }
         throw new Error(`Request failed (${response.status})`);
       }
 

@@ -91,6 +91,7 @@ export async function completeOnboarding(
       {
         id: user.id,
         name: onboardingData.name,
+        country: onboardingData.country,
         study_stage: onboardingData.study_stage,
         subjects: onboardingData.subjects,
         onboarded: true,

@@ -4,6 +4,7 @@ import { AIShowcase } from "./ai-showcase";
 import { BackgroundFX } from "./background-fx";
 import { LandingCTA } from "./landing-cta";
 import { LandingFeatures } from "./landing-features";
+import { PricingSection } from "./pricing-section";
 import { LandingFooter } from "./landing-footer";
 import { LandingHero } from "./landing-hero";
 import { LandingNavbar } from "./landing-navbar";
@@ -18,6 +19,7 @@ export function LandingPage() {
       <LandingHero />
       <SocialStrip />
       <LandingFeatures />
+      <PricingSection />
       <AIShowcase />
       <LandingStats />
       <LandingCTA />

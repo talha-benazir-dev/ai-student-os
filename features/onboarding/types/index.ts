@@ -16,6 +16,7 @@ export type Profile = {
 
 export type OnboardingData = {
   name: string;
+  country: string;
   study_stage: StudyStage;
   subjects: string[];
 };

@@ -123,5 +123,33 @@ export const nucleusTools = [
       },
       required: ['cards']
     }
+  },
+  {
+    name: 'create_chart_note',
+    description: 'Create a chart note from a natural language description. Use when the user wants to visualize data as a chart.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        prompt: { type: 'string', description: 'What the chart should show' },
+        chartType: { type: 'string', enum: ['bar', 'line', 'pie', 'area'] },
+        title: { type: 'string' },
+        cluster_id: { type: 'string', description: 'Optional cluster ID' }
+      },
+      required: ['prompt', 'chartType', 'title']
+    }
+  },
+  {
+    name: 'create_diagram_note',
+    description: 'Create a diagram note from a natural language description. Use when the user wants a flowchart or mind map.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        prompt: { type: 'string', description: 'What the diagram should show' },
+        diagramType: { type: 'string', enum: ['flowchart', 'mindmap'] },
+        title: { type: 'string' },
+        cluster_id: { type: 'string', description: 'Optional cluster ID' }
+      },
+      required: ['prompt', 'diagramType', 'title']
+    }
   }
 ]

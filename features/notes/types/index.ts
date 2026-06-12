@@ -2,7 +2,7 @@ import type { Cluster } from "@/features/clusters/types";
 
 export type { Cluster };
 
-export type NoteType = "text" | "readme" | "canvas";
+export type NoteType = "text" | "readme" | "canvas" | "chart" | "diagram";
 
 export type Note = {
   id: string;
