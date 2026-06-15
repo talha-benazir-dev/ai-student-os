@@ -64,40 +64,12 @@ export function StatCard({
           </span>
         )}
       </div>
-      <div className="relative flex items-end justify-between gap-2">
-        <div className="flex items-baseline gap-1 min-w-0">
-          <span className="text-3xl font-semibold tracking-tight">{value}</span>
-          {unit && (
-            <span className="text-sm text-muted-foreground">{unit}</span>
-          )}
-        </div>
-        <div className="shrink-0">
-          <Sparkline active={active} />
-        </div>
+      <div className="relative flex items-baseline gap-1 min-w-0">
+        <span className="text-3xl font-semibold tracking-tight">{value}</span>
+        {unit && (
+          <span className="text-sm text-muted-foreground">{unit}</span>
+        )}
       </div>
     </div>
-  );
-}
-
-function Sparkline({ active }: { active?: boolean }) {
-  const color = active ? "var(--primary)" : "var(--muted-foreground)";
-
-  return (
-    <svg
-      width="72"
-      height="28"
-      viewBox="0 0 72 28"
-      fill="none"
-      className="opacity-90"
-    >
-      <path
-        d="M0 22 L10 20 L20 23 L30 14 L40 16 L50 9 L60 12 L72 4"
-        stroke={color}
-        strokeWidth="1.5"
-        fill="none"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
   );
 }

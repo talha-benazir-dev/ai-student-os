@@ -74,7 +74,7 @@ export function AIPanel({ className }: AIPanelProps = {}) {
   return (
     <div
       className={cn(
-        "flex flex-col px-4 sm:px-6 lg:px-10 xl:px-12",
+        "flex flex-col px-4",
         className ?? "h-[calc(100vh-64px)]",
       )}
     >

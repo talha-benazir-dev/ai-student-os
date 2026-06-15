@@ -19,6 +19,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import {
   CommandDialog,
   CommandEmpty,
@@ -226,14 +227,17 @@ export function CommandPaletteProvider({ children }: { children: ReactNode }) {
   );
 }
 
-export function DashboardCreateMenu() {
+export function DashboardCreateMenu({ className }: { className?: string }) {
   const { openCommand } = useCommandPalette();
 
   return (
     <Button
       type="button"
       onClick={openCommand}
-      className="h-9 px-3 rounded-lg bg-gradient-violet text-white text-sm font-medium gap-1.5 shadow-[0_0_20px_-4px_oklch(0.66_0.21_295/0.6)] hover:scale-[1.02] transition hover:bg-gradient-violet"
+      className={cn(
+        "h-9 px-3 rounded-lg bg-gradient-violet text-white text-sm font-medium gap-1.5 shadow-[0_0_20px_-4px_oklch(0.66_0.21_295/0.6)] hover:scale-[1.02] transition hover:bg-gradient-violet",
+        className,
+      )}
     >
       <Plus className="h-4 w-4" />
       New

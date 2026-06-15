@@ -29,7 +29,7 @@ export function ChatThread({ messages }: ChatThreadProps) {
 
   if (messages.length === 0) {
     return (
-      <div className="flex h-full flex-col items-center justify-center px-6 text-center">
+      <div className="flex flex-col items-center px-4 pt-12 text-center">
         <Sparkles className="mb-4 h-9 w-9 text-white/10" strokeWidth={1.5} />
         <p className="text-base font-medium text-white/20">Ask me anything.</p>
         <p className="mt-1 text-center text-sm text-white/20">

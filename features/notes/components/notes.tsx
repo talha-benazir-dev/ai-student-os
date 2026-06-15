@@ -546,28 +546,24 @@ const NoteListItem = memo(function NoteListItem({
   return (
     <div
       className={cn(
-        "group relative flex items-start gap-1 rounded-lg transition-all border border-transparent",
+        "group relative flex items-center gap-2 rounded-lg transition-all border border-transparent px-3 h-[64px] w-full",
         isActive
-          ? "bg-[#16161f] border-l-2 border-l-[#7c5cfc] border-[#ffffff10] shadow-[0_0_24px_-8px_rgba(124,92,252,0.35)]"
+          ? "bg-[#16161f] border-l-2 border-l-[#7c5cfc] border-[#ffffff10] shadow-[0_0_24px_-8px_rgba(124,92,252,0.35)] pl-[10px]"
           : "hover:bg-[#14141c] border-l-2 border-l-transparent",
       )}
     >
       <button
         type="button"
         onClick={() => onSelect(note)}
-        className={cn(
-          "flex-1 min-w-0 text-left py-2.5 pl-3 pr-3 transition-colors",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7c5cfc]/50 rounded-lg",
-          isActive && "pl-[10px]",
-        )}
+        className="flex-1 min-w-0 flex flex-col justify-center text-left h-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7c5cfc]/50 rounded-lg"
       >
-        <div className="flex items-center gap-1.5 min-w-0">
+        <div className="flex items-center gap-1.5 w-full min-w-0">
           <p className="text-sm font-medium text-white/90 truncate flex-1 min-w-0">
             {displayTitle(note.title)}
           </p>
           <NoteTypeBadge type={note.type} />
         </div>
-        <p className="text-[11px] text-white/40 mt-1 pr-8">
+        <p className="text-[11px] text-white/40 mt-1">
           {formatRelativeTime(note.updated_at)}
         </p>
       </button>
@@ -581,12 +577,12 @@ const NoteListItem = memo(function NoteListItem({
         }}
         aria-label={`Delete ${displayTitle(note.title)}`}
         className={cn(
-          "absolute right-3 bottom-2.5 h-7 w-7 text-white/35 hover:text-red-400 hover:bg-red-400/10 transition-all duration-200",
-          "opacity-0 group-hover:opacity-100 focus-visible:opacity-100 cursor-pointer",
-          isActive && "opacity-100",
+          "h-9 w-9 shrink-0 self-center text-white/35 hover:text-red-400 hover:bg-red-400/10 transition-all duration-200 ml-1",
+          "opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus-visible:opacity-100 cursor-pointer",
+          isActive && "sm:opacity-100",
         )}
       >
-        <Trash2 className="h-3.5 w-3.5" />
+        <Trash2 className="h-4 w-4" />
       </Button>
     </div>
   );

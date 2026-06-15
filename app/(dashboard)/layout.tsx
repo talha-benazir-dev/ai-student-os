@@ -1,4 +1,5 @@
 import { AppShell } from "@/features/dashboard/components/app-shell";
+import { CommandPaletteProvider } from "@/features/dashboard/components/create-command-menu";
 import { DashboardProviders } from "./dashboard-providers";
 import { createClient } from "@/lib/supabase/server";
 import type { UserPlan } from "@/lib/ai/plan";
@@ -33,7 +34,9 @@ export default async function DashboardLayout({
 
   return (
     <DashboardProviders initialPlan={plan}>
-      <AppShell>{children}</AppShell>
+      <CommandPaletteProvider>
+        <AppShell>{children}</AppShell>
+      </CommandPaletteProvider>
     </DashboardProviders>
   );
 }

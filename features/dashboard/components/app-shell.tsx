@@ -4,6 +4,7 @@ import { ReactNode, useState } from "react";
 import { usePathname } from "next/navigation";
 import { AppSidebar, MobileSidebar } from "./app-sidebar";
 import { AIPanelSheet } from "./ai-panel";
+import { DashboardCreateMenu } from "./create-command-menu";
 import { Menu, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ClustersProvider } from "@/providers/clusters-provider";
@@ -47,7 +48,9 @@ export function AppShell({
                 </span>
               </div>
 
-              {showDashboardAI && pathname === "/dashboard" ? (
+              {pathname === "/dashboard" ? (
+                <DashboardCreateMenu className="sm:hidden h-8 px-2.5 text-xs" />
+              ) : showDashboardAI ? (
                 <Button
                   variant="ghost"
                   size="icon"

@@ -1,7 +1,6 @@
 import { Metadata } from "next";
 import Link from "next/link";
 import {
-  CommandPaletteProvider,
   DashboardCommandSearch,
   DashboardCreateMenu,
 } from "@/features/dashboard/components/create-command-menu";
@@ -171,24 +170,23 @@ export default async function Dashboard() {
       : "All clear. Nothing pending — add tasks to stay on track.";
 
   return (
-    <CommandPaletteProvider>
     <div className="px-4 sm:px-6 lg:px-10 xl:px-12 py-6 sm:py-8 mx-auto w-full max-w-350">
       {/* Header */}
-      <div className="flex items-start justify-between gap-4 mb-6 sm:mb-7">
-        <div className="min-w-0">
-          <h1 className="text-2xl sm:text-[28px] font-semibold tracking-tight">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4 mb-6 sm:mb-7">
+        <div className="min-w-0 flex-1">
+          <h1 className="text-2xl sm:text-[28px] font-semibold tracking-tight break-words">
             Welcome back, {profileName}
           </h1>
           <p className="text-xs sm:text-sm text-muted-foreground mt-1">
             {subtitle}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           <button className="h-9 w-9 rounded-lg border border-border bg-card hover:bg-accent transition flex items-center justify-center text-muted-foreground hover:text-foreground">
             <Bell className="h-4 w-4" />
           </button>
           <StudyTimer />
-          <DashboardCreateMenu />
+          <DashboardCreateMenu className="hidden sm:inline-flex" />
         </div>
       </div>
 
@@ -272,7 +270,6 @@ export default async function Dashboard() {
         )}
       </section>
     </div>
-    </CommandPaletteProvider>
   );
 }
 
