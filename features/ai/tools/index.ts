@@ -103,12 +103,13 @@ export const nucleusTools = [
   },
   {
     name: 'create_flashcard_set',
-    description: 'Creates multiple flashcards at once. Always use this when generating 2 or more flashcards.',
+    description: 'Creates multiple flashcards at once. Always use this when generating 2 or more flashcards. Pass cards as an array of objects with front, back, and difficulty — never as a string or keyed object. Max 30 cards per call.',
     input_schema: {
       type: 'object',
       properties: {
         cards: {
           type: 'array',
+          description: 'Array of flashcard objects. Each must have front (string), back (string), and difficulty (easy|medium|hard).',
           items: {
             type: 'object',
             properties: {

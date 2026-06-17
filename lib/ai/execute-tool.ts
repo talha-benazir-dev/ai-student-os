@@ -2,6 +2,10 @@ import { createClient } from "@/lib/supabase/server";
 import { createNote } from "@/features/notes/actions/notes.actions";
 import { generateChart, type ChartType } from "@/lib/ai/generate-chart";
 import { generateDiagram, type DiagramType } from "@/lib/ai/generate-diagram";
+import {
+  MAX_FLASHCARDS_PER_SET,
+  normalizeFlashcardSetInput,
+} from "@/lib/ai/normalize-flashcard-set";
 
 export async function executeToolCall(
   toolName: string,
@@ -205,11 +209,12 @@ export async function executeToolCall(
       }
     }
     case "create_flashcard_set": {
-      const cards = toolInput.cards as {
-        front: string;
-        back: string;
-        difficulty: string;
-      }[];
+      const normalized = normalizeFlashcardSetInput(toolInput.cards);
+      if ("error" in normalized) {
+        return JSON.stringify({ error: normalized.error });
+      }
+
+      const { cards, truncated } = normalized;
       const cluster_id = (toolInput.cluster_id as string | undefined) ?? null;
       const today = new Date().toISOString().split("T")[0];
 
@@ -227,10 +232,16 @@ export async function executeToolCall(
         if (error) return JSON.stringify({ error: error.message });
       }
 
+      const subtitle = truncated
+        ? `Added to cluster (capped at ${MAX_FLASHCARDS_PER_SET} cards — call again for more)`
+        : toolInput.cluster_id
+          ? "Added to cluster"
+          : "General";
+
       return JSON.stringify({
         type: "create_flashcard_set",
         title: `${cards.length} flashcards created`,
-        subtitle: toolInput.cluster_id ? "Added to cluster" : "General",
+        subtitle,
       });
     }
     default:

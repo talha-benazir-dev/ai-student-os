@@ -1,5 +1,17 @@
 import type { DrawerContext } from "@/providers/ai-drawer-provider";
 import type { AutonomyLevel, Profile } from "@/features/ai/types";
+import {
+  buildClusterLanguageRules,
+  buildDocumentLanguageRules,
+} from "@/lib/ai/detect-language";
+import { MAX_FLASHCARDS_PER_SET } from "@/lib/ai/normalize-flashcard-set";
+
+const FLASHCARD_TOOL_RULES = `
+FLASHCARD TOOL RULES:
+- When calling create_flashcard_set, pass cards as a JSON array: [{ "front": "...", "back": "...", "difficulty": "easy"|"medium"|"hard" }, ...]
+- Never pass cards as a plain object, string, or double-nested { "cards": { ... } } structure.
+- Include 15–25 cards per call for study packs (hard max ${MAX_FLASHCARDS_PER_SET} per call). Use multiple create_flashcard_set calls if the document has more terms.
+- Every card must include front, back, and difficulty.`;
 
 function buildAutonomyContext(autonomy: AutonomyLevel): string {
   switch (autonomy) {
@@ -66,7 +78,8 @@ Behavior rules:
 - Always respond in markdown format
 - For physics, math, and science notes: use LaTeX for formulas — inline $I = V/R$ and block $$I = \\frac{V}{R}$$
 - Use \\frac{a}{b} for fractions, \\times for multiplication, \\Omega for ohms
-- Put each markdown table row on its own line (GFM table syntax)`;
+- Put each markdown table row on its own line (GFM table syntax)
+- Respond in the same language the student uses in their message. Do not switch to the country's primary language (${profile.country}) unless the student writes in that language or explicitly asks for it`;
 
   const scopeContext = scopedClusterId
     ? `\n\nScope context: The user has scoped this conversation to the cluster "${scopedClusterName}" (ID: ${scopedClusterId}). Default all content creation to this cluster unless the user explicitly says otherwise.`
@@ -80,7 +93,8 @@ Behavior rules:
     - Structure notes and explanations the way they are taught in ${profile.country} classrooms
     - When generating flashcards or tasks, prioritize topics that are heavily weighted in ${profile.country} national exams
     - Reference exam boards, grading patterns, and question styles specific to ${profile.country}
-    - Always mention if a topic is high-priority for national exams in ${profile.country}`
+    - Always mention if a topic is high-priority for national exams in ${profile.country}
+    - Curriculum alignment must NOT override the language of an uploaded document or the student's message — match their language first`
     : "";
 
   return base + buildAutonomyContext(autonomy) + scopeContext + curriculumContext;
@@ -113,19 +127,21 @@ Student profile:
 - Subjects: ${profile.subjects.join(", ")}
 
 Available clusters: ${clusters.map((c) => `${c.name} (${c.id})`).join(", ")}
+${buildDocumentLanguageRules(context.rawText, profile.country)}
 
 Your job:
 1. Call get_clusters first to confirm available clusters
 2. Create or identify the right cluster for this document
 3. Create a summary note (readme type) covering the full document
 4. Create a key concepts note (readme type) with the most important points
-5. Create a flashcard set covering all key terms and definitions (use create_flashcard_set)
+5. Create a flashcard set covering key terms and definitions (use create_flashcard_set)
 6. Create a task list based on the goal and deadline:
    - If exam_prep: create revision tasks with due dates spread across the deadline
    - If quick_revision: create 3-5 focused tasks
    - If deep_understanding: create research and practice tasks
    - If assignment: create milestone tasks
 7. Create a study plan note (readme type) with a daily schedule based on daily_time and deadline
+${FLASHCARD_TOOL_RULES}
 
 Execute all of these. Do not ask for confirmation. Do not stop between steps.
 After completing everything, write a brief summary of what you created.
@@ -155,6 +171,7 @@ Student profile:
 - Study stage: ${profile.study_stage}
 - Country: ${profile.country}
 - Subjects: ${profile.subjects.join(", ")}
+${buildClusterLanguageRules(profile.country)}
 
 Your job:
 1. For each cluster, create:
@@ -162,6 +179,7 @@ Your job:
    - A flashcard set for key terms
    - A prioritized task list with due dates
 2. Create one master study plan note (readme) covering all clusters with a daily schedule
+${FLASHCARD_TOOL_RULES}
 
 Execute everything. Do not ask for confirmation.
 After completing, write a brief summary of what you created.

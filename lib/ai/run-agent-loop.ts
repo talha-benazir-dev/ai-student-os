@@ -120,11 +120,17 @@ export async function runAgentLoop({
             "Assisted mode allows only one creation per message. Output your plan and tell the user to switch to Autonomous mode for multi-step workflows.",
         });
       } else {
-        resultString = await executeToolCall(
-          toolBlock.name,
-          toolBlock.input ?? {},
-          userId,
-        );
+        try {
+          resultString = await executeToolCall(
+            toolBlock.name,
+            toolBlock.input ?? {},
+            userId,
+          );
+        } catch (err) {
+          const message =
+            err instanceof Error ? err.message : "Tool execution failed";
+          resultString = JSON.stringify({ error: message });
+        }
 
         if (isWriteTool(toolBlock.name)) {
           writeOpsUsed++;
