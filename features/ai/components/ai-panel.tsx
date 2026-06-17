@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
-import { History, Plus } from "lucide-react";
+import { useEffect, useMemo } from "react";
+import { History, Plus, Sparkles } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import {
@@ -18,6 +18,7 @@ import type { AutonomyLevel } from "@/features/ai/types";
 import { ChatThread } from "@/features/ai/components/chat-thread";
 import { ChatInput } from "@/features/ai/components/chat-input";
 import { ChatHistorySheet } from "@/features/ai/components/chat-history-sheet";
+import { suggestsAutonomousMode } from "@/features/ai/lib/autonomy";
 
 const AUTONOMY_OPTIONS: { value: AutonomyLevel; label: string }[] = [
   { value: "manual", label: "Manual" },
@@ -39,11 +40,13 @@ export function AIPanel({ className }: AIPanelProps = {}) {
     selectedClusterName,
     curriculumMode,
     conversationId,
+    conversationTitle,
     historyOpen,
     conversations,
     isLoadingHistory,
     sendMessage,
     setAutonomy,
+    switchToAutonomousAndRun,
     setCluster,
     setCurriculumMode,
     setProfile,
@@ -83,6 +86,19 @@ export function AIPanel({ className }: AIPanelProps = {}) {
     fetchProfile();
   }, [setProfile]);
 
+  const isSavedChat = Boolean(conversationId && messages.length > 0);
+  const headerTitle = conversationTitle ?? (isSavedChat ? "Saved chat" : "New chat");
+
+  const showAutonomousPrompt = useMemo(() => {
+    if (isLoading || autonomy === "autonomous") return false;
+
+    const lastAssistant = [...messages]
+      .reverse()
+      .find((message) => message.role === "assistant" && !message.isStreaming);
+
+    return lastAssistant ? suggestsAutonomousMode(lastAssistant.content) : false;
+  }, [autonomy, isLoading, messages]);
+
   return (
     <div
       className={cn(
@@ -90,52 +106,106 @@ export function AIPanel({ className }: AIPanelProps = {}) {
         className ?? "h-full",
       )}
     >
-      <div className="flex shrink-0 items-center justify-between border-b border-[#ffffff08] py-4">
-        <h1 className="text-xl font-semibold tracking-tight">AI Workspace</h1>
-        <div className="flex items-center gap-2">
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            onClick={newChat}
-            className="h-8 w-8 text-white/70 hover:bg-[#ffffff08] hover:text-white"
-            title="New chat"
-            aria-label="New chat"
-          >
-            <Plus className="h-4 w-4" />
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            onClick={openHistory}
-            className="h-8 w-8 text-white/70 hover:bg-[#ffffff08] hover:text-white"
-            title="History (Ctrl+H)"
-            aria-label="Chat history"
-          >
-            <History className="h-4 w-4" />
-          </Button>
-          <Select
-            value={autonomy}
-            onValueChange={(value) => setAutonomy(value as AutonomyLevel)}
-          >
-            <SelectTrigger className="h-8 w-32 rounded-lg border-[#ffffff10] bg-[#0f0f17] text-xs text-white/70">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {AUTONOMY_OPTIONS.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+      <div className="flex shrink-0 flex-col gap-2 border-b border-[#ffffff08] py-4">
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-white/35">
+              AI Workspace
+            </p>
+            <h1 className="truncate text-lg font-semibold tracking-tight text-white">
+              {headerTitle}
+            </h1>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={newChat}
+              className="h-8 gap-1.5 px-2.5 text-white/70 hover:bg-[#ffffff08] hover:text-white"
+              title="New chat (Ctrl+N)"
+              aria-label="New chat"
+            >
+              <Plus className="h-4 w-4" />
+              <span className="hidden text-xs sm:inline">New</span>
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={openHistory}
+              className="h-8 w-8 text-white/70 hover:bg-[#ffffff08] hover:text-white"
+              title="History (Ctrl+H)"
+              aria-label="Chat history"
+            >
+              <History className="h-4 w-4" />
+            </Button>
+            <Select
+              value={autonomy}
+              onValueChange={(value) => setAutonomy(value as AutonomyLevel)}
+            >
+              <SelectTrigger
+                className={cn(
+                  "h-8 w-32 rounded-lg border-[#ffffff10] bg-[#0f0f17] text-xs text-white/70",
+                  showAutonomousPrompt &&
+                    "animate-pulse border-violet-400/50 ring-1 ring-violet-400/30",
+                )}
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {AUTONOMY_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
+        {isSavedChat ? (
+          <p className="text-xs text-white/40">
+            Messages stay in this chat until you start a{" "}
+            <button
+              type="button"
+              onClick={newChat}
+              className="text-violet-300 underline-offset-2 hover:underline"
+            >
+              new chat
+            </button>
+            .
+          </p>
+        ) : null}
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto py-6">
         <ChatThread messages={messages} />
       </div>
+
+      {showAutonomousPrompt ? (
+        <div className="shrink-0 border-t border-[#ffffff08] px-1 py-3">
+          <div className="flex items-center justify-between gap-3 rounded-xl border border-violet-400/25 bg-[#7c5cfc12] px-4 py-3">
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-white">
+                Ready to execute this plan?
+              </p>
+              <p className="mt-0.5 text-xs text-white/50">
+                Switch to Autonomous mode to create everything automatically.
+              </p>
+            </div>
+            <Button
+              type="button"
+              size="sm"
+              disabled={isLoading}
+              onClick={() => void switchToAutonomousAndRun()}
+              className="shrink-0 gap-1.5 bg-[#7c5cfc] hover:bg-[#8a6dfd] text-white"
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              Switch & run
+            </Button>
+          </div>
+        </div>
+      ) : null}
 
       <div className="shrink-0 border-t border-[#ffffff08] py-4">
         <ChatInput

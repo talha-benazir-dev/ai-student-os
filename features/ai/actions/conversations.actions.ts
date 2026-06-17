@@ -136,7 +136,7 @@ export async function appendChatTurn(input: {
     toolResults?: ToolResultCard[];
   };
   titleFromFirstMessage?: string;
-}): Promise<ActionResult<null>> {
+}): Promise<ActionResult<{ title: string }>> {
   const gate = await requireProAction();
   if ("error" in gate) return { data: null, error: gate.error };
 
@@ -150,8 +150,13 @@ export async function appendChatTurn(input: {
     .single();
 
   if (conversationError || !conversation) {
-    return { data: null, error: conversationError?.message ?? "Not found" };
+    return {
+      data: null,
+      error: conversationError?.message ?? "Not found",
+    };
   }
+
+  let nextTitle = conversation.title;
 
   const rows = [
     {
@@ -181,11 +186,9 @@ export async function appendChatTurn(input: {
     updated_at: new Date().toISOString(),
   };
 
-  if (
-    input.titleFromFirstMessage &&
-    conversation.title === "New chat"
-  ) {
-    updates.title = deriveTitle(input.titleFromFirstMessage);
+  if (input.titleFromFirstMessage && conversation.title === "New chat") {
+    nextTitle = deriveTitle(input.titleFromFirstMessage);
+    updates.title = nextTitle;
   }
 
   const { error: updateError } = await supabase
@@ -195,6 +198,27 @@ export async function appendChatTurn(input: {
     .eq("user_id", gate.userId);
 
   if (updateError) return { data: null, error: updateError.message };
+  return { data: { title: nextTitle }, error: null };
+}
+
+export async function updateConversationAutonomy(
+  id: string,
+  autonomy: AutonomyLevel,
+): Promise<ActionResult<null>> {
+  const gate = await requireProAction();
+  if ("error" in gate) return { data: null, error: gate.error };
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("ai_conversations")
+    .update({
+      autonomy,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", id)
+    .eq("user_id", gate.userId);
+
+  if (error) return { data: null, error: error.message };
   return { data: null, error: null };
 }
 

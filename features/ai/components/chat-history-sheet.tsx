@@ -64,6 +64,23 @@ function groupConversations(conversations: ConversationSummary[]): HistoryGroup[
     .filter((group) => group.items.length > 0);
 }
 
+function formatRelativeTime(iso: string) {
+  const date = new Date(iso);
+  const diffMs = Date.now() - date.getTime();
+  const diffMin = Math.floor(diffMs / 60000);
+
+  if (diffMin < 1) return "Just now";
+  if (diffMin < 60) return `${diffMin}m ago`;
+
+  const diffHours = Math.floor(diffMin / 60);
+  if (diffHours < 24) return `${diffHours}h ago`;
+
+  return date.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+  });
+}
+
 export function ChatHistorySheet({
   open,
   onOpenChange,
@@ -117,7 +134,7 @@ export function ChatHistorySheet({
             Chat history
           </SheetTitle>
           <SheetDescription className="text-white/45">
-            Press Ctrl+H to toggle history
+            Ctrl+H history · Ctrl+N new chat
           </SheetDescription>
         </SheetHeader>
 
@@ -163,9 +180,14 @@ export function ChatHistorySheet({
                         <button
                           type="button"
                           onClick={() => onSelect(conversation.id)}
-                          className="min-w-0 flex-1 truncate px-2 py-1.5 text-left text-sm text-white/75 group-hover:text-white"
+                          className="min-w-0 flex-1 px-2 py-1.5 text-left"
                         >
-                          {conversation.title}
+                          <span className="block truncate text-sm text-white/80 group-hover:text-white">
+                            {conversation.title}
+                          </span>
+                          <span className="mt-0.5 block text-[11px] text-white/35">
+                            {formatRelativeTime(conversation.updated_at)}
+                          </span>
                         </button>
                         <Button
                           type="button"

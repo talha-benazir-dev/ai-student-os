@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowUp, ImagePlus } from "lucide-react";
 import { nanoid } from "nanoid";
-import ReactMarkdown from "react-markdown";
+import { MarkdownWithMath } from "@/components/markdown-with-math";
 import { toast } from "sonner";
 import type { DrawerContext } from "@/providers/ai-drawer-provider";
 import type { ChatAttachment, Message, Profile, ToolResultCard as ToolResultCardType } from "@/features/ai/types";
@@ -490,7 +490,9 @@ export function DrawerChat({ context, clusters, profile }: DrawerChatProps) {
                 {message.content.trim().length > 0 ? (
                   <div className="flex items-end gap-0.5">
                     <div className="prose prose-invert prose-sm max-w-none prose-p:text-white/85 prose-headings:text-white prose-strong:text-white prose-code:text-violet-300 prose-code:bg-[#7c5cfc15] prose-code:rounded prose-code:px-1 prose-pre:border prose-pre:border-[#ffffff10] prose-pre:bg-[#0f0f17] prose-ol:text-white/85 prose-ul:text-white/85 prose-li:text-white/85">
-                      <ReactMarkdown>{message.content}</ReactMarkdown>
+                      <MarkdownWithMath variant="chat">
+                        {message.content}
+                      </MarkdownWithMath>
                     </div>
                     {showCursor ? (
                       <span className="mb-1 inline-block animate-pulse text-violet-400">

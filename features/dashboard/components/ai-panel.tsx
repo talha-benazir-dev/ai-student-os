@@ -41,7 +41,7 @@ export function AIPanel() {
   return (
     <aside className="hidden w-[360px] shrink-0 flex-col border-l border-border bg-sidebar xl:flex">
       <PanelHeader />
-      <ChatProvider>
+      <ChatProvider key="dashboard-ai">
         <AIChatPanel className="min-h-0 flex-1" />
       </ChatProvider>
     </aside>
@@ -63,7 +63,7 @@ export function AIPanelSheet({
       >
         <SheetTitle className="sr-only">Nucleus AI Panel</SheetTitle>
         <PanelHeader onClose={() => onOpenChange(false)} />
-        <ChatProvider>
+        <ChatProvider key="dashboard-ai-sheet">
           <AIChatPanel className="min-h-0 flex-1" />
         </ChatProvider>
       </SheetContent>

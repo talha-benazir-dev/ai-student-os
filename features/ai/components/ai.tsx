@@ -11,7 +11,10 @@ export default function AIWorkspacePage({
   conversationId,
 }: AIWorkspacePageProps = {}) {
   return (
-    <ChatProvider initialConversationId={conversationId ?? null}>
+    <ChatProvider
+      key={conversationId ?? "new"}
+      initialConversationId={conversationId ?? null}
+    >
       <div className="flex h-full min-h-0 flex-col overflow-hidden">
         <AIPanel className="h-full min-h-0" />
       </div>

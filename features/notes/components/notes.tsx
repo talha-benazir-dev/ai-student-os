@@ -17,7 +17,7 @@ import {
   type KeyboardEvent,
 } from "react";
 import { useRouter } from "next/navigation";
-import ReactMarkdown from "react-markdown";
+import { MarkdownWithMath } from "@/components/markdown-with-math";
 import {
   BarChart3,
   FileCode,
@@ -748,77 +748,9 @@ const ReadmeNoteEditor = memo(function ReadmeNoteEditor({
           <ResizablePanel defaultSize="50%" minSize="25%">
             <ScrollArea className="h-full bg-[#0f0f17]">
               <div className="p-6 prose prose-invert max-w-none readme-preview">
-                <ReactMarkdown
-                  components={{
-                    h1: ({ children }) => (
-                      <h1 className="text-white text-2xl font-bold mb-4 mt-6 first:mt-0">
-                        {children}
-                      </h1>
-                    ),
-                    h2: ({ children }) => (
-                      <h2 className="text-white text-xl font-semibold mb-3 mt-5">
-                        {children}
-                      </h2>
-                    ),
-                    h3: ({ children }) => (
-                      <h3 className="text-white text-lg font-semibold mb-2 mt-4">
-                        {children}
-                      </h3>
-                    ),
-                    h4: ({ children }) => (
-                      <h4 className="text-white text-base font-semibold mb-2 mt-3">
-                        {children}
-                      </h4>
-                    ),
-                    h5: ({ children }) => (
-                      <h5 className="text-white text-sm font-semibold mb-2 mt-3">
-                        {children}
-                      </h5>
-                    ),
-                    h6: ({ children }) => (
-                      <h6 className="text-white text-sm font-medium mb-2 mt-3">
-                        {children}
-                      </h6>
-                    ),
-                    p: ({ children }) => (
-                      <p className="text-zinc-300 mb-3 leading-relaxed">
-                        {children}
-                      </p>
-                    ),
-                    a: ({ children, href }) => (
-                      <a
-                        href={href}
-                        className="text-[#7c5cfc] hover:underline"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        {children}
-                      </a>
-                    ),
-                    code: ({ className, children }) => {
-                      const isBlock = className?.includes("language-");
-                      if (isBlock) {
-                        return (
-                          <code className="block bg-zinc-800 rounded p-3 text-sm text-zinc-200 overflow-x-auto my-3">
-                            {children}
-                          </code>
-                        );
-                      }
-                      return (
-                        <code className="bg-zinc-800 rounded px-1.5 py-0.5 text-sm text-zinc-200">
-                          {children}
-                        </code>
-                      );
-                    },
-                    pre: ({ children }) => (
-                      <pre className="bg-zinc-800 rounded p-3 overflow-x-auto my-3">
-                        {children}
-                      </pre>
-                    ),
-                  }}
-                >
+                <MarkdownWithMath variant="readme">
                   {content || "_Nothing to preview yet._"}
-                </ReactMarkdown>
+                </MarkdownWithMath>
               </div>
             </ScrollArea>
           </ResizablePanel>

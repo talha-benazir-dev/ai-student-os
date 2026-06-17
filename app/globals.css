@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+@import "katex/dist/katex.min.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -296,4 +297,19 @@
 @keyframes orb-drift-3 {
   0%, 100% { transform: translate(0, 0) scale(1); }
   50% { transform: translate(20px, 30px) scale(1.06); }
+}
+
+.markdown-math .katex-display {
+  margin: 1rem 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.markdown-math .katex {
+  font-size: 1.05em;
+}
+
+.readme-preview .katex,
+.readme-preview .katex-display {
+  color: #e4e4e7;
 }

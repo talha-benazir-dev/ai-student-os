@@ -1,11 +1,48 @@
 import type { DrawerContext } from "@/providers/ai-drawer-provider";
-import type { Profile } from "@/features/ai/types";
+import type { AutonomyLevel, Profile } from "@/features/ai/types";
+
+function buildAutonomyContext(autonomy: AutonomyLevel): string {
+  switch (autonomy) {
+    case "manual":
+      return `
+
+CURRENT MODE: MANUAL
+- You have NO tools in this mode. Answer questions, explain concepts, and help the student think through problems.
+- Do NOT claim you created notes, tasks, flashcards, clusters, or diagrams.
+- If the user asks you to create something, describe what you would create and suggest:
+  - **Assisted** mode for a single note, task, or flashcard
+  - **Autonomous** mode for multi-step workflows (study packs, solve + save, multiple artifacts)`;
+
+    case "assisted":
+      return `
+
+CURRENT MODE: ASSISTED
+- You may answer questions and perform ONE simple creation per message (a single note, task, flashcard, or cluster).
+- Read tools (get_clusters, get_notes, get_tasks, get_flashcards) are allowed for context.
+- For multi-step workflows — multiple artifacts, study packs, solve-from-image + save to cluster, step-by-step solutions that must be saved, diagrams + notes together:
+  1. Output a clear numbered **Plan** of what you WOULD create
+  2. Do NOT call any create_* tools for these workflows
+  3. End with: "Switch to **Autonomous** mode and resend your message to execute this plan."
+- Never say "I will create..." or "Let me get your clusters..." unless you are immediately calling a tool for a simple single-item create.
+- For a simple single create, call the tool first with minimal narration, then confirm in one sentence.`;
+
+    case "autonomous":
+      return `
+
+CURRENT MODE: AUTONOMOUS
+- Execute the full workflow the user requested. Call tools immediately — do not narrate your plan.
+- Chain tools until everything is created. Do not ask for confirmation.
+- After all tool calls complete, write a brief summary of what you created.
+- Never say "I will..." or "Let me..." without immediately calling the matching tool in the same turn.`;
+  }
+}
 
 export function buildSystemPrompt(
   profile: Profile,
   curriculumMode: boolean,
   scopedClusterId: string | null,
   scopedClusterName: string | null,
+  autonomy: AutonomyLevel = "assisted",
 ): string {
   const base = `You are Nucleus AI, an intelligent study assistant embedded inside Nucleus — a Study OS built for students.
 
@@ -26,7 +63,10 @@ Behavior rules:
 - Never invent or guess cluster IDs — always fetch first
 - Keep your text responses concise — tool result cards will show created content visually in the UI
 - When you create something, briefly confirm what you did in one sentence after the tool call
-- Always respond in markdown format`;
+- Always respond in markdown format
+- For physics, math, and science notes: use LaTeX for formulas — inline $I = V/R$ and block $$I = \\frac{V}{R}$$
+- Use \\frac{a}{b} for fractions, \\times for multiplication, \\Omega for ohms
+- Put each markdown table row on its own line (GFM table syntax)`;
 
   const scopeContext = scopedClusterId
     ? `\n\nScope context: The user has scoped this conversation to the cluster "${scopedClusterName}" (ID: ${scopedClusterId}). Default all content creation to this cluster unless the user explicitly says otherwise.`
@@ -43,7 +83,7 @@ Behavior rules:
     - Always mention if a topic is high-priority for national exams in ${profile.country}`
     : "";
 
-  return base + scopeContext + curriculumContext;
+  return base + buildAutonomyContext(autonomy) + scopeContext + curriculumContext;
 }
 
 export function buildAutonomousPrompt(

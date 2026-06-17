@@ -20,6 +20,7 @@ import {
   createConversation,
   getConversation,
   listConversations,
+  updateConversationAutonomy,
   type ConversationSummary,
 } from "@/features/ai/actions/conversations.actions";
 import type {
@@ -48,20 +49,34 @@ type ChatAction =
   | { type: "SET_CLUSTER"; id: string | null; name: string | null }
   | { type: "SET_CURRICULUM"; curriculumMode: boolean }
   | { type: "SET_CONVERSATION_ID"; id: string | null }
+  | { type: "SET_CONVERSATION_TITLE"; title: string | null }
   | {
       type: "LOAD_CONVERSATION";
-      payload: ChatState & { conversationId: string | null };
+      payload: ChatState & {
+        conversationId: string | null;
+        conversationTitle: string | null;
+      };
     }
   | { type: "CLEAR_MESSAGES" };
 
+type SendMessageOptions = {
+  autonomy?: AutonomyLevel;
+};
+
 type ChatContextValue = ChatState & {
   conversationId: string | null;
+  conversationTitle: string | null;
   historyOpen: boolean;
   conversations: ConversationSummary[];
   isLoadingHistory: boolean;
   setProfile: (profile: Profile) => void;
-  sendMessage: (content: string, attachments?: ChatAttachment[]) => Promise<void>;
+  sendMessage: (
+    content: string,
+    attachments?: ChatAttachment[],
+    options?: SendMessageOptions,
+  ) => Promise<void>;
   setAutonomy: (level: AutonomyLevel) => void;
+  switchToAutonomousAndRun: () => Promise<void>;
   setCluster: (id: string | null, name: string | null) => void;
   setCurriculumMode: (val: boolean) => void;
   newChat: () => void;
@@ -72,7 +87,10 @@ type ChatContextValue = ChatState & {
   loadConversation: (id: string) => Promise<void>;
 };
 
-const initialState: ChatState & { conversationId: string | null } = {
+const initialState: ChatState & {
+  conversationId: string | null;
+  conversationTitle: string | null;
+} = {
   messages: [],
   isLoading: false,
   autonomy: "assisted",
@@ -81,12 +99,13 @@ const initialState: ChatState & { conversationId: string | null } = {
   curriculumMode: false,
   profile: null,
   conversationId: null,
+  conversationTitle: null,
 };
 
 function chatReducer(
-  state: ChatState & { conversationId: string | null },
+  state: ChatState & { conversationId: string | null; conversationTitle: string | null },
   action: ChatAction,
-): ChatState & { conversationId: string | null } {
+): ChatState & { conversationId: string | null; conversationTitle: string | null } {
   switch (action.type) {
     case "SET_PROFILE":
       return { ...state, profile: action.profile };
@@ -132,6 +151,8 @@ function chatReducer(
       return { ...state, curriculumMode: action.curriculumMode };
     case "SET_CONVERSATION_ID":
       return { ...state, conversationId: action.id };
+    case "SET_CONVERSATION_TITLE":
+      return { ...state, conversationTitle: action.title };
     case "LOAD_CONVERSATION":
       return { ...state, ...action.payload };
     case "CLEAR_MESSAGES":
@@ -139,6 +160,7 @@ function chatReducer(
         ...state,
         messages: [],
         conversationId: null,
+        conversationTitle: null,
         isLoading: false,
       };
     default:
@@ -160,16 +182,19 @@ export function ChatProvider({
   const router = useRouter();
   const pathname = usePathname();
   const { clusters } = useClusters();
-  const [state, dispatch] = useReducer(chatReducer, {
-    ...initialState,
-    conversationId: initialConversationId,
-  });
+  const [state, dispatch] = useReducer(chatReducer, initialState);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [isHydratingConversation, setIsHydratingConversation] = useState(
+    Boolean(initialConversationId),
+  );
 
   const stateRef = useRef(state);
   stateRef.current = state;
+  const conversationIdRef = useRef<string | null>(null);
+  const isHydratingRef = useRef(isHydratingConversation);
+  isHydratingRef.current = isHydratingConversation;
 
   const clusterNameForId = useCallback(
     (id: string | null) => {
@@ -192,14 +217,19 @@ export function ChatProvider({
 
   const loadConversationById = useCallback(
     async (id: string, options?: { syncRoute?: boolean }) => {
+      setIsHydratingConversation(true);
+
       const result = await getConversation(id);
       if (result.error || !result.data) {
+        setIsHydratingConversation(false);
         toast.error(result.error ?? "Could not load chat");
         return;
       }
 
       const { conversation, messages } = result.data;
       const clusterName = clusterNameForId(conversation.cluster_id);
+
+      conversationIdRef.current = conversation.id;
 
       dispatch({
         type: "LOAD_CONVERSATION",
@@ -219,8 +249,11 @@ export function ChatProvider({
           curriculumMode: conversation.curriculum_mode,
           profile: stateRef.current.profile,
           conversationId: conversation.id,
+          conversationTitle: conversation.title,
         },
       });
+
+      setIsHydratingConversation(false);
 
       if (options?.syncRoute !== false) {
         if (pathname === "/ai" || pathname.startsWith("/ai/c/")) {
@@ -240,10 +273,11 @@ export function ChatProvider({
   );
 
   const newChat = useCallback(() => {
+    conversationIdRef.current = null;
     dispatch({ type: "CLEAR_MESSAGES" });
     setHistoryOpen(false);
     if (pathname === "/ai" || pathname.startsWith("/ai/c/")) {
-      router.push("/ai");
+      router.replace("/ai");
     }
   }, [pathname, router]);
 
@@ -265,44 +299,68 @@ export function ChatProvider({
   }, [historyOpen, refreshConversations]);
 
   useEffect(() => {
-    if (!initialConversationId) return;
-    if (initialConversationId === stateRef.current.conversationId) return;
+    if (!initialConversationId) {
+      setIsHydratingConversation(false);
+      return;
+    }
+
     void loadConversationById(initialConversationId, { syncRoute: false });
   }, [initialConversationId, loadConversationById]);
 
   useEffect(() => {
+    conversationIdRef.current = state.conversationId;
+  }, [state.conversationId]);
+
+  useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== "h") {
+      const key = event.key.toLowerCase();
+      const mod = event.ctrlKey || event.metaKey;
+      if (!mod) return;
+
+      if (key === "h") {
+        event.preventDefault();
+        toggleHistory();
         return;
       }
 
-      event.preventDefault();
-      toggleHistory();
+      if (key === "n") {
+        event.preventDefault();
+        newChat();
+      }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [toggleHistory]);
+  }, [newChat, toggleHistory]);
 
   const setProfile = useCallback((profile: Profile) => {
     dispatch({ type: "SET_PROFILE", profile });
   }, []);
 
   const sendMessage = useCallback(
-    async (content: string, attachments: ChatAttachment[] = []) => {
+    async (
+      content: string,
+      attachments: ChatAttachment[] = [],
+      options?: SendMessageOptions,
+    ) => {
       const trimmed = content.trim();
       const hasAttachments = attachments.length > 0;
+      const autonomyForRequest =
+        options?.autonomy ?? stateRef.current.autonomy;
 
       if (
         (!trimmed && !hasAttachments) ||
         stateRef.current.isLoading ||
+        isHydratingRef.current ||
         !stateRef.current.profile
       ) {
         return;
       }
 
-      const isFirstTurn =
-        stateRef.current.messages.filter((m) => !m.isStreaming).length === 0;
+      const priorMessages = stateRef.current.messages.filter(
+        (m) => !m.isStreaming,
+      );
+      const isFirstTurn = priorMessages.length === 0;
 
       const userMessage: Message = {
         id: nanoid(),
@@ -325,13 +383,18 @@ export function ChatProvider({
       dispatch({ type: "ADD_MESSAGE", message: assistantMessage });
       dispatch({ type: "SET_LOADING", isLoading: true });
 
-      let conversationId = stateRef.current.conversationId;
+      let conversationId = conversationIdRef.current;
+
+      // Empty chat UI always starts a new saved conversation.
+      if (isFirstTurn) {
+        conversationId = null;
+      }
 
       if (!conversationId) {
         const created = await createConversation({
           title: "New chat",
           cluster_id: stateRef.current.selectedClusterId,
-          autonomy: stateRef.current.autonomy,
+          autonomy: autonomyForRequest,
           curriculum_mode: stateRef.current.curriculumMode,
         });
 
@@ -347,11 +410,12 @@ export function ChatProvider({
         }
 
         conversationId = created.data.id;
+        conversationIdRef.current = conversationId;
         dispatch({ type: "SET_CONVERSATION_ID", id: conversationId });
-
-        if (pathname === "/ai" || pathname.startsWith("/ai/c/")) {
-          router.replace(`/ai/c/${conversationId}`);
-        }
+        dispatch({
+          type: "SET_CONVERSATION_TITLE",
+          title: created.data.title,
+        });
       }
 
       const apiMessages = stateRef.current.messages
@@ -378,7 +442,7 @@ export function ChatProvider({
                 attachments: hasAttachments ? attachments : undefined,
               },
             ],
-            autonomy: stateRef.current.autonomy,
+            autonomy: autonomyForRequest,
             selectedClusterId: stateRef.current.selectedClusterId,
             selectedClusterName: stateRef.current.selectedClusterName,
             curriculumMode: stateRef.current.curriculumMode,
@@ -464,7 +528,21 @@ export function ChatProvider({
 
           if (persist.error) {
             console.error("Failed to save chat:", persist.error);
-          } else if (historyOpen) {
+          } else {
+            if (persist.data?.title) {
+              dispatch({
+                type: "SET_CONVERSATION_TITLE",
+                title: persist.data.title,
+              });
+            }
+
+            if (
+              isFirstTurn &&
+              (pathname === "/ai" || pathname.startsWith("/ai/c/"))
+            ) {
+              router.replace(`/ai/c/${conversationId}`);
+            }
+
             void refreshConversations();
           }
         }
@@ -477,12 +555,53 @@ export function ChatProvider({
         dispatch({ type: "SET_LOADING", isLoading: false });
       }
     },
-    [historyOpen, pathname, refreshConversations, router],
+    [pathname, refreshConversations, router],
   );
 
   const setAutonomy = useCallback((level: AutonomyLevel) => {
     dispatch({ type: "SET_AUTONOMY", autonomy: level });
+
+    const conversationId = conversationIdRef.current;
+    if (conversationId) {
+      void updateConversationAutonomy(conversationId, level).then((result) => {
+        if (result.error) {
+          console.error("Failed to update autonomy:", result.error);
+        }
+      });
+    }
   }, []);
+
+  const switchToAutonomousAndRun = useCallback(async () => {
+    const priorMessages = stateRef.current.messages.filter(
+      (message) => !message.isStreaming,
+    );
+    const lastUserMessage = [...priorMessages]
+      .reverse()
+      .find((message) => message.role === "user");
+
+    if (!lastUserMessage || stateRef.current.isLoading) {
+      return;
+    }
+
+    dispatch({ type: "SET_AUTONOMY", autonomy: "autonomous" });
+
+    const conversationId = conversationIdRef.current;
+    if (conversationId) {
+      const result = await updateConversationAutonomy(
+        conversationId,
+        "autonomous",
+      );
+      if (result.error) {
+        toast.error(result.error);
+      }
+    }
+
+    await sendMessage(
+      lastUserMessage.content,
+      lastUserMessage.attachments,
+      { autonomy: "autonomous" },
+    );
+  }, [sendMessage]);
 
   const setCluster = useCallback((id: string | null, name: string | null) => {
     dispatch({ type: "SET_CLUSTER", id, name });
@@ -501,6 +620,7 @@ export function ChatProvider({
       setProfile,
       sendMessage,
       setAutonomy,
+      switchToAutonomousAndRun,
       setCluster,
       setCurriculumMode,
       newChat,
@@ -518,6 +638,7 @@ export function ChatProvider({
       setProfile,
       sendMessage,
       setAutonomy,
+      switchToAutonomousAndRun,
       setCluster,
       setCurriculumMode,
       newChat,

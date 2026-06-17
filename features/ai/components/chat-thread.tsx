@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { Sparkles } from "lucide-react";
-import ReactMarkdown from "react-markdown";
+import { MarkdownWithMath } from "@/components/markdown-with-math";
 import type { Message } from "@/features/ai/types";
 import { ToolResultCard } from "@/features/ai/components/tool-result-card";
 import { ChatAttachmentStrip } from "@/features/ai/components/chat-attachment-strip";
@@ -72,7 +72,9 @@ export function ChatThread({ messages }: ChatThreadProps) {
               ) : (
                 <div className="flex items-end gap-0.5">
                   <div className="prose prose-invert prose-sm max-w-none prose-p:text-white/85 prose-headings:text-white prose-strong:text-white prose-code:text-violet-300 prose-code:bg-[#7c5cfc15] prose-code:rounded prose-code:px-1 prose-pre:border prose-pre:border-[#ffffff10] prose-pre:bg-[#0f0f17] prose-ol:text-white/85 prose-ul:text-white/85 prose-li:text-white/85">
-                    <ReactMarkdown>{message.content}</ReactMarkdown>
+                    <MarkdownWithMath variant="chat">
+                      {message.content}
+                    </MarkdownWithMath>
                   </div>
                   {showCursor ? (
                     <span className="mb-1 inline-block animate-pulse text-violet-400">
