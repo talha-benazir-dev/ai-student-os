@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { History, Plus } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import {
@@ -10,11 +11,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
 import { useChat } from "@/features/ai/hooks/use-chat";
 import { useClusters } from "@/providers/clusters-provider";
 import type { AutonomyLevel } from "@/features/ai/types";
 import { ChatThread } from "@/features/ai/components/chat-thread";
 import { ChatInput } from "@/features/ai/components/chat-input";
+import { ChatHistorySheet } from "@/features/ai/components/chat-history-sheet";
 
 const AUTONOMY_OPTIONS: { value: AutonomyLevel; label: string }[] = [
   { value: "manual", label: "Manual" },
@@ -35,11 +38,20 @@ export function AIPanel({ className }: AIPanelProps = {}) {
     selectedClusterId,
     selectedClusterName,
     curriculumMode,
+    conversationId,
+    historyOpen,
+    conversations,
+    isLoadingHistory,
     sendMessage,
     setAutonomy,
     setCluster,
     setCurriculumMode,
     setProfile,
+    newChat,
+    openHistory,
+    closeHistory,
+    loadConversation,
+    refreshConversations,
   } = useChat();
 
   useEffect(() => {
@@ -74,13 +86,35 @@ export function AIPanel({ className }: AIPanelProps = {}) {
   return (
     <div
       className={cn(
-        "flex flex-col px-4",
-        className ?? "h-[calc(100vh-64px)]",
+        "flex min-h-0 flex-col overflow-hidden px-4",
+        className ?? "h-full",
       )}
     >
       <div className="flex shrink-0 items-center justify-between border-b border-[#ffffff08] py-4">
         <h1 className="text-xl font-semibold tracking-tight">AI Workspace</h1>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={newChat}
+            className="h-8 w-8 text-white/70 hover:bg-[#ffffff08] hover:text-white"
+            title="New chat"
+            aria-label="New chat"
+          >
+            <Plus className="h-4 w-4" />
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={openHistory}
+            className="h-8 w-8 text-white/70 hover:bg-[#ffffff08] hover:text-white"
+            title="History (Ctrl+H)"
+            aria-label="Chat history"
+          >
+            <History className="h-4 w-4" />
+          </Button>
           <Select
             value={autonomy}
             onValueChange={(value) => setAutonomy(value as AutonomyLevel)}
@@ -99,7 +133,7 @@ export function AIPanel({ className }: AIPanelProps = {}) {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto py-6">
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto py-6">
         <ChatThread messages={messages} />
       </div>
 
@@ -115,6 +149,21 @@ export function AIPanel({ className }: AIPanelProps = {}) {
           onCurriculumToggle={setCurriculumMode}
         />
       </div>
+
+      <ChatHistorySheet
+        open={historyOpen}
+        onOpenChange={(open) => (open ? openHistory() : closeHistory())}
+        conversations={conversations}
+        activeConversationId={conversationId}
+        isLoading={isLoadingHistory}
+        onSelect={(id) => void loadConversation(id)}
+        onRefresh={refreshConversations}
+        onDeleted={(id) => {
+          if (conversationId === id) {
+            newChat();
+          }
+        }}
+      />
     </div>
   );
 }

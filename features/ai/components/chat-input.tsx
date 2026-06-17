@@ -1,10 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowUp, Check, Plus, X } from "lucide-react";
+import { ArrowUp, Check, ImagePlus, Plus, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAIDrawer } from "@/providers/ai-drawer-provider";
 import { useClusters } from "@/providers/clusters-provider";
+import { ChatAttachmentStrip } from "@/features/ai/components/chat-attachment-strip";
+import { useChatAttachments } from "@/features/ai/hooks/use-chat-attachments";
+import type { ChatAttachment } from "@/features/ai/types";
+import { toast } from "sonner";
 
 const MAX_ROWS = 4;
 
@@ -23,7 +27,7 @@ type ClusterOption = {
 };
 
 type ChatInputProps = {
-  onSend: (message: string) => void;
+  onSend: (message: string, attachments?: ChatAttachment[]) => void;
   isLoading: boolean;
   clusters: ClusterOption[];
   selectedClusterName: string | null;
@@ -53,9 +57,21 @@ export function ChatInput({
   const popoverRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const slashRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const {
+    pending,
+    isUploading,
+    hasAttachments,
+    addFile,
+    removeAttachment,
+    handlePaste,
+    uploadAll,
+  } = useChatAttachments();
 
   const selectedCluster = clusters.find((c) => c.id === selectedClusterId);
   const showTopRow = Boolean(selectedClusterName) || curriculumMode;
+  const canSend =
+    !isLoading && !isUploading && (value.trim().length > 0 || hasAttachments);
   const showSlashMenu =
     slashOpen && /^\/\S*$/.test(value) && value.length > 0;
   const filteredSlashCommands = slashCommands.filter(
@@ -158,17 +174,41 @@ export function ChatInput({
     setAutopilotPickerOpen(false);
   };
 
-  const handleSend = () => {
+  const handleSend = async () => {
     const trimmed = value.trim();
-    if (!trimmed || isLoading) return;
-    onSend(trimmed);
-    setValue("");
+    if ((!trimmed && !hasAttachments) || isLoading || isUploading) return;
+
+    try {
+      const attachments = await uploadAll();
+      onSend(trimmed, attachments);
+      setValue("");
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Image upload failed";
+      toast.error(message);
+    }
+  };
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      addFile(file);
+    }
+    event.target.value = "";
+  };
+
+  const handleDrop = (event: React.DragEvent) => {
+    event.preventDefault();
+    const file = event.dataTransfer.files?.[0];
+    if (file) {
+      addFile(file);
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      handleSend();
+      void handleSend();
     }
   };
 
@@ -178,7 +218,11 @@ export function ChatInput({
   };
 
   return (
-    <div className="flex flex-col gap-2 rounded-2xl border border-[#ffffff10] bg-[#0f0f17] p-3">
+    <div
+      className="flex flex-col gap-2 rounded-2xl border border-[#ffffff10] bg-[#0f0f17] p-3"
+      onDragOver={(event) => event.preventDefault()}
+      onDrop={handleDrop}
+    >
       {showTopRow ? (
         <div className="flex flex-wrap items-center gap-2">
           {selectedClusterName ? (
@@ -225,7 +269,7 @@ export function ChatInput({
           <p className="mb-2 px-2 text-xs font-medium text-white/40">
             Choose a cluster for Autopilot
           </p>
-          <div className="flex flex-col gap-0.5">
+          <div className="scrollbar-thin flex max-h-48 flex-col gap-0.5 overflow-y-auto overscroll-contain">
             {contextClusters.map((cluster) => (
               <button
                 key={cluster.id}
@@ -267,7 +311,20 @@ export function ChatInput({
         </div>
       ) : null}
 
+      <ChatAttachmentStrip
+        pending={pending}
+        onRemove={removeAttachment}
+      />
+
       <div className="flex items-end gap-2">
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/gif"
+          className="hidden"
+          onChange={handleFileChange}
+        />
+
         <div className="relative">
           <button
             ref={triggerRef}
@@ -287,7 +344,7 @@ export function ChatInput({
               <p className="mb-2 text-xs font-medium text-white/40">
                 Assign to cluster
               </p>
-              <div className="flex flex-col gap-0.5">
+              <div className="scrollbar-thin flex max-h-48 flex-col gap-0.5 overflow-y-auto overscroll-contain">
                 <button
                   type="button"
                   onClick={() => handleClusterSelect(null, null)}
@@ -319,6 +376,20 @@ export function ChatInput({
                   </button>
                 ))}
               </div>
+
+              <div className="my-2 border-t border-[#ffffff08]" />
+
+              <button
+                type="button"
+                onClick={() => {
+                  setPopoverOpen(false);
+                  fileInputRef.current?.click();
+                }}
+                className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-white hover:bg-[#ffffff08]"
+              >
+                <ImagePlus className="h-4 w-4 text-violet-400" />
+                Attach image
+              </button>
 
               <div className="my-2 border-t border-[#ffffff08]" />
 
@@ -362,10 +433,11 @@ export function ChatInput({
               setSlashOpen(false);
             }
           }}
+          onPaste={handlePaste}
           onKeyDown={handleKeyDown}
-          placeholder="Ask anything…"
+          placeholder="Ask anything… paste an image to include it"
           autoComplete="off"
-          disabled={isLoading}
+          disabled={isLoading || isUploading}
           rows={1}
           className={cn(
             "min-h-[36px] flex-1 resize-none bg-transparent text-sm text-white outline-none",
@@ -375,8 +447,8 @@ export function ChatInput({
 
         <button
           type="button"
-          onClick={handleSend}
-          disabled={isLoading || !value.trim()}
+          onClick={() => void handleSend()}
+          disabled={!canSend}
           className="rounded-xl bg-[#7c5cfc] p-2 hover:bg-[#8a6dfd] disabled:opacity-40"
           aria-label="Send message"
         >

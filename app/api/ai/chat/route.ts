@@ -1,30 +1,32 @@
 import { executeToolCall } from "@/lib/ai/execute-tool";
+import {
+  toAnthropicMessages,
+  type AnthropicMessage,
+} from "@/lib/ai/format-messages";
 import { requirePro } from "@/lib/ai/require-pro";
 import { nucleusTools } from "@/features/ai/tools/index";
 import { buildSystemPrompt } from "@/features/ai/prompts/index";
-import type { AutonomyLevel, Profile } from "@/features/ai/types";
+import type {
+  AutonomyLevel,
+  ChatAttachment,
+  Profile,
+} from "@/features/ai/types";
 
 const ANTHROPIC_MODEL = "claude-haiku-4-5-20251001";
 const ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages";
 
 type RequestBody = {
-  messages: { role: "user" | "assistant"; content: string }[];
+  messages: {
+    role: "user" | "assistant";
+    content: string;
+    attachments?: ChatAttachment[];
+  }[];
   autonomy: AutonomyLevel;
   selectedClusterId: string | null;
   selectedClusterName: string | null;
   curriculumMode: boolean;
   profile: Profile;
 };
-
-type AnthropicMessage = {
-  role: "user" | "assistant";
-  content: string | AnthropicContentBlock[];
-};
-
-type AnthropicContentBlock =
-  | { type: "text"; text: string }
-  | { type: "tool_use"; id: string; name: string; input: Record<string, unknown> }
-  | { type: "tool_result"; tool_use_id: string; content: string };
 
 type AnthropicStreamEvent = {
   type: string;
@@ -132,10 +134,7 @@ export async function POST(req: Request) {
       let currentToolUseId: string | null = null;
       let currentToolName: string | null = null;
       let currentToolInputJson = "";
-      const anthropicMessages: AnthropicMessage[] = messages.map((m) => ({
-        role: m.role,
-        content: m.content,
-      }));
+      const anthropicMessages = toAnthropicMessages(messages);
 
       try {
         const response = await fetch(ANTHROPIC_API_URL, {
@@ -148,7 +147,7 @@ export async function POST(req: Request) {
             cache_control: { type: "ephemeral" },
             system,
             tools: nucleusTools,
-            messages,
+            messages: anthropicMessages,
           }),
         });
 

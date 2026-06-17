@@ -5,6 +5,7 @@ import { Sparkles } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import type { Message } from "@/features/ai/types";
 import { ToolResultCard } from "@/features/ai/components/tool-result-card";
+import { ChatAttachmentStrip } from "@/features/ai/components/chat-attachment-strip";
 
 type ChatThreadProps = {
   messages: Message[];
@@ -47,7 +48,12 @@ export function ChatThread({ messages }: ChatThreadProps) {
           return (
             <div key={message.id} className="mb-4 flex justify-end">
               <div className="max-w-[75%] rounded-2xl border border-[#7c5cfc20] bg-[#7c5cfc1a] px-4 py-3 text-sm text-white">
-                {message.content}
+                {message.attachments && message.attachments.length > 0 ? (
+                  <div className="mb-2">
+                    <ChatAttachmentStrip uploaded={message.attachments} />
+                  </div>
+                ) : null}
+                {message.content ? <p>{message.content}</p> : null}
               </div>
             </div>
           );

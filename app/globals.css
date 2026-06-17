@@ -176,6 +176,24 @@
     scrollbar-color: oklch(0.35 0.05 285) transparent;
   }
 
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: oklch(0.32 0.04 285);
+    border-radius: 9999px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: oklch(0.42 0.06 295);
+  }
+
   /* Landing page — scoped under .landing-page only */
   .landing-page {
     font-feature-settings: "ss01", "cv11";

@@ -201,7 +201,12 @@ function SidebarBody({
         </div>
       )}
 
-      <div className={cn("pt-5 flex-1", collapsed ? "px-1.5" : "px-3")}>
+      <div
+        className={cn(
+          "scrollbar-thin min-h-0 flex-1 overflow-y-auto overscroll-contain pt-5",
+          collapsed ? "px-1.5" : "px-3",
+        )}
+      >
         {!collapsed && (
           <div className="px-3 pb-2 text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
             Workspace

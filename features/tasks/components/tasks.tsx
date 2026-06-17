@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Gift, Plus, Trash2 } from "lucide-react";
+import { ChevronRight, Gift, LayoutGrid, List, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -54,6 +54,11 @@ const PRIORITY_STYLES: Record<Task["priority"], string> = {
 };
 
 const GENERAL_CLUSTER_VALUE = "__general__";
+const CLUSTER_SCROLL_THRESHOLD = 6;
+const CLUSTER_VIEW_STORAGE_KEY = "nucleus_tasks_cluster_view";
+const CLUSTER_COLLAPSED_STORAGE_KEY = "nucleus_tasks_collapsed_clusters";
+
+type ClusterView = "grid" | "list";
 
 function formatDueDate(iso: string): string {
   return new Date(`${iso}T12:00:00`).toLocaleDateString(undefined, {
@@ -216,6 +221,252 @@ function ClusterMiniBar({ tasks, color }: { tasks: Task[]; color: string }) {
         }}
         className="h-full transition-all duration-500"
       />
+    </div>
+  );
+}
+
+function clusterProgressPercent(tasks: Task[]): number {
+  const total = tasks.reduce((sum, t) => sum + t.importance_points, 0);
+  const completed = tasks
+    .filter((t) => t.completed)
+    .reduce((sum, t) => sum + t.importance_points, 0);
+  return total > 0 ? Math.round((completed / total) * 100) : 0;
+}
+
+function taskCountLabel(count: number) {
+  return `${count} ${count === 1 ? "task" : "tasks"}`;
+}
+
+function ClusterViewToggle({
+  view,
+  onViewChange,
+}: {
+  view: ClusterView;
+  onViewChange: (view: ClusterView) => void;
+}) {
+  return (
+    <div className="flex items-center gap-1 rounded-lg border border-[#ffffff10] p-0.5">
+      <button
+        type="button"
+        onClick={() => onViewChange("grid")}
+        aria-label="Grid view"
+        className={cn(
+          "rounded-md p-1.5 transition",
+          view === "grid"
+            ? "bg-[#7c5cfc]/15 text-[#7c5cfc]"
+            : "text-zinc-500 hover:bg-white/5 hover:text-white",
+        )}
+      >
+        <LayoutGrid className="h-4 w-4" />
+      </button>
+      <button
+        type="button"
+        onClick={() => onViewChange("list")}
+        aria-label="List view"
+        className={cn(
+          "rounded-md p-1.5 transition",
+          view === "list"
+            ? "bg-[#7c5cfc]/15 text-[#7c5cfc]"
+            : "text-zinc-500 hover:bg-white/5 hover:text-white",
+        )}
+      >
+        <List className="h-4 w-4" />
+      </button>
+    </div>
+  );
+}
+
+function ClusterTaskList({
+  tasks,
+  onToggle,
+  onDelete,
+  scrollable,
+}: {
+  tasks: Task[];
+  onToggle: (task: Task) => void;
+  onDelete: (task: Task) => void;
+  scrollable?: boolean;
+}) {
+  if (tasks.length === 0) {
+    return (
+      <p className="text-xs text-zinc-500">No tasks in this cluster.</p>
+    );
+  }
+
+  return (
+    <div
+      className={cn(
+        "space-y-0.5",
+        scrollable && "max-h-64 overflow-y-auto pr-1",
+      )}
+    >
+      {tasks.map((task) => (
+        <TaskItem
+          key={task.id}
+          task={task}
+          onToggle={onToggle}
+          onDelete={onDelete}
+        />
+      ))}
+    </div>
+  );
+}
+
+function ClusterGridCard({
+  cluster,
+  tasks,
+  onToggle,
+  onDelete,
+}: {
+  cluster: Cluster;
+  tasks: Task[];
+  onToggle: (task: Task) => void;
+  onDelete: (task: Task) => void;
+}) {
+  return (
+    <div className="space-y-3 rounded-xl border border-[#ffffff10] bg-[#0f0f17] p-5">
+      <div className="space-y-2">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex min-w-0 items-center gap-2">
+            <span
+              className="h-2.5 w-2.5 shrink-0 rounded-full"
+              style={{ backgroundColor: cluster.color }}
+            />
+            <h3 className="truncate text-sm font-medium text-white">
+              {cluster.name}
+            </h3>
+          </div>
+          <span className="shrink-0 text-[10px] tabular-nums text-zinc-500">
+            {taskCountLabel(tasks.length)}
+          </span>
+        </div>
+        <ClusterMiniBar tasks={tasks} color={cluster.color} />
+      </div>
+      <ClusterTaskList
+        tasks={tasks}
+        onToggle={onToggle}
+        onDelete={onDelete}
+        scrollable={tasks.length >= CLUSTER_SCROLL_THRESHOLD}
+      />
+    </div>
+  );
+}
+
+function ClusterListSection({
+  cluster,
+  tasks,
+  isCollapsed,
+  onToggleCollapsed,
+  onToggle,
+  onDelete,
+}: {
+  cluster: Cluster;
+  tasks: Task[];
+  isCollapsed: boolean;
+  onToggleCollapsed: () => void;
+  onToggle: (task: Task) => void;
+  onDelete: (task: Task) => void;
+}) {
+  const progress = clusterProgressPercent(tasks);
+
+  return (
+    <div className="border-b border-[#ffffff08] pb-4 last:border-0 last:pb-0">
+      <button
+        type="button"
+        onClick={onToggleCollapsed}
+        className="-mx-1 flex w-full items-center gap-2 rounded-lg px-1 py-2 text-left transition-colors hover:bg-white/[0.02]"
+        aria-expanded={!isCollapsed}
+      >
+        <ChevronRight
+          className={cn(
+            "h-4 w-4 shrink-0 text-zinc-500 transition-transform",
+            !isCollapsed && "rotate-90",
+          )}
+        />
+        <span
+          className="h-2.5 w-2.5 shrink-0 rounded-full"
+          style={{ backgroundColor: cluster.color }}
+        />
+        <span className="min-w-0 flex-1 truncate text-sm font-medium text-white">
+          {cluster.name}
+        </span>
+        <span className="shrink-0 text-xs text-zinc-500">
+          {taskCountLabel(tasks.length)} · {progress}%
+        </span>
+      </button>
+      {!isCollapsed ? (
+        <div className="mt-1 space-y-2 pl-6">
+          <ClusterMiniBar tasks={tasks} color={cluster.color} />
+          <ClusterTaskList
+            tasks={tasks}
+            onToggle={onToggle}
+            onDelete={onDelete}
+          />
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function ClusterSections({
+  clusters,
+  tasks,
+  view,
+  collapsedIds,
+  onToggleCollapsed,
+  onToggle,
+  onDelete,
+}: {
+  clusters: Cluster[];
+  view: ClusterView;
+  tasks: Task[];
+  collapsedIds: Set<string>;
+  onToggleCollapsed: (clusterId: string) => void;
+  onToggle: (task: Task) => void;
+  onDelete: (task: Task) => void;
+}) {
+  if (view === "grid") {
+    return (
+      <div className="columns-1 gap-4 xl:columns-2">
+        {clusters.map((cluster) => {
+          const clusterTasks = sortTasks(
+            tasks.filter((t) => t.cluster_id === cluster.id),
+          );
+
+          return (
+            <div key={cluster.id} className="mb-4 break-inside-avoid">
+              <ClusterGridCard
+                cluster={cluster}
+                tasks={clusterTasks}
+                onToggle={onToggle}
+                onDelete={onDelete}
+              />
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {clusters.map((cluster) => {
+        const clusterTasks = sortTasks(
+          tasks.filter((t) => t.cluster_id === cluster.id),
+        );
+
+        return (
+          <ClusterListSection
+            key={cluster.id}
+            cluster={cluster}
+            tasks={clusterTasks}
+            isCollapsed={collapsedIds.has(cluster.id)}
+            onToggleCollapsed={() => onToggleCollapsed(cluster.id)}
+            onToggle={onToggle}
+            onDelete={onDelete}
+          />
+        );
+      })}
     </div>
   );
 }
@@ -472,8 +723,58 @@ export default function TasksPage({
   const [tasks, setTasks] = useState<Task[]>(initialTasks);
   const [clusters] = useState<Cluster[]>(initialClusters);
   const [createTaskOpen, setCreateTaskOpen] = useState(false);
+  const [clusterView, setClusterView] = useState<ClusterView>("grid");
+  const [collapsedClusterIds, setCollapsedClusterIds] = useState<Set<string>>(
+    () => new Set(),
+  );
 
   const progress = useProgressData(tasks, clusters);
+
+  useEffect(() => {
+    const saved = localStorage.getItem(CLUSTER_VIEW_STORAGE_KEY);
+    if (saved === "grid" || saved === "list") {
+      setClusterView(saved);
+      return;
+    }
+
+    setClusterView(
+      window.matchMedia("(max-width: 767px)").matches ? "list" : "grid",
+    );
+  }, []);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(CLUSTER_COLLAPSED_STORAGE_KEY);
+      if (!saved) return;
+      const parsed = JSON.parse(saved) as unknown;
+      if (Array.isArray(parsed)) {
+        setCollapsedClusterIds(new Set(parsed.filter((id) => typeof id === "string")));
+      }
+    } catch {
+      // ignore invalid storage
+    }
+  }, []);
+
+  const handleClusterViewChange = useCallback((view: ClusterView) => {
+    setClusterView(view);
+    localStorage.setItem(CLUSTER_VIEW_STORAGE_KEY, view);
+  }, []);
+
+  const handleToggleClusterCollapsed = useCallback((clusterId: string) => {
+    setCollapsedClusterIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(clusterId)) {
+        next.delete(clusterId);
+      } else {
+        next.add(clusterId);
+      }
+      localStorage.setItem(
+        CLUSTER_COLLAPSED_STORAGE_KEY,
+        JSON.stringify([...next]),
+      );
+      return next;
+    });
+  }, []);
 
   useEffect(() => {
     if (!autoOpenCreate) return;
@@ -624,53 +925,22 @@ export default function TasksPage({
 
           {clusters.length > 0 ? (
             <section className="space-y-4">
-              <h2 className="text-sm font-medium text-white/60">Clusters</h2>
-              <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-                {clusters.map((cluster) => {
-                  const clusterTasks = sortTasks(
-                    tasks.filter((t) => t.cluster_id === cluster.id),
-                  );
-
-                  return (
-                    <div
-                      key={cluster.id}
-                      className="space-y-3 rounded-xl border border-[#ffffff10] bg-[#0f0f17] p-5"
-                    >
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <span
-                            className="h-2.5 w-2.5 shrink-0 rounded-full"
-                            style={{ backgroundColor: cluster.color }}
-                          />
-                          <h3 className="text-sm font-medium text-white">
-                            {cluster.name}
-                          </h3>
-                        </div>
-                        <ClusterMiniBar
-                          tasks={clusterTasks}
-                          color={cluster.color}
-                        />
-                      </div>
-                      {clusterTasks.length === 0 ? (
-                        <p className="text-xs text-zinc-500">
-                          No tasks in this cluster.
-                        </p>
-                      ) : (
-                        <div className="space-y-0.5">
-                          {clusterTasks.map((task) => (
-                            <TaskItem
-                              key={task.id}
-                              task={task}
-                              onToggle={handleToggle}
-                              onDelete={handleDelete}
-                            />
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+              <div className="flex items-center justify-between gap-3">
+                <h2 className="text-sm font-medium text-white/60">Clusters</h2>
+                <ClusterViewToggle
+                  view={clusterView}
+                  onViewChange={handleClusterViewChange}
+                />
               </div>
+              <ClusterSections
+                clusters={clusters}
+                tasks={tasks}
+                view={clusterView}
+                collapsedIds={collapsedClusterIds}
+                onToggleCollapsed={handleToggleClusterCollapsed}
+                onToggle={handleToggle}
+                onDelete={handleDelete}
+              />
             </section>
           ) : null}
 

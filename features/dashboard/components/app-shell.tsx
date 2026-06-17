@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { ClustersProvider } from "@/providers/clusters-provider";
 import { AIDrawer } from "@/features/ai/components/ai-drawer";
 import { usePlan } from "@/providers/plan-provider";
+import { cn } from "@/lib/utils";
 
 export function AppShell({
   children,
@@ -30,9 +31,15 @@ export function AppShell({
           <AppSidebar />
           <MobileSidebar open={navOpen} onOpenChange={setNavOpen} />
 
-          <div className="flex-1 min-w-0 flex flex-col">
+          <div
+            className={cn(
+              "flex min-h-0 flex-1 flex-col min-w-0",
+              pathname === "/ai" &&
+                "h-[calc(100dvh-3.5rem)] overflow-hidden lg:h-screen",
+            )}
+          >
             {/* Mobile top bar */}
-            <header className="lg:hidden sticky top-0 z-30 flex items-center justify-between gap-2 h-14 px-4 border-b border-border bg-background/80 backdrop-blur-md">
+            <header className="lg:hidden sticky top-0 z-30 flex shrink-0 items-center justify-between gap-2 h-14 px-4 border-b border-border bg-background/80 backdrop-blur-md">
               <Button
                 variant="ghost"
                 size="icon"
@@ -65,7 +72,14 @@ export function AppShell({
               )}
             </header>
 
-            <main className="flex-1 min-w-0 overflow-x-hidden">{children}</main>
+            <main
+              className={cn(
+                "min-h-0 flex-1 min-w-0 overflow-x-hidden",
+                pathname === "/ai" && "flex flex-col overflow-hidden",
+              )}
+            >
+              {children}
+            </main>
           </div>
 
           {showDashboardAI && pathname === "/dashboard" && (

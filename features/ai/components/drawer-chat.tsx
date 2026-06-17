@@ -1,14 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowUp } from "lucide-react";
+import { ArrowUp, ImagePlus } from "lucide-react";
 import { nanoid } from "nanoid";
 import ReactMarkdown from "react-markdown";
+import { toast } from "sonner";
 import type { DrawerContext } from "@/providers/ai-drawer-provider";
-import type { Message, Profile, ToolResultCard as ToolResultCardType } from "@/features/ai/types";
+import type { ChatAttachment, Message, Profile, ToolResultCard as ToolResultCardType } from "@/features/ai/types";
 import { QuestionCard } from "@/features/ai/components/question-card";
 import { ToolResultCard as ToolResultCardComponent } from "@/features/ai/components/tool-result-card";
-import { toast } from "sonner";
+import { ChatAttachmentStrip } from "@/features/ai/components/chat-attachment-strip";
+import { useChatAttachments } from "@/features/ai/hooks/use-chat-attachments";
 import { parseAiApiError, UPGRADE_TOAST } from "@/lib/ai/constants";
 import { cn } from "@/lib/utils";
 
@@ -114,6 +116,16 @@ export function DrawerChat({ context, clusters, profile }: DrawerChatProps) {
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [inputValue, setInputValue] = useState("");
   const [flowComplete, setFlowComplete] = useState(context.type === "manual");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const {
+    pending,
+    isUploading,
+    hasAttachments,
+    addFile,
+    removeAttachment,
+    handlePaste,
+    uploadAll,
+  } = useChatAttachments();
 
   const messagesRef = useRef(messages);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -325,14 +337,23 @@ export function DrawerChat({ context, clusters, profile }: DrawerChatProps) {
   );
 
   const handleSend = useCallback(
-    async (content: string) => {
+    async (content: string, attachments: ChatAttachment[] = []) => {
       const trimmed = content.trim();
-      if (!trimmed || isLoading || !profile) return;
+      const hasUploadedAttachments = attachments.length > 0;
+
+      if (
+        (!trimmed && !hasUploadedAttachments) ||
+        isLoading ||
+        !profile
+      ) {
+        return;
+      }
 
       const userMessage: Message = {
         id: nanoid(),
         role: "user",
         content: trimmed,
+        attachments: hasUploadedAttachments ? attachments : undefined,
         createdAt: new Date(),
       };
 
@@ -351,14 +372,25 @@ export function DrawerChat({ context, clusters, profile }: DrawerChatProps) {
 
       const apiMessages = messagesRef.current
         .filter((m) => !m.isStreaming && !m.questions?.length)
-        .map((m) => ({ role: m.role, content: m.content }));
+        .map((m) => ({
+          role: m.role,
+          content: m.content,
+          attachments: m.attachments,
+        }));
 
       try {
         const response = await fetch("/api/ai/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            messages: [...apiMessages, { role: "user", content: trimmed }],
+            messages: [
+              ...apiMessages,
+              {
+                role: "user",
+                content: trimmed,
+                attachments: hasUploadedAttachments ? attachments : undefined,
+              },
+            ],
             autonomy: "autonomous",
             selectedClusterId: null,
             selectedClusterName: null,
@@ -410,9 +442,22 @@ export function DrawerChat({ context, clusters, profile }: DrawerChatProps) {
   }, [addMessage, context.type, startClusterFlow, startDocumentFlow]);
 
   const showInput = context.type === "manual" || flowComplete;
+  const canSend =
+    !isLoading &&
+    !isUploading &&
+    (inputValue.trim().length > 0 || hasAttachments);
 
-  const submitInput = () => {
-    void handleSend(inputValue);
+  const submitInput = async () => {
+    if (!canSend) return;
+
+    try {
+      const attachments = await uploadAll();
+      await handleSend(inputValue, attachments);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Image upload failed";
+      toast.error(message);
+    }
   };
 
   return (
@@ -423,7 +468,12 @@ export function DrawerChat({ context, clusters, profile }: DrawerChatProps) {
             return (
               <div key={message.id} className="flex justify-end">
                 <div className="max-w-[75%] rounded-2xl border border-[#7c5cfc20] bg-[#7c5cfc1a] px-4 py-3 text-sm text-white">
-                  {message.content}
+                  {message.attachments && message.attachments.length > 0 ? (
+                    <div className="mb-2">
+                      <ChatAttachmentStrip uploaded={message.attachments} />
+                    </div>
+                  ) : null}
+                  {message.content ? <p>{message.content}</p> : null}
                 </div>
               </div>
             );
@@ -485,34 +535,72 @@ export function DrawerChat({ context, clusters, profile }: DrawerChatProps) {
 
       {showInput ? (
         <div className="border-t border-[#ffffff10] p-3">
-          <div className="flex items-end gap-2 rounded-2xl border border-[#ffffff10] bg-[#0f0f17] p-3">
-            <input
-              type="text"
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  submitInput();
-                }
-              }}
-              placeholder="Ask a follow-up..."
-              autoComplete="off"
-              disabled={isLoading}
-              className={cn(
-                "min-h-[36px] flex-1 bg-transparent text-sm text-white outline-none",
-                "placeholder:text-white/35 disabled:cursor-not-allowed disabled:opacity-50",
-              )}
+          <div
+            className="flex flex-col gap-2 rounded-2xl border border-[#ffffff10] bg-[#0f0f17] p-3"
+            onDragOver={(event) => event.preventDefault()}
+            onDrop={(event) => {
+              event.preventDefault();
+              const file = event.dataTransfer.files?.[0];
+              if (file) addFile(file);
+            }}
+          >
+            <ChatAttachmentStrip
+              pending={pending}
+              onRemove={removeAttachment}
             />
-            <button
-              type="button"
-              onClick={submitInput}
-              disabled={isLoading || !inputValue.trim()}
-              className="rounded-xl bg-[#7c5cfc] p-2 hover:bg-[#8a6dfd] disabled:opacity-40"
-              aria-label="Send message"
-            >
-              <ArrowUp className="h-4 w-4 text-white" strokeWidth={2} />
-            </button>
+
+            <div className="flex items-end gap-2">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                className="hidden"
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  if (file) addFile(file);
+                  event.target.value = "";
+                }}
+              />
+
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isLoading || isUploading}
+                className="rounded-xl border border-[#ffffff10] bg-[#ffffff08] p-2 hover:bg-[#ffffff12] disabled:opacity-50"
+                aria-label="Attach image"
+              >
+                <ImagePlus className="h-4 w-4 text-white" />
+              </button>
+
+              <textarea
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                onPaste={handlePaste}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    void submitInput();
+                  }
+                }}
+                placeholder="Ask a follow-up… paste an image to include it"
+                autoComplete="off"
+                disabled={isLoading || isUploading}
+                rows={1}
+                className={cn(
+                  "min-h-[36px] max-h-24 flex-1 resize-none bg-transparent text-sm text-white outline-none",
+                  "placeholder:text-white/35 disabled:cursor-not-allowed disabled:opacity-50",
+                )}
+              />
+              <button
+                type="button"
+                onClick={() => void submitInput()}
+                disabled={!canSend}
+                className="rounded-xl bg-[#7c5cfc] p-2 hover:bg-[#8a6dfd] disabled:opacity-40"
+                aria-label="Send message"
+              >
+                <ArrowUp className="h-4 w-4 text-white" strokeWidth={2} />
+              </button>
+            </div>
           </div>
         </div>
       ) : null}

@@ -18,7 +18,7 @@ import {
   DailyStudyTimeChart,
   TaskCompletionChart,
   ActivityHeatmap,
-  ClusterBreakdownChart,
+  ClusterBreakdownDonut,
 } from "@/features/analytics/components/charts";
 import {
   Clock,
@@ -157,7 +157,7 @@ export default async function Dashboard() {
     daily_study_time: <DailyStudyTimeChart data={dailyStudy} />,
     task_completion_rate: <TaskCompletionChart data={taskCompletion} />,
     activity_heatmap: <ActivityHeatmap data={heatmap} />,
-    cluster_breakdown: <ClusterBreakdownChart data={clusterBreakdown} />,
+    cluster_breakdown: <ClusterBreakdownDonut data={clusterBreakdown} />,
   };
 
   const studyHours = weeklyStudyMinutes > 0

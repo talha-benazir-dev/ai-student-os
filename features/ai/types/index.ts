@@ -10,10 +10,16 @@ export type ToolResultCard = {
   clusterColor?: string
 }
 
+export type ChatAttachment = {
+  url: string
+  mediaType: string
+}
+
 export type Message = {
   id: string
   role: MessageRole
   content: string
+  attachments?: ChatAttachment[]
   toolResults?: ToolResultCard[]
   questions?: {
     id: string

@@ -11,7 +11,7 @@ import {
   DailyStudyTimeChart,
   TaskCompletionChart,
   ActivityHeatmap,
-  ClusterBreakdownChart,
+  ClusterBreakdownBars,
 } from "@/features/analytics/components/charts";
 import { WidgetPinButton } from "@/features/analytics/components/widget-pin-button";
 
@@ -36,7 +36,7 @@ export default async function AnalyticsPage() {
     daily_study_time: <DailyStudyTimeChart data={dailyStudy ?? []} />,
     task_completion_rate: <TaskCompletionChart data={taskCompletion ?? []} />,
     activity_heatmap: <ActivityHeatmap data={heatmap ?? []} />,
-    cluster_breakdown: <ClusterBreakdownChart data={clusterBreakdown ?? []} />,
+    cluster_breakdown: <ClusterBreakdownBars data={clusterBreakdown ?? []} />,
   };
 
   return (

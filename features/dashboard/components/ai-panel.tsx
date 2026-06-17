@@ -4,6 +4,7 @@ import { Sparkles, X } from "lucide-react";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { AIPanel as AIChatPanel } from "@/features/ai/components/ai-panel";
+import { ChatProvider } from "@/providers/chat-provider";
 
 function PanelHeader({ onClose }: { onClose?: () => void }) {
   return (
@@ -40,7 +41,9 @@ export function AIPanel() {
   return (
     <aside className="hidden w-[360px] shrink-0 flex-col border-l border-border bg-sidebar xl:flex">
       <PanelHeader />
-      <AIChatPanel className="min-h-0 flex-1" />
+      <ChatProvider>
+        <AIChatPanel className="min-h-0 flex-1" />
+      </ChatProvider>
     </aside>
   );
 }
@@ -60,7 +63,9 @@ export function AIPanelSheet({
       >
         <SheetTitle className="sr-only">Nucleus AI Panel</SheetTitle>
         <PanelHeader onClose={() => onOpenChange(false)} />
-        <AIChatPanel className="min-h-0 flex-1" />
+        <ChatProvider>
+          <AIChatPanel className="min-h-0 flex-1" />
+        </ChatProvider>
       </SheetContent>
     </Sheet>
   );

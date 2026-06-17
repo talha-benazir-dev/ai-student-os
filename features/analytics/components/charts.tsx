@@ -1,6 +1,9 @@
 "use client";
 
+import Link from "next/link";
+import { useState } from "react";
 import { localDateKey } from "@/features/analytics/lib/date-utils";
+import { cn } from "@/lib/utils";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -149,60 +152,289 @@ export function ActivityHeatmap({ data }: { data: { date: string; minutes: numbe
 
 // ── Cluster Breakdown ─────────────────────────────────────────────────────────
 
-export function ClusterBreakdownChart({ data }: { data: { name: string; minutes: number; color: string }[] }) {
-  const total = data.reduce((s, d) => s + d.minutes, 0) || 1;
-  const w = 200, cx = 80, cy = 80, r = 60, inner = 36;
+const MINI_LEGEND_COUNT = 3;
 
-  // Build donut segments
+type ClusterBreakdownItem = { name: string; minutes: number; color: string };
+
+function sortClustersByTime(data: ClusterBreakdownItem[]) {
+  return [...data].sort((a, b) => b.minutes - a.minutes);
+}
+
+function formatHours(minutes: number) {
+  return `${(minutes / 60).toFixed(1)}h`;
+}
+
+function formatPercent(minutes: number, total: number) {
+  if (total <= 0) return "0%";
+  return `${Math.round((minutes / total) * 100)}%`;
+}
+
+function truncateLabel(name: string, maxLength = 12) {
+  const trimmed = name.trim();
+  if (trimmed.length <= maxLength) return trimmed;
+  return `${trimmed.slice(0, maxLength - 1)}…`;
+}
+
+function describeDonutSegment(
+  cx: number,
+  cy: number,
+  outerR: number,
+  innerR: number,
+  startAngle: number,
+  endAngle: number,
+): string {
+  const sweep = endAngle - startAngle;
+  if (sweep <= 0) return "";
+
+  const large = sweep > Math.PI ? 1 : 0;
+  const x1 = cx + outerR * Math.cos(startAngle);
+  const y1 = cy + outerR * Math.sin(startAngle);
+  const x2 = cx + outerR * Math.cos(endAngle);
+  const y2 = cy + outerR * Math.sin(endAngle);
+  const xi1 = cx + innerR * Math.cos(startAngle);
+  const yi1 = cy + innerR * Math.sin(startAngle);
+  const xi2 = cx + innerR * Math.cos(endAngle);
+  const yi2 = cy + innerR * Math.sin(endAngle);
+
+  return `M ${x1} ${y1} A ${outerR} ${outerR} 0 ${large} 1 ${x2} ${y2} L ${xi2} ${yi2} A ${innerR} ${innerR} 0 ${large} 0 ${xi1} ${yi1} Z`;
+}
+
+function buildDonutSegments(items: ClusterBreakdownItem[]) {
+  const total = items.reduce((sum, item) => sum + item.minutes, 0) || 1;
+  const cx = 90;
+  const cy = 90;
+  const r = 64;
+  const inner = 38;
+  const fullCircle = 2 * Math.PI;
+
   let angle = -Math.PI / 2;
-  const segments = data.slice(0, 6).map((d) => {
-    const sweep = (d.minutes / total) * 2 * Math.PI;
-    const x1 = cx + r * Math.cos(angle);
-    const y1 = cy + r * Math.sin(angle);
-    const x2 = cx + r * Math.cos(angle + sweep);
-    const y2 = cy + r * Math.sin(angle + sweep);
-    const xi1 = cx + inner * Math.cos(angle);
-    const yi1 = cy + inner * Math.sin(angle);
-    const xi2 = cx + inner * Math.cos(angle + sweep);
-    const yi2 = cy + inner * Math.sin(angle + sweep);
-    const large = sweep > Math.PI ? 1 : 0;
-    const path = `M ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2} L ${xi2} ${yi2} A ${inner} ${inner} 0 ${large} 0 ${xi1} ${yi1} Z`;
-    angle += sweep;
-    return { path, color: d.color, name: d.name, minutes: d.minutes };
-  });
+  return items
+    .map((item, index) => {
+      const isLast = index === items.length - 1;
+      const sweep = isLast
+        ? fullCircle - (angle + Math.PI / 2)
+        : (item.minutes / total) * fullCircle;
+      const startAngle = angle;
+      const endAngle = angle + sweep;
+      angle = endAngle;
 
-  const totalHours = (total / 60).toFixed(1);
+      return {
+        path: describeDonutSegment(cx, cy, r, inner, startAngle, endAngle),
+        color: item.color,
+        name: item.name,
+        minutes: item.minutes,
+      };
+    })
+    .filter((segment) => segment.path);
+}
+
+export function ClusterBreakdownDonut({ data }: { data: ClusterBreakdownItem[] }) {
+  const [activeIndex, setActiveIndex] = useState<number | null>(null);
+  const items = sortClustersByTime(data);
+  const totalMinutes = items.reduce((sum, item) => sum + item.minutes, 0);
+  const segments = buildDonutSegments(items);
+  const topItems = items.slice(0, MINI_LEGEND_COUNT);
+  const remainingCount = Math.max(0, items.length - MINI_LEGEND_COUNT);
+  const cx = 90;
+  const cy = 90;
+  const r = 64;
+  const inner = 38;
+  const active = activeIndex !== null ? segments[activeIndex] : null;
+
+  const handleSegmentClick = (index: number) => {
+    setActiveIndex((current) => (current === index ? null : index));
+  };
+
+  if (data.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-4 min-h-[180px]">
+        <svg viewBox="0 0 180 180" className="w-[140px]">
+          <circle
+            cx={cx}
+            cy={cy}
+            r={r}
+            fill="none"
+            stroke="var(--border)"
+            strokeWidth={r - inner}
+          />
+        </svg>
+        <p className="text-xs text-muted-foreground mt-2">No cluster sessions yet.</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="flex items-center gap-4">
-      <svg viewBox={`0 0 ${w} 160`} className="w-[160px] shrink-0">
-        {data.length === 0 ? (
-          <circle cx={cx} cy={cy} r={r} fill="none" stroke="var(--border)" strokeWidth={r - inner} />
-        ) : (
-          segments.map((s, i) => (
-            <path key={i} d={s.path} fill={s.color} fillOpacity="0.85" />
-          ))
-        )}
-        <text x={cx} y={cy - 4} fontSize="14" fontWeight="600"
-          fill="var(--foreground)" textAnchor="middle">{totalHours}h</text>
-        <text x={cx} y={cy + 12} fontSize="8"
-          fill="var(--muted-foreground)" textAnchor="middle">total</text>
-      </svg>
-      <div className="flex flex-col gap-1.5 min-w-0">
-        {data.length === 0 ? (
-          <p className="text-xs text-muted-foreground">No cluster sessions yet.</p>
-        ) : (
-          data.slice(0, 6).map((d) => (
-            <div key={d.name} className="flex items-center gap-2 min-w-0">
-              <span className="w-2 h-2 rounded-full shrink-0" style={{ background: d.color }} />
-              <span className="text-xs truncate text-muted-foreground">{d.name}</span>
-              <span className="text-xs text-foreground ml-auto pl-2 shrink-0">
-                {(d.minutes / 60).toFixed(1)}h
-              </span>
-            </div>
-          ))
-        )}
+    <div className="flex flex-col gap-2 py-1 min-h-[180px] justify-center">
+      <div
+        className="flex items-center gap-3 sm:gap-4"
+        onMouseLeave={() => setActiveIndex(null)}
+      >
+        <svg viewBox="0 0 180 180" className="w-[130px] sm:w-[150px] shrink-0">
+          {segments.map((segment, index) => {
+            const isActive = activeIndex === index;
+            const isDimmed = activeIndex !== null && !isActive;
+            const tooltip = `${segment.name} — ${formatHours(segment.minutes)} (${formatPercent(segment.minutes, totalMinutes)})`;
+
+            return (
+              <path
+                key={`${segment.name}-${index}`}
+                d={segment.path}
+                fill={segment.color}
+                fillOpacity={isDimmed ? 0.35 : 0.85}
+                className="cursor-pointer transition-opacity"
+                onMouseEnter={() => setActiveIndex(index)}
+                onClick={() => handleSegmentClick(index)}
+              >
+                <title>{tooltip}</title>
+              </path>
+            );
+          })}
+          <g className="pointer-events-none">
+            {active ? (
+              <>
+                <text
+                  x={cx}
+                  y={cy - 6}
+                  fontSize="11"
+                  fontWeight="600"
+                  fill="var(--foreground)"
+                  textAnchor="middle"
+                >
+                  {truncateLabel(active.name)}
+                </text>
+                <text
+                  x={cx}
+                  y={cy + 10}
+                  fontSize="10"
+                  fill="var(--muted-foreground)"
+                  textAnchor="middle"
+                >
+                  {formatHours(active.minutes)} · {formatPercent(active.minutes, totalMinutes)}
+                </text>
+              </>
+            ) : (
+              <>
+                <text
+                  x={cx}
+                  y={cy - 4}
+                  fontSize="14"
+                  fontWeight="600"
+                  fill="var(--foreground)"
+                  textAnchor="middle"
+                >
+                  {formatHours(totalMinutes)}
+                </text>
+                <text
+                  x={cx}
+                  y={cy + 12}
+                  fontSize="8"
+                  fill="var(--muted-foreground)"
+                  textAnchor="middle"
+                >
+                  total
+                </text>
+              </>
+            )}
+          </g>
+        </svg>
+
+        <div className="flex flex-col gap-1.5 min-w-0 flex-1">
+          {topItems.map((item, index) => {
+            const isActive = activeIndex === index;
+            const isDimmed = activeIndex !== null && !isActive;
+
+            return (
+              <button
+                key={item.name}
+                type="button"
+                onMouseEnter={() => setActiveIndex(index)}
+                onClick={() => handleSegmentClick(index)}
+                className={cn(
+                  "flex items-center gap-2 rounded-lg px-2 py-1.5 text-left transition-colors w-full",
+                  isActive ? "bg-accent/50" : "hover:bg-accent/30",
+                  isDimmed && "opacity-50",
+                )}
+              >
+                <span
+                  className="w-2 h-2 rounded-full shrink-0"
+                  style={{ background: item.color }}
+                />
+                <span className="text-xs truncate text-muted-foreground flex-1 min-w-0">
+                  {item.name}
+                </span>
+                <span className="text-xs text-foreground shrink-0 tabular-nums">
+                  {formatHours(item.minutes)}
+                </span>
+              </button>
+            );
+          })}
+          {remainingCount > 0 ? (
+            <Link
+              href="/analytics"
+              className="text-xs text-primary/70 hover:text-primary transition px-2 py-1"
+            >
+              +{remainingCount} more → Analytics
+            </Link>
+          ) : null}
+        </div>
       </div>
+      <p className="text-[11px] text-muted-foreground">
+        Hover or tap a slice for details
+      </p>
+    </div>
+  );
+}
+
+export function ClusterBreakdownBars({ data }: { data: ClusterBreakdownItem[] }) {
+  const items = sortClustersByTime(data);
+  const totalMinutes = items.reduce((sum, item) => sum + item.minutes, 0);
+  const maxMinutes = Math.max(...items.map((item) => item.minutes), 1);
+
+  if (data.length === 0) {
+    return (
+      <p className="text-xs text-muted-foreground py-6 text-center">
+        No cluster sessions yet.
+      </p>
+    );
+  }
+
+  return (
+    <div
+      className={cn(
+        "flex flex-col gap-2",
+        items.length > 8 && "max-h-[280px] overflow-y-auto pr-1",
+      )}
+    >
+      {items.map((item) => {
+        const widthPct = (item.minutes / maxMinutes) * 100;
+        return (
+          <div
+            key={item.name}
+            className="grid grid-cols-[auto_1fr_auto] items-center gap-3 rounded-lg px-2 py-1.5 hover:bg-accent/30 transition-colors"
+          >
+            <div className="flex items-center gap-2 min-w-0 max-w-[140px]">
+              <span
+                className="w-2 h-2 rounded-full shrink-0"
+                style={{ background: item.color }}
+              />
+              <span className="text-xs truncate text-muted-foreground">{item.name}</span>
+            </div>
+            <div className="h-2 rounded-full bg-border/40 overflow-hidden">
+              <div
+                className="h-full rounded-full transition-all"
+                style={{
+                  width: `${widthPct}%`,
+                  backgroundColor: item.color,
+                  opacity: 0.85,
+                }}
+              />
+            </div>
+            <span className="text-xs text-foreground shrink-0 tabular-nums">
+              {formatHours(item.minutes)} ({formatPercent(item.minutes, totalMinutes)})
+            </span>
+          </div>
+        );
+      })}
     </div>
   );
 }
