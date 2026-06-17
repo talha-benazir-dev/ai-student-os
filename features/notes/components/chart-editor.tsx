@@ -81,6 +81,8 @@ export default function ChartEditor({
   );
   const [isGenerating, setIsGenerating] = useState(false);
 
+  const hasChart = chart.data.length > 0 && chart.series.length > 0;
+
   const handleGenerate = useCallback(async () => {
     if (!prompt.trim()) {
       toast.error("Enter a prompt describing your chart");
@@ -92,7 +94,11 @@ export default function ChartEditor({
       const res = await fetch("/api/ai/generate-chart", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: prompt.trim(), chartType }),
+        body: JSON.stringify({
+          prompt: prompt.trim(),
+          chartType,
+          existing: hasChart ? chart : undefined,
+        }),
       });
 
       const data = (await res.json()) as { error?: string };
@@ -109,16 +115,15 @@ export default function ChartEditor({
       const result = data as unknown as ChartResult;
       setChart(result);
       onChange(JSON.stringify(result));
-      toast.success("Chart generated");
+      toast.success(hasChart ? "Chart updated" : "Chart created");
     } catch {
       toast.error("Failed to generate chart");
     } finally {
       setIsGenerating(false);
     }
-  }, [chartType, onChange, prompt]);
+  }, [chart, chartType, hasChart, onChange, prompt]);
 
   const resolvedType = (chart.chartType as ChartType) || chartType;
-  const hasChart = chart.data.length > 0 && chart.series.length > 0;
 
   return (
     <div className="flex flex-col gap-6 h-full">
@@ -129,11 +134,17 @@ export default function ChartEditor({
       ) : (
         <div className="space-y-3 shrink-0">
           <div className="space-y-2">
-            <Label className="text-white/70">Describe your chart</Label>
+            <Label className="text-white/70">
+              {hasChart ? "Describe changes" : "Describe your chart"}
+            </Label>
             <Textarea
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
-              placeholder="e.g. Monthly study hours for the past 6 months"
+              placeholder={
+                hasChart
+                  ? "e.g. Add June with 45 hours, or change the title to Weekly Study Time"
+                  : "e.g. Monthly study hours for the past 6 months"
+              }
               className="min-h-[80px] border-[#ffffff10] bg-[#0f0f17] text-white placeholder:text-white/30 resize-none"
             />
           </div>
@@ -167,7 +178,7 @@ export default function ChartEditor({
               ) : (
                 <Sparkles className="h-4 w-4 mr-2" />
               )}
-              Generate
+              {hasChart ? "Apply" : "Generate"}
             </Button>
           </div>
         </div>
@@ -294,7 +305,9 @@ export default function ChartEditor({
       ) : (
         <div className="flex flex-1 items-center justify-center rounded-xl border border-dashed border-[#ffffff10] bg-[#0f0f17]/50 p-8">
           <p className="text-sm text-white/40 text-center">
-            Describe a chart and click Generate to visualize your data.
+            {hasChart
+              ? "Describe changes above and click Apply to update the chart."
+              : "Describe a chart and click Generate to visualize your data."}
           </p>
         </div>
       )}

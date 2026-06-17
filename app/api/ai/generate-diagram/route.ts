@@ -1,9 +1,10 @@
-import { generateDiagram, type DiagramType } from "@/lib/ai/generate-diagram";
+import { generateDiagram, type DiagramResult, type DiagramType } from "@/lib/ai/generate-diagram";
 import { requirePro } from "@/lib/ai/require-pro";
 
 type RequestBody = {
   prompt: string;
   diagramType: DiagramType;
+  existing?: DiagramResult;
 };
 
 const VALID_DIAGRAM_TYPES: DiagramType[] = ["flowchart", "mindmap"];
@@ -19,7 +20,7 @@ export async function POST(req: Request) {
     return Response.json({ error: "Invalid request body" }, { status: 400 });
   }
 
-  const { prompt, diagramType } = body;
+  const { prompt, diagramType, existing } = body;
 
   if (!prompt?.trim()) {
     return Response.json({ error: "prompt is required" }, { status: 400 });
@@ -30,7 +31,7 @@ export async function POST(req: Request) {
   }
 
   try {
-    const result = await generateDiagram(prompt.trim(), diagramType);
+    const result = await generateDiagram(prompt.trim(), diagramType, existing);
     return Response.json(result);
   } catch (err) {
     const message =

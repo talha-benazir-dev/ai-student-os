@@ -1,9 +1,10 @@
-import { generateChart, type ChartType } from "@/lib/ai/generate-chart";
+import { generateChart, type ChartResult, type ChartType } from "@/lib/ai/generate-chart";
 import { requirePro } from "@/lib/ai/require-pro";
 
 type RequestBody = {
   prompt: string;
   chartType: ChartType;
+  existing?: ChartResult;
 };
 
 const VALID_CHART_TYPES: ChartType[] = ["bar", "line", "pie", "area"];
@@ -19,7 +20,7 @@ export async function POST(req: Request) {
     return Response.json({ error: "Invalid request body" }, { status: 400 });
   }
 
-  const { prompt, chartType } = body;
+  const { prompt, chartType, existing } = body;
 
   if (!prompt?.trim()) {
     return Response.json({ error: "prompt is required" }, { status: 400 });
@@ -30,7 +31,7 @@ export async function POST(req: Request) {
   }
 
   try {
-    const result = await generateChart(prompt.trim(), chartType);
+    const result = await generateChart(prompt.trim(), chartType, existing);
     return Response.json(result);
   } catch (err) {
     const message =

@@ -35,7 +35,13 @@ Rules:
 - series[].key must match numeric value keys in the data objects
 - For pie charts, use a single series and data with one row per slice
 - Generate realistic, meaningful sample data based on the user's prompt
-- Return only the JSON object, nothing else`;
+- Return only the JSON object, nothing else
+
+When editing an existing chart (current chart JSON is provided):
+- Infer intent from the user's message: edit unless they clearly want a full replacement (e.g. "start over", "replace this", "make a new chart about")
+- Preserve unchanged data, series, keys, and title where possible
+- Apply only the requested changes; return the FULL updated chart JSON, not a patch
+- Keep xKey and series keys consistent when adding or updating data points`;
 
 const SERIES_COLORS = ["#7c5cfc", "#3b82f6", "#10b981", "#f59e0b"];
 
@@ -49,8 +55,13 @@ function normalizeSeries(series: ChartSeries[]): ChartSeries[] {
 export async function generateChart(
   prompt: string,
   chartType: ChartType,
+  existing?: ChartResult,
 ): Promise<ChartResult> {
-  const userPrompt = `Create a ${chartType} chart for: ${prompt}`;
+  const hasExisting =
+    existing && existing.data.length > 0 && existing.series.length > 0;
+  const userPrompt = hasExisting
+    ? `Current ${chartType} chart:\n${JSON.stringify(existing)}\n\nUser request: ${prompt}\n\nApply the request to the current chart. Return the full updated JSON.`
+    : `Create a ${chartType} chart for: ${prompt}`;
 
   const raw = await callAnthropicJson(CHART_SYSTEM_PROMPT, userPrompt);
   const cleaned = stripMarkdownFences(raw);

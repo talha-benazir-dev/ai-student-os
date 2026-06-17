@@ -42,7 +42,14 @@ Rules:
 - Use a coordinate space roughly 800x600; keep all nodes within x:80-720, y:60-540
 - Every edge "from" and "to" must reference valid node ids
 - nodeType must be "default" for all nodes (used by React Flow)
-- Return only the JSON object, nothing else`;
+- Return only the JSON object, nothing else
+
+When editing an existing diagram (current diagram JSON is provided):
+- Infer intent from the user's message: edit unless they clearly want a full replacement (e.g. "start over", "replace this", "make a new diagram about")
+- Preserve unchanged nodes, edges, labels, and x/y positions where possible
+- Apply only the requested changes; return the FULL updated diagram JSON, not a patch
+- For new nodes, place them with clear spacing and avoid overlapping existing nodes
+- Keep existing node ids stable when modifying nodes in place`;
 
 function normalizeDiagram(result: DiagramResult): DiagramResult {
   return {
@@ -57,8 +64,12 @@ function normalizeDiagram(result: DiagramResult): DiagramResult {
 export async function generateDiagram(
   prompt: string,
   diagramType: DiagramType,
+  existing?: DiagramResult,
 ): Promise<DiagramResult> {
-  const userPrompt = `Create a ${diagramType} diagram for: ${prompt}`;
+  const hasExisting = existing && existing.nodes.length > 0;
+  const userPrompt = hasExisting
+    ? `Current ${diagramType} diagram:\n${JSON.stringify(existing)}\n\nUser request: ${prompt}\n\nApply the request to the current diagram. Return the full updated JSON.`
+    : `Create a ${diagramType} diagram for: ${prompt}`;
 
   const raw = await callAnthropicJson(DIAGRAM_SYSTEM_PROMPT, userPrompt);
   const cleaned = stripMarkdownFences(raw);

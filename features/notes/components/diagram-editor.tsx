@@ -4,7 +4,6 @@ import { useCallback, useMemo, useState } from "react";
 import ReactFlow, {
   Background,
   Controls,
-  MiniMap,
   type Edge,
   type Node,
 } from "reactflow";
@@ -95,6 +94,8 @@ export default function DiagramEditor({
     [diagram.nodes],
   );
 
+  const hasDiagram = diagram.nodes.length > 0;
+
   const handleGenerate = useCallback(async () => {
     if (!prompt.trim()) {
       toast.error("Enter a prompt describing your diagram");
@@ -106,7 +107,11 @@ export default function DiagramEditor({
       const res = await fetch("/api/ai/generate-diagram", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: prompt.trim(), diagramType }),
+        body: JSON.stringify({
+          prompt: prompt.trim(),
+          diagramType,
+          existing: hasDiagram ? diagram : undefined,
+        }),
       });
 
       const data = (await res.json()) as { error?: string };
@@ -123,15 +128,13 @@ export default function DiagramEditor({
       const result = data as unknown as DiagramResult;
       setDiagram(result);
       onChange(JSON.stringify(result));
-      toast.success("Diagram generated");
+      toast.success(hasDiagram ? "Diagram updated" : "Diagram created");
     } catch {
       toast.error("Failed to generate diagram");
     } finally {
       setIsGenerating(false);
     }
-  }, [diagramType, onChange, prompt]);
-
-  const hasDiagram = diagram.nodes.length > 0;
+  }, [diagram, diagramType, hasDiagram, onChange, prompt]);
 
   return (
     <div className="flex flex-col gap-6 h-full">
@@ -142,11 +145,17 @@ export default function DiagramEditor({
       ) : (
         <div className="space-y-3 shrink-0">
           <div className="space-y-2">
-            <Label className="text-white/70">Describe your diagram</Label>
+            <Label className="text-white/70">
+              {hasDiagram ? "Describe changes" : "Describe your diagram"}
+            </Label>
             <Textarea
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
-              placeholder="e.g. Photosynthesis process from sunlight to glucose"
+              placeholder={
+                hasDiagram
+                  ? "e.g. Add a node for ATP synthesis, or rename Sunlight to Solar energy"
+                  : "e.g. Photosynthesis process from sunlight to glucose"
+              }
               className="min-h-[80px] border-[#ffffff10] bg-[#0f0f17] text-white placeholder:text-white/30 resize-none"
             />
           </div>
@@ -180,7 +189,7 @@ export default function DiagramEditor({
               ) : (
                 <Sparkles className="h-4 w-4 mr-2" />
               )}
-              Generate
+              {hasDiagram ? "Apply" : "Generate"}
             </Button>
           </div>
         </div>
@@ -207,18 +216,15 @@ export default function DiagramEditor({
             >
               <Background color="#ffffff10" />
               <Controls className="!bg-[#0f0f17] !border-[#ffffff10] !shadow-none [&>button]:!bg-[#0f0f17] [&>button]:!border-[#ffffff10] [&>button]:!text-white [&>button:hover]:!bg-[#16161f]" />
-              <MiniMap
-                className="!bg-[#0f0f17] !border-[#ffffff10]"
-                nodeColor="#7c5cfc"
-                maskColor="#0a0a0f99"
-              />
             </ReactFlow>
           </div>
         </div>
       ) : (
         <div className="flex flex-1 items-center justify-center rounded-xl border border-dashed border-[#ffffff10] bg-[#0f0f17]/50 p-8">
           <p className="text-sm text-white/40 text-center">
-            Describe a diagram and click Generate to visualize it.
+            {hasDiagram
+              ? "Describe changes above and click Apply to update the diagram."
+              : "Describe a diagram and click Generate to visualize it."}
           </p>
         </div>
       )}
