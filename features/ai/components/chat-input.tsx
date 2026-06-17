@@ -1,12 +1,19 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowUp, Check, ImagePlus, Plus, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAIDrawer } from "@/providers/ai-drawer-provider";
 import { useClusters } from "@/providers/clusters-provider";
 import { ChatAttachmentStrip } from "@/features/ai/components/chat-attachment-strip";
+import { useAutoResizeTextarea } from "@/features/ai/hooks/use-auto-resize-textarea";
 import { useChatAttachments } from "@/features/ai/hooks/use-chat-attachments";
+import {
+  CHAT_COMPOSER_ATTACH_BUTTON_CLASS,
+  CHAT_COMPOSER_SEND_BUTTON_CLASS,
+  CHAT_COMPOSER_TEXTAREA_CLASS,
+  chatComposerRowClass,
+} from "@/features/ai/lib/chat-composer-styles";
 import type { ChatAttachment } from "@/features/ai/types";
 import { toast } from "sonner";
 
@@ -53,7 +60,7 @@ export function ChatInput({
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [slashOpen, setSlashOpen] = useState(false);
   const [autopilotPickerOpen, setAutopilotPickerOpen] = useState(false);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const { textareaRef, isMultiline } = useAutoResizeTextarea(value, MAX_ROWS);
   const popoverRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const slashRef = useRef<HTMLDivElement>(null);
@@ -77,21 +84,6 @@ export function ChatInput({
   const filteredSlashCommands = slashCommands.filter(
     (item) => value === "/" || item.command.startsWith(value),
   );
-
-  const resizeTextarea = useCallback(() => {
-    const el = textareaRef.current;
-    if (!el) return;
-
-    el.style.height = "auto";
-    const lineHeight = Number.parseFloat(getComputedStyle(el).lineHeight) || 20;
-    const maxHeight = lineHeight * MAX_ROWS;
-    el.style.height = `${Math.min(el.scrollHeight, maxHeight)}px`;
-    el.style.overflowY = el.scrollHeight > maxHeight ? "auto" : "hidden";
-  }, []);
-
-  useEffect(() => {
-    resizeTextarea();
-  }, [value, resizeTextarea]);
 
   useEffect(() => {
     if (!popoverOpen) return;
@@ -316,7 +308,7 @@ export function ChatInput({
         onRemove={removeAttachment}
       />
 
-      <div className="flex items-end gap-2">
+      <div className={chatComposerRowClass(isMultiline)}>
         <input
           ref={fileInputRef}
           type="file"
@@ -330,7 +322,7 @@ export function ChatInput({
             ref={triggerRef}
             type="button"
             onClick={() => setPopoverOpen((open) => !open)}
-            className="rounded-xl border border-[#ffffff10] bg-[#ffffff08] p-2 hover:bg-[#ffffff12]"
+            className={CHAT_COMPOSER_ATTACH_BUTTON_CLASS}
             aria-label="Open options"
           >
             <Plus className="h-4 w-4 text-white" />
@@ -439,17 +431,14 @@ export function ChatInput({
           autoComplete="off"
           disabled={isLoading || isUploading}
           rows={1}
-          className={cn(
-            "min-h-[36px] flex-1 resize-none bg-transparent text-sm text-white outline-none",
-            "placeholder:text-white/35 disabled:cursor-not-allowed disabled:opacity-50",
-          )}
+          className={CHAT_COMPOSER_TEXTAREA_CLASS}
         />
 
         <button
           type="button"
           onClick={() => void handleSend()}
           disabled={!canSend}
-          className="rounded-xl bg-[#7c5cfc] p-2 hover:bg-[#8a6dfd] disabled:opacity-40"
+          className={CHAT_COMPOSER_SEND_BUTTON_CLASS}
           aria-label="Send message"
         >
           <ArrowUp className="h-4 w-4 text-white" strokeWidth={2} />

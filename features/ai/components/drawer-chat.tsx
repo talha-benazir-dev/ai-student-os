@@ -10,7 +10,14 @@ import type { ChatAttachment, Message, Profile, ToolResultCard as ToolResultCard
 import { QuestionCard } from "@/features/ai/components/question-card";
 import { ToolResultCard as ToolResultCardComponent } from "@/features/ai/components/tool-result-card";
 import { ChatAttachmentStrip } from "@/features/ai/components/chat-attachment-strip";
+import { useAutoResizeTextarea } from "@/features/ai/hooks/use-auto-resize-textarea";
 import { useChatAttachments } from "@/features/ai/hooks/use-chat-attachments";
+import {
+  CHAT_COMPOSER_ATTACH_BUTTON_CLASS,
+  CHAT_COMPOSER_SEND_BUTTON_CLASS,
+  CHAT_COMPOSER_TEXTAREA_CLASS,
+  chatComposerRowClass,
+} from "@/features/ai/lib/chat-composer-styles";
 import { parseAiApiError, UPGRADE_TOAST } from "@/lib/ai/constants";
 import { cn } from "@/lib/utils";
 
@@ -116,6 +123,7 @@ export function DrawerChat({ context, clusters, profile }: DrawerChatProps) {
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [inputValue, setInputValue] = useState("");
   const [flowComplete, setFlowComplete] = useState(context.type === "manual");
+  const { textareaRef, isMultiline } = useAutoResizeTextarea(inputValue);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const {
     pending,
@@ -551,7 +559,7 @@ export function DrawerChat({ context, clusters, profile }: DrawerChatProps) {
               onRemove={removeAttachment}
             />
 
-            <div className="flex items-end gap-2">
+            <div className={chatComposerRowClass(isMultiline)}>
               <input
                 ref={fileInputRef}
                 type="file"
@@ -568,13 +576,14 @@ export function DrawerChat({ context, clusters, profile }: DrawerChatProps) {
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isLoading || isUploading}
-                className="rounded-xl border border-[#ffffff10] bg-[#ffffff08] p-2 hover:bg-[#ffffff12] disabled:opacity-50"
+                className={CHAT_COMPOSER_ATTACH_BUTTON_CLASS}
                 aria-label="Attach image"
               >
                 <ImagePlus className="h-4 w-4 text-white" />
               </button>
 
               <textarea
+                ref={textareaRef}
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 onPaste={handlePaste}
@@ -588,16 +597,13 @@ export function DrawerChat({ context, clusters, profile }: DrawerChatProps) {
                 autoComplete="off"
                 disabled={isLoading || isUploading}
                 rows={1}
-                className={cn(
-                  "min-h-[36px] max-h-24 flex-1 resize-none bg-transparent text-sm text-white outline-none",
-                  "placeholder:text-white/35 disabled:cursor-not-allowed disabled:opacity-50",
-                )}
+                className={CHAT_COMPOSER_TEXTAREA_CLASS}
               />
               <button
                 type="button"
                 onClick={() => void submitInput()}
                 disabled={!canSend}
-                className="rounded-xl bg-[#7c5cfc] p-2 hover:bg-[#8a6dfd] disabled:opacity-40"
+                className={CHAT_COMPOSER_SEND_BUTTON_CLASS}
                 aria-label="Send message"
               >
                 <ArrowUp className="h-4 w-4 text-white" strokeWidth={2} />

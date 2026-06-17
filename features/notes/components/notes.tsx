@@ -985,11 +985,6 @@ export default function NotesPage({
   const { collapsedIds, toggleSectionCollapsed } = useCollapsedNoteSections();
 
   useEffect(() => {
-    if (!isSplitView || activeNote || notes.length === 0) return;
-    setActiveNote(notes[0]);
-  }, [isSplitView, activeNote, notes]);
-
-  useEffect(() => {
     if (!autoOpenCreate) return;
     setPickerOpen(true);
     router.replace("/notes", { scroll: false });

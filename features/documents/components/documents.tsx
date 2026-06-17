@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import type { Cluster, Document } from "../types";
 import {
   createDocument,
@@ -17,6 +17,8 @@ import {
   Sparkles,
 } from "lucide-react";
 import { useAIDrawer } from "@/providers/ai-drawer-provider";
+import { parseAiApiError, UPGRADE_TOAST } from "@/lib/ai/constants";
+import { toast } from "sonner";
 
 function formatBytes(bytes: number, decimals = 1) {
   if (!+bytes) return "0 B";
@@ -40,6 +42,14 @@ interface DocumentsPageProps {
 type ClusterFilter = "all" | "general" | string;
 
 const GENERAL_CLUSTER_VALUE = "";
+
+type OverviewStatus =
+  | "idle"
+  | "loading"
+  | "ready"
+  | "no_text"
+  | "upgrade_required"
+  | "error";
 
 function clusterIdFromSelectValue(value: string): string | null {
   return value === GENERAL_CLUSTER_VALUE ? null : value;
@@ -70,6 +80,9 @@ export function DocumentsPage({
     documentTitle: string;
     rawText: string;
   } | null>(null);
+  const [overviewStatus, setOverviewStatus] = useState<OverviewStatus>("idle");
+  const [overviewText, setOverviewText] = useState("");
+  const [overviewRetry, setOverviewRetry] = useState(0);
 
   const { openDrawer } = useAIDrawer();
 
@@ -92,6 +105,80 @@ export function DocumentsPage({
       return documents.filter((d) => d.cluster_id === null);
     return documents.filter((d) => d.cluster_id === activeClusterFilter);
   }, [documents, activeClusterFilter]);
+
+  const fetchOverview = useCallback(
+    async (doc: Document, signal: AbortSignal) => {
+      try {
+        const response = await fetch(`/api/documents/${doc.id}/overview`, {
+          method: "POST",
+          signal,
+        });
+
+        const data = (await response.json().catch(() => ({}))) as {
+          overview?: string;
+          error?: string;
+        };
+
+        if (signal.aborted) return;
+
+        if (
+          parseAiApiError(response.status, data) === "upgrade_required"
+        ) {
+          toast.error(UPGRADE_TOAST);
+          setOverviewStatus("upgrade_required");
+          return;
+        }
+
+        if (response.status === 422 && data.error === "no_text") {
+          setOverviewStatus("no_text");
+          return;
+        }
+
+        if (!response.ok || !data.overview) {
+          setOverviewStatus("error");
+          return;
+        }
+
+        setOverviewText(data.overview);
+        setOverviewStatus("ready");
+        setDocuments((prev) =>
+          prev.map((d) =>
+            d.id === doc.id ? { ...d, ai_summary: data.overview! } : d,
+          ),
+        );
+        setSelectedDoc((prev) =>
+          prev?.id === doc.id ? { ...prev, ai_summary: data.overview! } : prev,
+        );
+      } catch {
+        if (!signal.aborted) {
+          setOverviewStatus("error");
+        }
+      }
+    },
+    [],
+  );
+
+  useEffect(() => {
+    if (!selectedDoc) {
+      setOverviewStatus("idle");
+      setOverviewText("");
+      return;
+    }
+
+    if (selectedDoc.ai_summary) {
+      setOverviewText(selectedDoc.ai_summary);
+      setOverviewStatus("ready");
+      return;
+    }
+
+    setOverviewStatus("loading");
+    setOverviewText("");
+
+    const controller = new AbortController();
+    fetchOverview(selectedDoc, controller.signal);
+
+    return () => controller.abort();
+  }, [selectedDoc?.id, selectedDoc?.ai_summary, overviewRetry, fetchOverview]);
 
   const handleDragEnter = (e: React.DragEvent) => {
     e.preventDefault();
@@ -492,8 +579,8 @@ export function DocumentsPage({
                   No documents yet
                 </h3>
                 <p className="text-zinc-500 mb-6 text-center max-w-sm">
-                  Upload your first PDF to get started with AI-powered summaries
-                  and study materials.
+                  Upload your first PDF, then generate a study pack with notes,
+                  flashcards, and tasks.
                 </p>
                 <button
                   onClick={() => setShowUpload(true)}
@@ -543,16 +630,6 @@ export function DocumentsPage({
                     </div>
 
                     <div className="flex items-center gap-4 shrink-0">
-                      {doc.ai_summary ? (
-                        <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-green-500/15 text-green-400">
-                          Summary ready
-                        </span>
-                      ) : (
-                        <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-yellow-500/15 text-yellow-400">
-                          Processing...
-                        </span>
-                      )}
-
                       <button
                         onClick={(e) => handleDelete(e, doc)}
                         className="p-2 text-zinc-500 hover:text-red-400 hover:bg-red-400/10 rounded-lg opacity-0 group-hover:opacity-100 transition-all"
@@ -634,39 +711,73 @@ export function DocumentsPage({
 
               <button
                 onClick={() => setShowPdfModal(true)}
-                className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-white text-black font-semibold rounded-xl hover:bg-zinc-200 transition-colors mb-10"
+                className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-white text-black font-semibold rounded-xl hover:bg-zinc-200 transition-colors"
               >
                 <ExternalLink className="w-4 h-4" />
                 <span>Open PDF</span>
               </button>
 
-              <div className="space-y-4">
-                <h4 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider">
-                  AI Summary
-                </h4>
-                {selectedDoc.ai_summary ? (
-                  <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4">
-                    <div className="flex items-center gap-2 mb-3">
-                      <span className="flex w-2 h-2 rounded-full bg-green-500"></span>
-                      <span className="text-xs font-medium text-green-400">
-                        Summary ready
-                      </span>
+              {overviewStatus !== "idle" && (
+                <div className="mt-6 space-y-3">
+                  <h4 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider">
+                    Quick overview
+                  </h4>
+
+                  {overviewStatus === "loading" && (
+                    <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4 space-y-2">
+                      <div className="h-3 bg-zinc-800 rounded animate-pulse w-full" />
+                      <div className="h-3 bg-zinc-800 rounded animate-pulse w-5/6" />
+                      <div className="h-3 bg-zinc-800 rounded animate-pulse w-4/6" />
                     </div>
-                    <p className="text-sm text-zinc-300 leading-relaxed whitespace-pre-wrap">
-                      {selectedDoc.ai_summary}
-                    </p>
-                  </div>
-                ) : (
-                  <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-5 flex flex-col items-center text-center">
-                    <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-yellow-500/15 text-yellow-400 mb-3">
-                      Processing...
-                    </span>
-                    <p className="text-sm text-zinc-400">
-                      Summary is being processed. Check back soon.
-                    </p>
-                  </div>
-                )}
-              </div>
+                  )}
+
+                  {overviewStatus === "ready" && (
+                    <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4">
+                      <p className="text-sm text-zinc-300 leading-relaxed whitespace-pre-wrap">
+                        {overviewText}
+                      </p>
+                    </div>
+                  )}
+
+                  {overviewStatus === "no_text" && (
+                    <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4">
+                      <p className="text-sm text-zinc-400">
+                        We couldn&apos;t extract text from this PDF, so a quick
+                        overview isn&apos;t available.
+                      </p>
+                    </div>
+                  )}
+
+                  {overviewStatus === "upgrade_required" && (
+                    <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4">
+                      <p className="text-sm text-zinc-400">
+                        Quick overview is a Pro feature.{" "}
+                        <a
+                          href="/#pricing"
+                          className="text-[#7c5cfc] hover:text-[#8a6dfd] transition-colors"
+                        >
+                          Upgrade to Pro
+                        </a>
+                      </p>
+                    </div>
+                  )}
+
+                  {overviewStatus === "error" && (
+                    <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4 flex flex-col items-start gap-3">
+                      <p className="text-sm text-zinc-400">
+                        Couldn&apos;t generate an overview. Please try again.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setOverviewRetry((n) => n + 1)}
+                        className="text-xs font-medium text-[#7c5cfc] hover:text-[#8a6dfd] transition-colors"
+                      >
+                        Retry
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="p-6 border-t border-[#ffffff10]">
