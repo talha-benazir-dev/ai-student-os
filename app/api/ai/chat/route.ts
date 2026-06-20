@@ -162,10 +162,11 @@ export async function POST(req: Request) {
           onEvent,
         );
       } catch (err) {
-        console.error("AI chat stream error:", err);
-        const message =
-          err instanceof Error ? err.message : "An unexpected error occurred";
-        onEvent({ type: "error", value: message });
+        console.error("[ai/chat] stream error:", err);
+        onEvent({
+          type: "error",
+          value: "Something went wrong. Please try again.",
+        });
       }
     },
   });

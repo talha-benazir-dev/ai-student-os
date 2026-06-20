@@ -1,0 +1,65 @@
+---
+description: Core Nucleus project identity, stack, and locked architectural decisions. Apply to every file in the project.
+globs: **/*
+alwaysApply: true
+---
+
+# Nucleus — Project Identity
+
+Nucleus is an AI-powered study OS for students. Dark theme, premium feel, opinionated (not a blank canvas). Every piece of code you write must feel like it belongs in a production SaaS product — not a tutorial project.
+
+## Stack (Locked — Never Deviate)
+- **Framework:** Next.js 15 App Router (React 19)
+- **Language:** TypeScript — strict, no `any` types ever
+- **Styling:** Tailwind CSS + shadcn/ui only
+- **Database + Auth:** Supabase via `@supabase/ssr` ONLY — never import from `@supabase/supabase-js` directly
+- **File uploads:** Cloudinary — never Supabase Storage
+- **Package manager:** npm — never add new packages without being explicitly told to
+- **Toasts:** sonner only — never react-hot-toast or any other
+- **Icons:** lucide-react only
+- **Markdown:** react-markdown only
+- **Canvas:** @excalidraw/excalidraw@0.18.1
+- **Charts:** recharts
+- **Diagrams:** reactflow
+- **Animation:** NONE — no Framer Motion, no CSS animations unless already in the codebase
+
+## Project Structure (Feature-Based — Never Break This)
+```
+app/              → Next.js routes and API routes only
+features/         → All UI components and business logic, organized by feature
+lib/              → Shared utilities, Supabase clients, AI helpers
+components/ui/    → shadcn primitives only — never put custom components here
+providers/        → React context providers only
+```
+
+Every new component goes in `features/[feature-name]/components/`. Never put components in `app/` or `components/` (except shadcn primitives).
+
+## Locked Decisions — Never Revisit
+- `cluster_id === null` means "General" — never use the word "scope"
+- Plain HTML `<input type="date">` — never shadcn Calendar component for date inputs
+- `autoComplete="off"` on all form inputs
+- All AI responses render via react-markdown with prose-invert class
+- `executeToolCall` lives in `lib/ai/execute-tool.ts` — never duplicate this logic
+- AI models: `claude-haiku-4-5-20251001` for default, `claude-sonnet-4-6` for autonomous only
+- Cloudinary folders: `nucleus/documents` for PDFs, `nucleus/chat-attachments` for images
+
+## Supabase Client Rules
+- Server components, API routes, server actions → `import { createClient } from '@/lib/supabase/server'`
+- Client components → `import { createClient } from '@/lib/supabase/client'`
+- Middleware → `import { createClient } from '@/lib/supabase/middleware'`
+- NEVER import createClient from anywhere else
+- NEVER use `supabase.auth.getUser()` in client components for security checks — always use server-side
+
+## API Route Rules
+- Every API route MUST call `requirePro()` from `lib/ai/require-pro.ts` at the top if it's an AI route
+- Every API route MUST verify the user session before doing anything else
+- Always return proper HTTP status codes: 401 (unauthenticated), 403 (forbidden), 422 (validation error), 500 (server error)
+- Never expose internal error messages to the client — log them server-side, return generic messages
+
+## Code Quality Standards
+- Every async function must have try/catch with proper error handling
+- Never leave console.log in production code — use console.error only for actual errors
+- All server actions must validate input before touching the database
+- TypeScript interfaces for all data shapes — no inline object types for anything complex
+- Supabase queries must always filter by `user_id` — never fetch without user scope
+- Never use `select('*')` when you know the exact columns you need

@@ -1,0 +1,132 @@
+---
+description: Production code standards for Nucleus. How to write components, handle errors, structure files, and what to never do. Apply everywhere.
+globs: **/*.ts, **/*.tsx
+alwaysApply: true
+---
+
+# Nucleus — Code Standards
+
+## The Prime Directive
+Every file you write must be production-ready. No TODOs left in code, no placeholder logic, no "this will do for now." If you're not sure how to implement something properly, say so instead of writing bad code.
+
+## TypeScript
+```ts
+// NEVER use any
+const data: any = ...  // ❌
+
+// ALWAYS define proper types
+interface NoteCardProps {
+  note: Note
+  onDelete: (id: string) => void
+}
+```
+
+Always import types with `import type { }` when it's a type-only import.
+
+## Error Handling
+
+### Server actions — always return typed results
+```ts
+// Return shape must always be consistent
+return { data: result }   // success
+return { error: 'message' }  // failure — never throw, always return
+
+// Never do this in a server action
+throw new Error('something failed')
+```
+
+### Client components — always handle loading and error states
+```tsx
+const [isLoading, setIsLoading] = useState(false)
+const [error, setError] = useState<string | null>(null)
+
+// Always show feedback to user
+if (error) return <p className="text-red-400 text-sm">{error}</p>
+```
+
+### Always use sonner for user-facing feedback
+```ts
+import { toast } from 'sonner'
+
+toast.success('Note created')
+toast.error('Failed to create note')
+```
+
+## Component Structure
+```tsx
+// 1. Imports (external → internal → types)
+// 2. Types/interfaces
+// 3. Component function
+// 4. Hooks at top
+// 5. Derived state
+// 6. Handlers
+// 7. Return JSX
+
+'use client'
+
+import { useState } from 'react'
+import { Button } from '@/components/ui/button'
+import { createNote } from '../actions/notes.actions'
+import type { Note } from '../types'
+
+interface Props {
+  clusterId: string | null
+}
+
+export function CreateNoteButton({ clusterId }: Props) {
+  const [isLoading, setIsLoading] = useState(false)
+
+  async function handleCreate() {
+    setIsLoading(true)
+    const result = await createNote({ clusterId, title: 'Untitled' })
+    if (result.error) toast.error(result.error)
+    setIsLoading(false)
+  }
+
+  return (
+    <Button onClick={handleCreate} disabled={isLoading}>
+      {isLoading ? 'Creating...' : 'New Note'}
+    </Button>
+  )
+}
+```
+
+## What Never To Do
+- Never use `console.log` — use `console.error` only for actual errors
+- Never leave commented-out code blocks
+- Never use `!important` in styles
+- Never use inline styles — Tailwind classes only
+- Never install new npm packages — ask first
+- Never import from `@supabase/supabase-js` directly
+- Never add Framer Motion or any animation library
+- Never use `as any` TypeScript cast — find the proper type
+- Never hardcode user IDs, API keys, or secrets
+- Never fetch data client-side when it can be done server-side
+- Never duplicate logic that already exists in `lib/`
+
+## File Naming
+```
+components → kebab-case.tsx         (note-card.tsx)
+actions    → kebab-case.actions.ts  (notes.actions.ts)
+types      → index.ts inside types/ folder
+hooks      → use-kebab-case.ts      (use-notes.ts)
+```
+
+## Surgical Edits Only
+When asked to fix or modify something:
+- Change ONLY what is needed
+- Do not refactor unrelated code
+- Do not rename variables that aren't part of the fix
+- Do not add new features while fixing a bug
+- Do not rewrite a whole file when one function needs changing
+
+## Prompt Cache Everything
+Any Anthropic API call system prompt must have `cache_control: { type: 'ephemeral' }` on the system message and the `anthropic-beta: 'prompt-caching-2024-07-31'` header. This is non-negotiable — it directly affects cost.
+
+## Security Checklist (Run Through This For Every API Route)
+- [ ] Is `supabase.auth.getUser()` called before anything else?
+- [ ] Is `requirePro()` called if this is an AI route?
+- [ ] Are all database queries filtered by `user_id`?
+- [ ] Is the response body validated before use?
+- [ ] Are error messages generic to the client (no internal details leaked)?
+- [ ] Is the HTTP status code correct (401/403/422/500)?

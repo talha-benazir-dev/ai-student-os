@@ -34,8 +34,7 @@ export async function POST(req: Request) {
     const result = await generateDiagram(prompt.trim(), diagramType, existing);
     return Response.json(result);
   } catch (err) {
-    const message =
-      err instanceof Error ? err.message : "Failed to generate diagram";
-    return Response.json({ error: message }, { status: 500 });
+    console.error("[generate-diagram] error:", err);
+    return Response.json({ error: "Generation failed" }, { status: 500 });
   }
 }

@@ -10,9 +10,10 @@ export async function requirePro(): Promise<
   const supabase = await createClient();
   const {
     data: { user },
+    error: authError,
   } = await supabase.auth.getUser();
 
-  if (!user) {
+  if (authError || !user) {
     return {
       error: new Response(JSON.stringify({ error: "unauthorized" }), {
         status: 401,

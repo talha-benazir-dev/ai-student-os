@@ -1,0 +1,104 @@
+---
+description: AI routes, tool patterns, requirePro gating, and SSE streaming for Nucleus. Apply when working in app/api/ai/, lib/ai/, or features/ai/.
+globs: app/api/ai/**/*.ts, lib/ai/**/*.ts, features/ai/**/*.ts
+alwaysApply: false
+---
+
+# Nucleus — AI System Patterns
+
+## Model Rules (Locked)
+```
+claude-haiku-4-5-20251001  → all default chat, chart generation, diagram generation
+claude-sonnet-4-6          → autonomous mode ONLY
+```
+Never use any other model. Never swap these without explicit instruction.
+
+## Every AI Route Must Start With This
+```ts
+export async function POST(req: Request) {
+  const supabase = await createClient()
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
+  if (authError || !user) return new Response('Unauthorized', { status: 401 })
+
+  const proError = await requirePro(supabase)
+  if (proError) return proError
+  
+  // rest of route...
+}
+```
+
+## Prompt Caching (Required on All Anthropic Calls)
+```ts
+// Always include these headers
+const response = await anthropic.messages.create({
+  model: 'claude-haiku-4-5-20251001',
+  max_tokens: 8096,
+  system: [{ 
+    type: 'text', 
+    text: systemPrompt,
+    cache_control: { type: 'ephemeral' }  // ← always include
+  }],
+  messages,
+}, {
+  headers: { 'anthropic-beta': 'prompt-caching-2024-07-31' }  // ← always include
+})
+```
+
+## SSE Streaming Pattern
+```ts
+const stream = new TransformStream()
+const writer = stream.writable.getWriter()
+const encoder = new TextEncoder()
+
+const send = (data: object) => {
+  writer.write(encoder.encode(`data: ${JSON.stringify(data)}\n\n`))
+}
+
+// Emit text chunks
+send({ type: 'text', content: chunk })
+
+// Emit tool results
+send({ type: 'tool_result', toolName, result })
+
+// Always close
+send({ type: 'done' })
+writer.close()
+
+return new Response(stream.readable, {
+  headers: {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive',
+  }
+})
+```
+
+## Tool Registration (lib/ai/execute-tool.ts)
+- All tool execution goes through `executeToolCall()` in `lib/ai/execute-tool.ts`
+- Never write tool execution logic inside an API route directly
+- To add a new tool: add definition to `features/ai/tools/index.ts`, add handler to `lib/ai/execute-tool.ts`
+
+## Current Tools (11 — Don't Duplicate)
+```
+get_clusters, get_notes, get_tasks, get_flashcards,
+create_cluster, create_note, create_task, create_flashcard,
+create_flashcard_set, create_chart_note, create_diagram_note
+```
+
+## Agent Loop Rules
+- Manual mode: Haiku, streaming text only, no tools
+- Assisted mode: Haiku, max 5 iterations, max 1 write operation
+- Autonomous mode: Sonnet, max 15 iterations
+- Loop lives in `lib/ai/run-agent-loop.ts` — never reimplement this inline
+
+## requirePro Location
+```ts
+import { requirePro } from '@/lib/ai/require-pro'
+```
+Returns a Response object if the user is not Pro, null if they are. Always check for null before continuing.
+
+## Conversation Persistence Rules
+- Client creates conversation in `ai_conversations` before first message
+- Messages saved to `ai_messages` after stream completes — not during
+- `attachments` column in ai_messages is jsonb — store as array of {url, type} objects
+- `tool_results` column in ai_messages is jsonb — store raw tool output

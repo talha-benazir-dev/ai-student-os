@@ -2,7 +2,15 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronRight, Gift, LayoutGrid, List, Plus, Trash2 } from "lucide-react";
+import {
+  ChevronRight,
+  Gift,
+  LayoutGrid,
+  List,
+  Pencil,
+  Plus,
+  Trash2,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -32,6 +40,7 @@ import {
   createTask,
   deleteTask,
   toggleTask,
+  updateTask,
 } from "@/features/tasks/actions/tasks.actions";
 import type { Cluster, Task } from "@/features/tasks/types";
 
@@ -59,6 +68,15 @@ const CLUSTER_VIEW_STORAGE_KEY = "nucleus_tasks_cluster_view";
 const CLUSTER_COLLAPSED_STORAGE_KEY = "nucleus_tasks_collapsed_clusters";
 
 type ClusterView = "grid" | "list";
+
+type TaskFormValues = {
+  title: string;
+  priority: Task["priority"];
+  cluster_id: string | null;
+  importance_points: number;
+  reward: string;
+  due_date: string | null;
+};
 
 function formatDueDate(iso: string): string {
   return new Date(`${iso}T12:00:00`).toLocaleDateString(undefined, {
@@ -279,11 +297,13 @@ function ClusterViewToggle({
 function ClusterTaskList({
   tasks,
   onToggle,
+  onEdit,
   onDelete,
   scrollable,
 }: {
   tasks: Task[];
   onToggle: (task: Task) => void;
+  onEdit: (task: Task) => void;
   onDelete: (task: Task) => void;
   scrollable?: boolean;
 }) {
@@ -305,6 +325,7 @@ function ClusterTaskList({
           key={task.id}
           task={task}
           onToggle={onToggle}
+          onEdit={onEdit}
           onDelete={onDelete}
         />
       ))}
@@ -316,11 +337,13 @@ function ClusterGridCard({
   cluster,
   tasks,
   onToggle,
+  onEdit,
   onDelete,
 }: {
   cluster: Cluster;
   tasks: Task[];
   onToggle: (task: Task) => void;
+  onEdit: (task: Task) => void;
   onDelete: (task: Task) => void;
 }) {
   return (
@@ -345,6 +368,7 @@ function ClusterGridCard({
       <ClusterTaskList
         tasks={tasks}
         onToggle={onToggle}
+        onEdit={onEdit}
         onDelete={onDelete}
         scrollable={tasks.length >= CLUSTER_SCROLL_THRESHOLD}
       />
@@ -358,6 +382,7 @@ function ClusterListSection({
   isCollapsed,
   onToggleCollapsed,
   onToggle,
+  onEdit,
   onDelete,
 }: {
   cluster: Cluster;
@@ -365,6 +390,7 @@ function ClusterListSection({
   isCollapsed: boolean;
   onToggleCollapsed: () => void;
   onToggle: (task: Task) => void;
+  onEdit: (task: Task) => void;
   onDelete: (task: Task) => void;
 }) {
   const progress = clusterProgressPercent(tasks);
@@ -400,6 +426,7 @@ function ClusterListSection({
           <ClusterTaskList
             tasks={tasks}
             onToggle={onToggle}
+            onEdit={onEdit}
             onDelete={onDelete}
           />
         </div>
@@ -415,6 +442,7 @@ function ClusterSections({
   collapsedIds,
   onToggleCollapsed,
   onToggle,
+  onEdit,
   onDelete,
 }: {
   clusters: Cluster[];
@@ -423,6 +451,7 @@ function ClusterSections({
   collapsedIds: Set<string>;
   onToggleCollapsed: (clusterId: string) => void;
   onToggle: (task: Task) => void;
+  onEdit: (task: Task) => void;
   onDelete: (task: Task) => void;
 }) {
   if (view === "grid") {
@@ -439,6 +468,7 @@ function ClusterSections({
                 cluster={cluster}
                 tasks={clusterTasks}
                 onToggle={onToggle}
+                onEdit={onEdit}
                 onDelete={onDelete}
               />
             </div>
@@ -463,6 +493,7 @@ function ClusterSections({
             isCollapsed={collapsedIds.has(cluster.id)}
             onToggleCollapsed={() => onToggleCollapsed(cluster.id)}
             onToggle={onToggle}
+            onEdit={onEdit}
             onDelete={onDelete}
           />
         );
@@ -474,10 +505,12 @@ function ClusterSections({
 function TaskItem({
   task,
   onToggle,
+  onEdit,
   onDelete,
 }: {
   task: Task;
   onToggle: (task: Task) => void;
+  onEdit: (task: Task) => void;
   onDelete: (task: Task) => void;
 }) {
   const isPending = task.id.startsWith("temp-");
@@ -532,15 +565,26 @@ function TaskItem({
           </Tooltip>
         ) : null}
       </div>
-      <button
-        type="button"
-        onClick={() => onDelete(task)}
-        disabled={isPending}
-        className="shrink-0 rounded p-1 text-zinc-500 opacity-0 transition-all hover:bg-red-500/10 hover:text-red-400 group-hover:opacity-100 disabled:pointer-events-none"
-        aria-label="Delete task"
-      >
-        <Trash2 className="h-3.5 w-3.5" />
-      </button>
+      <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-all group-hover:opacity-100">
+        <button
+          type="button"
+          onClick={() => onEdit(task)}
+          disabled={isPending}
+          className="rounded p-1 text-zinc-500 hover:bg-[#7c5cfc]/10 hover:text-[#7c5cfc] disabled:pointer-events-none"
+          aria-label="Edit task"
+        >
+          <Pencil className="h-3.5 w-3.5" />
+        </button>
+        <button
+          type="button"
+          onClick={() => onDelete(task)}
+          disabled={isPending}
+          className="rounded p-1 text-zinc-500 hover:bg-red-500/10 hover:text-red-400 disabled:pointer-events-none"
+          aria-label="Delete task"
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </button>
+      </div>
     </div>
   );
 }
@@ -554,14 +598,7 @@ function CreateTaskModal({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   clusters: Cluster[];
-  onSubmit: (values: {
-    title: string;
-    priority: Task["priority"];
-    cluster_id: string | null;
-    importance_points: number;
-    reward: string;
-    due_date: string | null;
-  }) => void;
+  onSubmit: (values: TaskFormValues) => void;
 }) {
   const [title, setTitle] = useState("");
   const [priority, setPriority] = useState<Task["priority"]>("medium");
@@ -714,6 +751,172 @@ function CreateTaskModal({
   );
 }
 
+function EditTaskModal({
+  task,
+  open,
+  onOpenChange,
+  clusters,
+  onSubmit,
+}: {
+  task: Task | null;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  clusters: Cluster[];
+  onSubmit: (taskId: string, values: TaskFormValues) => void;
+}) {
+  const [title, setTitle] = useState("");
+  const [priority, setPriority] = useState<Task["priority"]>("medium");
+  const [clusterId, setClusterId] = useState(GENERAL_CLUSTER_VALUE);
+  const [importancePoints, setImportancePoints] = useState("10");
+  const [reward, setReward] = useState("");
+  const [dueDate, setDueDate] = useState("");
+
+  useEffect(() => {
+    if (!task || !open) return;
+
+    setTitle(task.title);
+    setPriority(task.priority);
+    setClusterId(task.cluster_id ?? GENERAL_CLUSTER_VALUE);
+    setImportancePoints(String(task.importance_points));
+    setReward(task.reward);
+    setDueDate(task.due_date ?? "");
+  }, [task, open]);
+
+  const handleOpenChange = (next: boolean) => {
+    onOpenChange(next);
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!task) return;
+
+    const trimmed = title.trim();
+    if (!trimmed) return;
+
+    const points = Math.min(100, Math.max(1, Number(importancePoints) || 10));
+
+    onSubmit(task.id, {
+      title: trimmed,
+      priority,
+      cluster_id: clusterId === GENERAL_CLUSTER_VALUE ? null : clusterId,
+      importance_points: points,
+      reward: reward.trim(),
+      due_date: dueDate === "" ? null : dueDate,
+    });
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent className="border-[#ffffff10] bg-[#0f0f17] sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="text-white">Edit Task</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4 pt-2">
+          <div className="space-y-2">
+            <Label htmlFor="edit-task-title" className="text-white/70">
+              Title
+            </Label>
+            <Input
+              id="edit-task-title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="What do you need to do?"
+              className="border-[#ffffff10] bg-[#0a0a0f] text-white"
+              required
+              autoComplete="off"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-white/70">Priority</Label>
+            <Select
+              value={priority}
+              onValueChange={(v) => setPriority(v as Task["priority"])}
+            >
+              <SelectTrigger className="border-[#ffffff10] bg-[#0a0a0f] text-white">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="border-[#ffffff10] bg-[#0f0f17] text-white">
+                <SelectItem value="low">Low</SelectItem>
+                <SelectItem value="medium">Medium</SelectItem>
+                <SelectItem value="high">High</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-white/70">Cluster</Label>
+            <Select value={clusterId} onValueChange={setClusterId}>
+              <SelectTrigger className="border-[#ffffff10] bg-[#0a0a0f] text-white">
+                <SelectValue placeholder="General" />
+              </SelectTrigger>
+              <SelectContent className="border-[#ffffff10] bg-[#0f0f17] text-white">
+                <SelectItem value={GENERAL_CLUSTER_VALUE}>General</SelectItem>
+                {clusters.map((cluster) => (
+                  <SelectItem key={cluster.id} value={cluster.id}>
+                    {cluster.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="edit-task-points" className="text-white/70">
+              Impact on progress bar (1–100)
+            </Label>
+            <Input
+              id="edit-task-points"
+              type="number"
+              min={1}
+              max={100}
+              value={importancePoints}
+              onChange={(e) => setImportancePoints(e.target.value)}
+              className="border-[#ffffff10] bg-[#0a0a0f] text-white"
+              autoComplete="off"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="edit-task-reward" className="text-white/70">
+              Reward
+            </Label>
+            <Input
+              id="edit-task-reward"
+              value={reward}
+              onChange={(e) => setReward(e.target.value)}
+              placeholder="What will you give yourself after finishing this?"
+              className="border-[#ffffff10] bg-[#0a0a0f] text-white"
+              autoComplete="off"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="edit-task-due-date" className="text-white/70">
+              Due date
+            </Label>
+            <Input
+              id="edit-task-due-date"
+              type="date"
+              value={dueDate}
+              onChange={(e) => setDueDate(e.target.value)}
+              className="border-[#ffffff10] bg-[#0a0a0f] text-white [color-scheme:dark]"
+              autoComplete="off"
+            />
+          </div>
+
+          <Button
+            type="submit"
+            className="w-full bg-[#7c5cfc] text-white hover:bg-[#7c5cfc]/90"
+          >
+            Save Changes
+          </Button>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function TasksPage({
   initialTasks,
   initialClusters,
@@ -723,6 +926,7 @@ export default function TasksPage({
   const [tasks, setTasks] = useState<Task[]>(initialTasks);
   const [clusters] = useState<Cluster[]>(initialClusters);
   const [createTaskOpen, setCreateTaskOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [clusterView, setClusterView] = useState<ClusterView>("grid");
   const [collapsedClusterIds, setCollapsedClusterIds] = useState<Set<string>>(
     () => new Set(),
@@ -835,15 +1039,53 @@ export default function TasksPage({
     [tasks],
   );
 
+  const handleEditStart = useCallback((task: Task) => {
+    if (task.id.startsWith("temp-")) return;
+    setEditingTask(task);
+  }, []);
+
+  const handleEditTask = useCallback(
+    async (taskId: string, values: TaskFormValues) => {
+      const previous = tasks.find((t) => t.id === taskId);
+      if (!previous) return;
+
+      const optimistic: Task = {
+        ...previous,
+        title: values.title,
+        priority: values.priority,
+        cluster_id: values.cluster_id,
+        importance_points: values.importance_points,
+        reward: values.reward,
+        due_date: values.due_date,
+        updated_at: new Date().toISOString(),
+      };
+
+      setTasks((prev) => prev.map((t) => (t.id === taskId ? optimistic : t)));
+      setEditingTask(null);
+      toast.success("Task updated");
+
+      const { data, error } = await updateTask(taskId, {
+        title: values.title,
+        priority: values.priority,
+        due_date: values.due_date,
+        reward: values.reward,
+        importance_points: values.importance_points,
+        cluster_id: values.cluster_id,
+      });
+
+      if (error || !data) {
+        setTasks((prev) => prev.map((t) => (t.id === taskId ? previous : t)));
+        toast.error(error ?? "Failed to update task");
+        return;
+      }
+
+      setTasks((prev) => prev.map((t) => (t.id === data.id ? data : t)));
+    },
+    [tasks],
+  );
+
   const handleCreateTask = useCallback(
-    async (values: {
-      title: string;
-      priority: Task["priority"];
-      cluster_id: string | null;
-      importance_points: number;
-      reward: string;
-      due_date: string | null;
-    }) => {
+    async (values: TaskFormValues) => {
       const tempId = `temp-${crypto.randomUUID()}`;
       const now = new Date().toISOString();
 
@@ -916,6 +1158,7 @@ export default function TasksPage({
                     key={task.id}
                     task={task}
                     onToggle={handleToggle}
+                    onEdit={handleEditStart}
                     onDelete={handleDelete}
                   />
                 ))}
@@ -939,6 +1182,7 @@ export default function TasksPage({
                 collapsedIds={collapsedClusterIds}
                 onToggleCollapsed={handleToggleClusterCollapsed}
                 onToggle={handleToggle}
+                onEdit={handleEditStart}
                 onDelete={handleDelete}
               />
             </section>
@@ -949,6 +1193,16 @@ export default function TasksPage({
             onOpenChange={setCreateTaskOpen}
             clusters={clusters.filter((c) => !c.id.startsWith("temp-"))}
             onSubmit={handleCreateTask}
+          />
+
+          <EditTaskModal
+            task={editingTask}
+            open={editingTask !== null}
+            onOpenChange={(open) => {
+              if (!open) setEditingTask(null);
+            }}
+            clusters={clusters.filter((c) => !c.id.startsWith("temp-"))}
+            onSubmit={handleEditTask}
           />
         </div>
       </div>

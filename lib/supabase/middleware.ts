@@ -37,8 +37,21 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // Protect /dashboard — redirect to login if not authenticated
-  if (!user && path.startsWith("/dashboard")) {
+  const protectedPaths = [
+    "/dashboard",
+    "/notes",
+    "/tasks",
+    "/documents",
+    "/flashcards",
+    "/clusters",
+    "/ai",
+    "/analytics",
+    "/settings",
+  ];
+
+  const isProtectedPath = protectedPaths.some((p) => path.startsWith(p));
+
+  if (!user && isProtectedPath) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
@@ -60,8 +73,7 @@ export async function updateSession(request: NextRequest) {
       return NextResponse.redirect(url);
     }
 
-    // Redirect to onboarding if not completed and trying to access dashboard
-    if (!onboarded && path.startsWith("/dashboard")) {
+    if (!onboarded && isProtectedPath) {
       const url = request.nextUrl.clone();
       url.pathname = "/onboarding";
       return NextResponse.redirect(url);

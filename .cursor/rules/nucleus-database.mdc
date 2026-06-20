@@ -1,0 +1,151 @@
+---
+description: Supabase database patterns, RLS awareness, and query standards for Nucleus. Apply when writing server actions, API routes, or any Supabase queries.
+globs: features/**/actions/*.ts, app/api/**/*.ts, lib/supabase/**/*.ts
+alwaysApply: false
+---
+
+# Nucleus — Database & Supabase Patterns
+
+## Table Reference
+```
+profiles        → user settings, plan, onboarding state
+clusters        → user's workspaces (like Notion pages)
+notes           → type: text | readme | canvas | chart | diagram
+tasks           → with priority, due_date, cluster_id
+documents       → PDFs, stored in Cloudinary, raw_text extracted
+flashcards      → SM-2 spaced repetition fields
+study_sessions  → timer start/end, duration_minutes
+streaks         → current_streak, longest_streak, last_study_date
+ai_conversations → chat metadata
+ai_messages     → individual messages with role, content, attachments
+```
+
+## Query Rules
+
+### Always filter by user_id
+```ts
+// CORRECT
+const { data } = await supabase
+  .from('notes')
+  .select('id, title, type, created_at')
+  .eq('user_id', user.id)
+  .order('created_at', { ascending: false })
+
+// WRONG — never do this
+const { data } = await supabase.from('notes').select('*')
+```
+
+### Never use select('*') — always specify columns
+```ts
+// CORRECT
+.select('id, title, content, cluster_id, type, updated_at')
+
+// WRONG
+.select('*')
+```
+
+### Always handle errors
+```ts
+const { data, error } = await supabase.from('notes').select(...)
+if (error) {
+  console.error('[notes] fetch error:', error.message)
+  return { error: 'Failed to fetch notes' }
+}
+```
+
+### cluster_id = null means "General"
+```ts
+// When user hasn't selected a cluster, cluster_id is null
+// Never filter out null cluster_ids unless intentional
+// Display null cluster_id as "General" in UI
+```
+
+## Server Actions Pattern
+```ts
+'use server'
+
+import { createClient } from '@/lib/supabase/server'
+
+export async function createNote(data: CreateNoteInput) {
+  const supabase = await createClient()
+  
+  // 1. Always get user first
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
+  if (authError || !user) return { error: 'Unauthorized' }
+  
+  // 2. Validate input
+  if (!data.title?.trim()) return { error: 'Title is required' }
+  
+  // 3. Execute query with user_id
+  const { data: note, error } = await supabase
+    .from('notes')
+    .insert({ ...data, user_id: user.id })
+    .select('id, title, type')
+    .single()
+  
+  if (error) {
+    console.error('[createNote] error:', error.message)
+    return { error: 'Failed to create note' }
+  }
+  
+  return { data: note }
+}
+```
+
+## API Route Auth Pattern
+```ts
+import { createClient } from '@/lib/supabase/server'
+import { requirePro } from '@/lib/ai/require-pro'  // only for AI routes
+
+export async function POST(req: Request) {
+  // 1. Auth check first — always
+  const supabase = await createClient()
+  const { data: { user }, error } = await supabase.auth.getUser()
+  if (error || !user) return new Response('Unauthorized', { status: 401 })
+  
+  // 2. Pro check (AI routes only)
+  const proError = await requirePro(supabase)
+  if (proError) return proError
+  
+  // 3. Parse and validate body
+  const body = await req.json()
+  
+  // 4. Business logic
+}
+```
+
+## Migrations
+- All schema changes go in `supabase/migrations/` as `.sql` files
+- Never modify the database directly from the Supabase dashboard for structural changes
+- Migration filename format: `YYYYMMDDHHMMSS_description.sql`
+- Always include `IF NOT EXISTS` / `IF EXISTS` guards
+- Always enable RLS on new tables: `ALTER TABLE table_name ENABLE ROW LEVEL SECURITY;`
+- Every new table needs at minimum: SELECT policy for owner, INSERT policy for owner
+
+## RLS Policy Pattern (Standard Owner Policies)
+```sql
+-- SELECT: users can only see their own rows
+CREATE POLICY "Users can view own [table]"
+ON public.[table] FOR SELECT
+USING (auth.uid() = user_id);
+
+-- INSERT: users can only insert their own rows  
+CREATE POLICY "Users can insert own [table]"
+ON public.[table] FOR INSERT
+WITH CHECK (auth.uid() = user_id);
+
+-- UPDATE: users can only update their own rows
+CREATE POLICY "Users can update own [table]"
+ON public.[table] FOR UPDATE
+USING (auth.uid() = user_id);
+
+-- DELETE: users can only delete their own rows
+CREATE POLICY "Users can delete own [table]"
+ON public.[table] FOR DELETE
+USING (auth.uid() = user_id);
+```
+
+## Legacy Fields to Ignore
+- `notes.subject` — legacy column, always use `cluster_id` instead
+- `documents.page_count` — always null, not implemented
+- `profiles.dashboard_widgets` — column exists but UI editor not built yet

@@ -15,7 +15,18 @@ export async function POST(req: NextRequest) {
     const { public_id } = body;
 
     if (!public_id) {
-      return NextResponse.json({ error: "Missing public_id" }, { status: 400 });
+      return NextResponse.json({ error: "Missing public_id" }, { status: 422 });
+    }
+
+    const { data: document, error } = await supabase
+      .from("documents")
+      .select("id")
+      .eq("cloudinary_public_id", public_id)
+      .eq("user_id", user.id)
+      .single();
+
+    if (error || !document) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const timestamp = Math.floor(Date.now() / 1000);

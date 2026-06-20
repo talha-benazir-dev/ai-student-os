@@ -34,8 +34,7 @@ export async function POST(req: Request) {
     const result = await generateChart(prompt.trim(), chartType, existing);
     return Response.json(result);
   } catch (err) {
-    const message =
-      err instanceof Error ? err.message : "Failed to generate chart";
-    return Response.json({ error: message }, { status: 500 });
+    console.error("[generate-chart] error:", err);
+    return Response.json({ error: "Generation failed" }, { status: 500 });
   }
 }

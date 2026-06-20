@@ -1,0 +1,89 @@
+---
+description: Nucleus design tokens, color system, and UI patterns. Apply when writing any component or styling code.
+globs: features/**/*.tsx, app/**/*.tsx, components/**/*.tsx
+alwaysApply: false
+---
+
+# Nucleus Design System
+
+## Color Tokens (Use These Exactly — Never Hardcode Other Values)
+```
+Background:        #0a0a0f   → bg-[#0a0a0f]
+Card background:   #0f0f17   → bg-[#0f0f17]
+Hover state:       #111118   → hover:bg-[#111118]
+Border:            #ffffff10 → border-[#ffffff10]
+Violet accent:     #7c5cfc   → bg-[#7c5cfc] / text-[#7c5cfc]
+Text primary:      white
+Text muted:        text-white/40 or text-white/60
+```
+
+## Cluster Color Presets (Only These Six)
+```
+#7c5cfc  (violet — default)
+#3b82f6  (blue)
+#10b981  (green)
+#f59e0b  (amber)
+#ef4444  (red)
+#ec4899  (pink)
+```
+
+## Priority Colors (Tasks)
+```
+low:    bg-green-500/15 text-green-400
+medium: bg-yellow-500/15 text-yellow-400
+high:   bg-red-500/15 text-red-400
+```
+
+## Typography
+- Font: System default (no Google Fonts imports)
+- All AI/markdown content: `prose prose-invert` classes via react-markdown
+- Never increase font sizes beyond what's already established in the codebase
+
+## Component Patterns
+
+### Cards
+```tsx
+<div className="bg-[#0f0f17] border border-[#ffffff10] rounded-xl p-4">
+```
+
+### Hover states on interactive items
+```tsx
+className="hover:bg-[#111118] transition-colors cursor-pointer"
+```
+
+### Violet accent buttons (primary actions)
+```tsx
+<Button className="bg-[#7c5cfc] hover:bg-[#6d4ff0] text-white">
+```
+
+### Muted/secondary text
+```tsx
+<span className="text-white/40">  // very muted
+<span className="text-white/60">  // slightly muted
+```
+
+### Empty states
+```tsx
+<div className="text-center py-12 text-white/40">
+  <Icon className="w-8 h-8 mx-auto mb-3 opacity-50" />
+  <p className="text-sm">Descriptive message here</p>
+</div>
+```
+
+### Section headers inside pages
+```tsx
+<div className="flex items-center justify-between mb-6">
+  <h2 className="text-lg font-semibold text-white">Title</h2>
+  <Button variant="outline" size="sm">Action</Button>
+</div>
+```
+
+## Rules
+- Never use Tailwind's default white background — always use the dark tokens above
+- Never add drop shadows or box shadows unless already present in adjacent components
+- Never use `rounded-2xl` or larger — stick to `rounded-xl` max for cards, `rounded-lg` for smaller elements
+- Never use colored backgrounds other than the design tokens — no `bg-blue-500`, no `bg-purple-600`
+- Borders are always `border-[#ffffff10]` — never `border-gray-700` or similar
+- All modals/dialogs use the same dark card background `#0f0f17`
+- Spacing scale: use Tailwind defaults (p-4, p-6, gap-4) — no arbitrary spacing values
+- Never use inline styles — always Tailwind classes
