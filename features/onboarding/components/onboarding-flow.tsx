@@ -10,19 +10,9 @@ import {
   Sparkles,
 } from "lucide-react";
 import { completeOnboarding } from "@/features/onboarding/actions/onboarding.actions";
+import { getAvailableSubjectSuggestions } from "@/features/onboarding/lib/subject-suggestions";
 import type { StudyStage } from "@/features/onboarding/types";
 import { cn } from "@/lib/utils";
-
-const SUGGESTIONS = [
-  "Mathematics",
-  "Physics",
-  "Chemistry",
-  "Biology",
-  "History",
-  "Computer Science",
-  "Economics",
-  "Literature",
-] as const;
 
 const STAGE_OPTIONS: {
   value: StudyStage;
@@ -139,9 +129,17 @@ export function OnboardingFlow({ prefillName }: OnboardingFlowProps) {
     router.push("/dashboard");
   };
 
-  const availableSuggestions = SUGGESTIONS.filter(
-    (s) => !subjects.some((sub) => sub.toLowerCase() === s.toLowerCase()),
+  const availableSuggestions = getAvailableSubjectSuggestions(
+    studyStage,
+    subjects,
   );
+
+  const subjectStepSubtext =
+    studyStage === "postgraduate"
+      ? "Add your research areas or modules. Press Enter or comma to add."
+      : studyStage === "self_learning"
+        ? "Add topics you're exploring. Press Enter or comma to add."
+        : "Add up to 6 subjects. Press Enter or comma to add.";
 
   return (
     <div className="flex min-h-screen flex-col bg-[#0a0a0f] text-white">
@@ -261,7 +259,7 @@ export function OnboardingFlow({ prefillName }: OnboardingFlowProps) {
             <div className="space-y-6">
               <StepHeader
                 heading="What are you studying?"
-                subtext="Add up to 6 subjects. Press Enter or comma to add."
+                subtext={subjectStepSubtext}
               />
               <div
                 className={cn(

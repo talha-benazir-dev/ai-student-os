@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { runOnboardingSetup } from "@/features/onboarding/lib/run-onboarding-setup";
 import type { OnboardingData, Profile } from "@/features/onboarding/types";
 
 type ActionResult<T> = {
@@ -85,7 +86,7 @@ export async function completeOnboarding(
     return { data: null, error: "You must be signed in." };
   }
 
-  const { data, error } = await supabase
+  const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .upsert(
       {
@@ -94,7 +95,7 @@ export async function completeOnboarding(
         country: onboardingData.country,
         study_stage: onboardingData.study_stage,
         subjects: onboardingData.subjects,
-        onboarded: true,
+        onboarded: false,
         updated_at: new Date().toISOString(),
       },
       { onConflict: "id" },
@@ -102,9 +103,29 @@ export async function completeOnboarding(
     .select()
     .single();
 
-  if (error) {
-    return { data: null, error: error.message };
+  if (profileError || !profile) {
+    return { data: null, error: "Something went wrong. Please try again." };
   }
 
-  return { data: data as Profile, error: null };
+  const { error: setupError } = await runOnboardingSetup(supabase, {
+    userId: user.id,
+    data: onboardingData,
+  });
+
+  if (setupError) {
+    return { data: null, error: setupError };
+  }
+
+  const { data: completed, error: completeError } = await supabase
+    .from("profiles")
+    .update({ onboarded: true, updated_at: new Date().toISOString() })
+    .eq("id", user.id)
+    .select()
+    .single();
+
+  if (completeError || !completed) {
+    return { data: null, error: "Something went wrong. Please try again." };
+  }
+
+  return { data: completed as Profile, error: null };
 }

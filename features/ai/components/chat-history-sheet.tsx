@@ -150,7 +150,7 @@ export function ChatHistorySheet({
           </div>
         </div>
 
-        <div className="scrollbar-thin min-h-0 flex-1 overflow-y-auto px-3 py-3">
+        <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
           {isLoading ? (
             <p className="px-2 py-6 text-center text-sm text-white/40">
               Loading chats...

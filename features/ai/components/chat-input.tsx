@@ -261,7 +261,7 @@ export function ChatInput({
           <p className="mb-2 px-2 text-xs font-medium text-white/40">
             Choose a cluster for Autopilot
           </p>
-          <div className="scrollbar-thin flex max-h-48 flex-col gap-0.5 overflow-y-auto overscroll-contain">
+          <div className="flex max-h-48 flex-col gap-0.5 overflow-y-auto overscroll-contain">
             {contextClusters.map((cluster) => (
               <button
                 key={cluster.id}
@@ -336,7 +336,7 @@ export function ChatInput({
               <p className="mb-2 text-xs font-medium text-white/40">
                 Assign to cluster
               </p>
-              <div className="scrollbar-thin flex max-h-48 flex-col gap-0.5 overflow-y-auto overscroll-contain">
+              <div className="flex max-h-48 flex-col gap-0.5 overflow-y-auto overscroll-contain">
                 <button
                   type="button"
                   onClick={() => handleClusterSelect(null, null)}

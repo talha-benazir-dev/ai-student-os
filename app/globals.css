@@ -142,7 +142,28 @@
 @layer base {
   * {
     @apply border-border outline-ring/50;
+    scrollbar-width: thin;
+    scrollbar-color: oklch(0.35 0.05 285) transparent;
   }
+
+  *::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background: oklch(0.32 0.04 285);
+    border-radius: 9999px;
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background: oklch(0.42 0.06 295);
+  }
+
   body {
     @apply bg-background text-foreground antialiased;
   }
@@ -172,27 +193,12 @@
     );
   }
 
-  .scrollbar-thin {
-    scrollbar-width: thin;
-    scrollbar-color: oklch(0.35 0.05 285) transparent;
+  .no-scrollbar {
+    scrollbar-width: none;
   }
 
-  .scrollbar-thin::-webkit-scrollbar {
-    width: 4px;
-    height: 4px;
-  }
-
-  .scrollbar-thin::-webkit-scrollbar-track {
-    background: transparent;
-  }
-
-  .scrollbar-thin::-webkit-scrollbar-thumb {
-    background: oklch(0.32 0.04 285);
-    border-radius: 9999px;
-  }
-
-  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-    background: oklch(0.42 0.06 295);
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
   }
 
   /* Landing page — scoped under .landing-page only */

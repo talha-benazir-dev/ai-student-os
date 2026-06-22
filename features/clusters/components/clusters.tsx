@@ -20,21 +20,13 @@ import {
   deleteCluster,
   updateCluster,
 } from "@/features/clusters/actions/clusters.actions";
+import { CLUSTER_COLORS, DEFAULT_CLUSTER_COLOR } from "@/features/clusters/constants";
 import type { Cluster } from "@/features/clusters/types";
 import { formatStudyHours } from "@/features/study-sessions/utils/format-study-hours";
 import { useClusters } from "@/providers/clusters-provider";
 import { useAIDrawer } from "@/providers/ai-drawer-provider";
 
-const COLOR_PRESETS = [
-  "#7c5cfc",
-  "#3b82f6",
-  "#10b981",
-  "#f59e0b",
-  "#ef4444",
-  "#ec4899",
-];
-
-const DEFAULT_COLOR = "#7c5cfc";
+const DEFAULT_COLOR = DEFAULT_CLUSTER_COLOR;
 
 interface ClustersClientProps {
   initialClusters: Cluster[];
@@ -57,7 +49,7 @@ export function ClustersClient({
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [selectedCluster, setSelectedCluster] = useState<Cluster | null>(null);
   const [name, setName] = useState("");
-  const [color, setColor] = useState(DEFAULT_COLOR);
+  const [color, setColor] = useState<string>(DEFAULT_COLOR);
   const [loading, setLoading] = useState(false);
 
   const handleCreateOpen = () => {
@@ -251,7 +243,7 @@ export function ClustersClient({
             <div className="space-y-2">
               <Label>Color</Label>
               <div className="flex gap-2">
-                {COLOR_PRESETS.map((preset) => (
+                {CLUSTER_COLORS.map((preset) => (
                   <button
                     key={preset}
                     type="button"
@@ -324,7 +316,7 @@ export function ClustersClient({
             <div className="space-y-2">
               <Label>Color</Label>
               <div className="flex gap-2">
-                {COLOR_PRESETS.map((preset) => (
+                {CLUSTER_COLORS.map((preset) => (
                   <button
                     key={preset}
                     type="button"

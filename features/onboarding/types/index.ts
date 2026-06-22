@@ -7,6 +7,7 @@ export type StudyStage =
 export type Profile = {
   id: string;
   name: string;
+  country: string;
   study_stage: StudyStage;
   subjects: string[];
   onboarded: boolean;
@@ -19,4 +20,14 @@ export type OnboardingData = {
   country: string;
   study_stage: StudyStage;
   subjects: string[];
+};
+
+export type OnboardingSetupContext = {
+  userId: string;
+  data: OnboardingData;
+};
+
+export type OnboardingSetupStepResult = {
+  step: string;
+  error: string | null;
 };

@@ -203,7 +203,7 @@ function SidebarBody({
 
       <div
         className={cn(
-          "scrollbar-thin min-h-0 flex-1 overflow-y-auto overscroll-contain pt-5",
+          "min-h-0 flex-1 overflow-y-auto overscroll-contain pt-5",
           collapsed ? "px-1.5" : "px-3",
         )}
       >
