@@ -12,6 +12,11 @@ function shortDate(dateStr: string) {
   return new Date(y, m - 1, d).toLocaleDateString("en", { month: "short", day: "numeric" });
 }
 
+function chartLabelIndices(length: number): number[] {
+  if (length <= 0) return [];
+  return [...new Set([0, Math.floor(length / 2), length - 1])];
+}
+
 // ── Daily Study Time ──────────────────────────────────────────────────────────
 
 export function DailyStudyTimeChart({ data }: { data: { date: string; minutes: number }[] }) {
@@ -42,9 +47,9 @@ export function DailyStudyTimeChart({ data }: { data: { date: string; minutes: n
             rx="3" fill="url(#dstGrad)" />
         );
       })}
-      {[0, Math.floor(slice.length / 2), slice.length - 1].map((i) => (
+      {chartLabelIndices(slice.length).map((i) => (
         slice[i] && (
-          <text key={i} x={pad + i * bw + bw / 2} y={h - 6}
+          <text key={slice[i].date} x={pad + i * bw + bw / 2} y={h - 6}
             fontSize="9" fill="var(--muted-foreground)" textAnchor="middle">
             {shortDate(slice[i].date)}
           </text>
@@ -95,9 +100,9 @@ export function TaskCompletionChart({ data }: { data: { date: string; completed:
         <path d={path} stroke="var(--primary)" strokeWidth="1.75"
           fill="none" strokeLinecap="round" />
       )}
-      {[0, Math.floor(slice.length / 2), slice.length - 1].map((i) => (
+      {chartLabelIndices(slice.length).map((i) => (
         slice[i] && (
-          <text key={i} x={pad + (i * (w - pad * 2)) / (slice.length - 1 || 1)} y={h - 6}
+          <text key={slice[i].date} x={pad + (i * (w - pad * 2)) / (slice.length - 1 || 1)} y={h - 6}
             fontSize="9" fill="var(--muted-foreground)" textAnchor="middle">
             {shortDate(slice[i].date)}
           </text>
@@ -129,7 +134,12 @@ export function ActivityHeatmap({ data }: { data: { date: string; minutes: numbe
   }
 
   return (
-    <svg viewBox={`0 0 ${w} ${h}`} className="w-full" style={{ maxHeight: 140 }}>
+    <div className="flex h-full min-h-[120px] w-full items-center">
+      <svg
+        viewBox={`0 0 ${w} ${h}`}
+        className="h-full w-full"
+        preserveAspectRatio="xMidYMid meet"
+      >
       {["S", "M", "T", "W", "T", "F", "S"].map((label, i) => (
         <text key={i} x={0} y={(i + 1) * (cell + gap) - gap}
           fontSize="8" fill="var(--muted-foreground)">
@@ -146,7 +156,8 @@ export function ActivityHeatmap({ data }: { data: { date: string; minutes: numbe
             fillOpacity={minutes > 0 ? intensity : 0.3} />
         );
       })}
-    </svg>
+      </svg>
+    </div>
   );
 }
 

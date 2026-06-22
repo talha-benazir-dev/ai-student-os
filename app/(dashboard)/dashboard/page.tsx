@@ -8,18 +8,25 @@ import { StatCard } from "@/features/dashboard/components/start-card";
 import { RecentNotesSection } from "@/features/dashboard/components/recent-notes";
 import {
   getDashboardWidgets,
-  getDailyStudyTime,
-  getTaskCompletionRate,
+  getDailyStudyTimeForPeriod,
+  getTaskCompletionRateForPeriod,
   getActivityHeatmap,
   getClusterBreakdown,
+  getAnalyticsSummary,
+  getTasksByCluster,
 } from "@/features/analytics/actions/analytics.actions";
 import { WIDGET_LABELS, type WidgetId } from "@/features/analytics/types/widgets";
+import { PERIOD_LABELS } from "@/features/analytics/types/period";
+import type { DashboardStudyPeriod } from "@/features/analytics/types/period";
+import { parseDashboardStudyPeriod } from "@/features/analytics/lib/date-utils";
 import {
   DailyStudyTimeChart,
   TaskCompletionChart,
   ActivityHeatmap,
   ClusterBreakdownDonut,
 } from "@/features/analytics/components/charts";
+import { TasksByClusterChart } from "@/features/analytics/components/tasks-by-cluster-chart";
+import { formatStudyHours } from "@/features/study-sessions/utils/format-study-hours";
 import {
   Clock,
   CheckSquare,
@@ -47,25 +54,35 @@ export default async function Dashboard() {
   let activeTasks = 0;
   let notesCount = 0;
   let documentsCount = 0;
-  let recentNotes: any[] = [];
-  let recentDocuments: any[] = [];
-  let weeklyStudyMinutes = 0;
+  let recentNotes: { id: string; title: string; content: string | null; updated_at: string }[] = [];
+  let recentDocuments: { id: string; title: string; file_size: number | null; subject: string | null; created_at: string }[] = [];
+  let studyHoursPeriod: DashboardStudyPeriod = "week";
+  let studyHoursDisplay = "--";
   let streakData = { current_streak: 0, longest_streak: 0 };
   let pinnedWidgets: WidgetId[] = ["daily_study_time", "activity_heatmap"];
   let dailyStudy: { date: string; minutes: number }[] = [];
   let taskCompletion: { date: string; completed: number }[] = [];
   let heatmap: { date: string; minutes: number }[] = [];
   let clusterBreakdown: { name: string; minutes: number; color: string }[] = [];
+  let tasksByCluster: {
+    name: string;
+    color: string;
+    completedCount: number;
+    completedPoints: number;
+    pendingCount: number;
+    pendingPoints: number;
+  }[] = [];
 
   if (userId) {
     const fetchProfile = async () => {
       try {
         const { data, error } = await supabase
           .from("profiles")
-          .select("name")
+          .select("name, study_hours_period")
           .eq("id", userId)
           .single();
         if (!error && data?.name) profileName = data.name;
+        studyHoursPeriod = parseDashboardStudyPeriod(data?.study_hours_period);
       } catch (e) {}
     };
 
@@ -124,33 +141,31 @@ export default async function Dashboard() {
       } catch (e) {}
     };
 
+    await fetchProfile();
+
     await Promise.all([
-      fetchProfile(),
       fetchTasksCount(),
       fetchNotesCount(),
       fetchRecentNotes(),
       fetchDocumentsCount(),
       fetchRecentDocuments(),
-      supabase
-        .from("study_sessions")
-        .select("duration_minutes")
-        .eq("user_id", userId)
-        .not("duration_minutes", "is", null)
-        .gte("started_at", new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
-        .then(({ data }) => {
-          weeklyStudyMinutes = (data ?? []).reduce((sum, s) => sum + (s.duration_minutes ?? 0), 0);
-        }),
       getStreakData().then(({ data }) => {
         if (data) streakData = data;
       }),
       getDashboardWidgets().then(({ data }) => {
         pinnedWidgets = (data ?? ["daily_study_time", "activity_heatmap"]) as WidgetId[];
       }),
-      getDailyStudyTime(30).then(({ data }) => { dailyStudy = data ?? []; }),
-      getTaskCompletionRate(30).then(({ data }) => { taskCompletion = data ?? []; }),
+      getDailyStudyTimeForPeriod(studyHoursPeriod).then(({ data }) => { dailyStudy = data ?? []; }),
+      getTaskCompletionRateForPeriod(studyHoursPeriod).then(({ data }) => { taskCompletion = data ?? []; }),
       getActivityHeatmap().then(({ data }) => { heatmap = data ?? []; }),
-      getClusterBreakdown().then(({ data }) => { clusterBreakdown = data ?? []; }),
+      getClusterBreakdown(studyHoursPeriod).then(({ data }) => { clusterBreakdown = data ?? []; }),
+      getTasksByCluster(studyHoursPeriod).then(({ data }) => { tasksByCluster = data ?? []; }),
     ]);
+
+    const summaryResult = await getAnalyticsSummary(studyHoursPeriod);
+    if (summaryResult.data && summaryResult.data.studyMinutes > 0) {
+      studyHoursDisplay = formatStudyHours(summaryResult.data.studyMinutes);
+    }
   }
 
   const chartMap: Record<WidgetId, React.ReactNode> = {
@@ -158,11 +173,16 @@ export default async function Dashboard() {
     task_completion_rate: <TaskCompletionChart data={taskCompletion} />,
     activity_heatmap: <ActivityHeatmap data={heatmap} />,
     cluster_breakdown: <ClusterBreakdownDonut data={clusterBreakdown} />,
+    tasks_by_cluster: <TasksByClusterChart data={tasksByCluster} />,
   };
 
-  const studyHours = weeklyStudyMinutes > 0
-    ? (weeklyStudyMinutes / 60).toFixed(1)
-    : "--";
+  const dashboardWidgetNote: Partial<Record<WidgetId, string>> = {
+    daily_study_time: PERIOD_LABELS[studyHoursPeriod],
+    task_completion_rate: PERIOD_LABELS[studyHoursPeriod],
+    activity_heatmap: "Last 90 days",
+    cluster_breakdown: PERIOD_LABELS[studyHoursPeriod],
+    tasks_by_cluster: PERIOD_LABELS[studyHoursPeriod],
+  };
 
   const subtitle =
     activeTasks > 0
@@ -194,7 +214,13 @@ export default async function Dashboard() {
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3 mb-6">
-        <StatCard active icon={Clock} label="Study hours" value={studyHours} unit={studyHours !== "--" ? "h" : undefined} />
+        <StatCard
+          active
+          icon={Clock}
+          label="Study hours"
+          value={studyHoursDisplay}
+          sublabel={PERIOD_LABELS[studyHoursPeriod]}
+        />
         <StatCard
           icon={CheckSquare}
           label="Active tasks"
@@ -229,7 +255,15 @@ export default async function Dashboard() {
         <div className="grid md:grid-cols-2 gap-4">
           {pinnedWidgets.map((id) => (
             <div key={id} className="rounded-xl border border-border/60 bg-background/40 p-4">
-              <p className="text-xs font-medium text-muted-foreground mb-3">{WIDGET_LABELS[id].title}</p>
+              <p className="text-xs font-medium text-muted-foreground mb-0.5">
+                {WIDGET_LABELS[id].title}
+              </p>
+              {dashboardWidgetNote[id] && (
+                <p className="text-[10px] text-muted-foreground/70 mb-3">
+                  {dashboardWidgetNote[id]}
+                </p>
+              )}
+              {!dashboardWidgetNote[id] && <div className="mb-3" />}
               {chartMap[id]}
             </div>
           ))}

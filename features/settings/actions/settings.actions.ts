@@ -5,6 +5,10 @@ import type {
   UserSettings,
   UpdateSettingsData,
 } from "@/features/settings/types";
+import {
+  parseDashboardStudyPeriod,
+  parseWeekStartsOn,
+} from "@/features/analytics/lib/date-utils";
 import { revalidatePath } from "next/cache";
 
 type ActionResult<T> = {
@@ -25,7 +29,7 @@ export async function getSettings(): Promise<ActionResult<UserSettings>> {
 
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
-    .select("*")
+    .select("name, plan, theme, study_hours_period, week_starts_on, created_at, updated_at")
     .eq("id", user.id)
     .maybeSingle();
 
@@ -39,6 +43,8 @@ export async function getSettings(): Promise<ActionResult<UserSettings>> {
     email: user.email || "",
     plan: (profile?.plan as "free" | "pro" | "enterprise") || "free",
     theme: profile?.theme || "Obsidian (default)",
+    study_hours_period: parseDashboardStudyPeriod(profile?.study_hours_period),
+    week_starts_on: parseWeekStartsOn(profile?.week_starts_on),
     created_at: profile?.created_at || user.created_at,
     updated_at: profile?.updated_at || user.updated_at,
   };
@@ -59,7 +65,7 @@ export async function updateSettings(
     return { data: null, error: "You must be signed in to update settings." };
   }
 
-  const updateData: Record<string, string | Date> = {
+  const updateData: Record<string, string | number> = {
     updated_at: new Date().toISOString(),
   };
 
@@ -71,11 +77,19 @@ export async function updateSettings(
     updateData.theme = settingsData.theme;
   }
 
+  if (settingsData.study_hours_period !== undefined) {
+    updateData.study_hours_period = settingsData.study_hours_period;
+  }
+
+  if (settingsData.week_starts_on !== undefined) {
+    updateData.week_starts_on = settingsData.week_starts_on;
+  }
+
   const { data, error } = await supabase
     .from("profiles")
     .update(updateData)
     .eq("id", user.id)
-    .select()
+    .select("name, plan, theme, study_hours_period, week_starts_on, created_at, updated_at")
     .single();
 
   if (error) {
@@ -83,6 +97,8 @@ export async function updateSettings(
   }
 
   revalidatePath("/settings");
+  revalidatePath("/dashboard");
+  revalidatePath("/analytics");
 
   const settings: UserSettings = {
     id: user.id,
@@ -90,6 +106,8 @@ export async function updateSettings(
     email: user.email || "",
     plan: (data.plan as "free" | "pro" | "enterprise") || "free",
     theme: data.theme || "Obsidian (default)",
+    study_hours_period: parseDashboardStudyPeriod(data.study_hours_period),
+    week_starts_on: parseWeekStartsOn(data.week_starts_on),
     created_at: data.created_at,
     updated_at: data.updated_at,
   };

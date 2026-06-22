@@ -6,6 +6,7 @@ interface StatCardProps {
   label: string;
   value: string;
   unit?: string;
+  sublabel?: string;
   delta?: string;
   deltaTone?: "positive" | "neutral" | "warning";
   active?: boolean;
@@ -16,6 +17,7 @@ export function StatCard({
   label,
   value,
   unit,
+  sublabel,
   delta,
   deltaTone = "positive",
   active,
@@ -70,6 +72,11 @@ export function StatCard({
           <span className="text-sm text-muted-foreground">{unit}</span>
         )}
       </div>
+      {sublabel && (
+        <p className="relative text-[10px] text-muted-foreground mt-1.5">
+          {sublabel}
+        </p>
+      )}
     </div>
   );
 }
