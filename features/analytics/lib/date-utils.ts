@@ -69,6 +69,46 @@ export function getStartOfCalendarMonth(now: Date = new Date()): Date {
   return d;
 }
 
+/**
+ * Ordered date keys spanning the FULL calendar period (not just up to today).
+ * Week → all 7 days; month → every day in the month; today → today; all → last 365 days.
+ * Future days are included so charts render empty bars for them.
+ */
+export function getFullPeriodDateKeys(
+  period: AnalyticsPeriod,
+  weekStartsOn: WeekStartsOn = DEFAULT_WEEK_STARTS_ON,
+): string[] {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  if (period === "all") {
+    return localDateRange(365);
+  }
+  if (period === "today") {
+    return [localDateKey(today)];
+  }
+
+  let start: Date;
+  let end: Date;
+  if (period === "week") {
+    start = getStartOfCalendarWeek(weekStartsOn, today);
+    end = new Date(start);
+    end.setDate(end.getDate() + 6);
+  } else {
+    start = getStartOfCalendarMonth(today);
+    end = new Date(start.getFullYear(), start.getMonth() + 1, 0);
+    end.setHours(0, 0, 0, 0);
+  }
+
+  const keys: string[] = [];
+  const cursor = new Date(start);
+  while (cursor <= end) {
+    keys.push(localDateKey(cursor));
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return keys;
+}
+
 /** Lower bound for bounded periods; null for all-time */
 export function getPeriodSince(
   period: AnalyticsPeriod,

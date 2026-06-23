@@ -14,11 +14,6 @@ export function TasksByClusterChart({ data }: TasksByClusterChartProps) {
     );
   }
 
-  const maxPoints = Math.max(
-    ...data.map((item) => item.completedPoints + item.pendingPoints),
-    1,
-  );
-
   return (
     <div
       className={cn(
@@ -30,8 +25,6 @@ export function TasksByClusterChart({ data }: TasksByClusterChartProps) {
         const total = item.completedCount + item.pendingCount;
         const completedPct = total > 0 ? (item.completedCount / total) * 100 : 0;
         const pendingPct = total > 0 ? (item.pendingCount / total) * 100 : 0;
-        const pointsPct =
-          maxPoints > 0 ? (item.completedPoints / maxPoints) * 100 : 0;
 
         return (
           <div
@@ -74,19 +67,9 @@ export function TasksByClusterChart({ data }: TasksByClusterChartProps) {
                 />
               )}
             </div>
-            <div className="h-1 rounded-full bg-border/20 overflow-hidden">
-              <div
-                className="h-full transition-all"
-                style={{
-                  width: `${pointsPct}%`,
-                  backgroundColor: item.color,
-                  opacity: 0.6,
-                }}
-              />
-            </div>
-            <div className="flex justify-between text-[10px] text-muted-foreground tabular-nums">
+            <div className="flex justify-between text-[10px] text-muted-foreground tabular-nums mt-0.5">
               <span>{item.completedPoints} pts earned</span>
-              <span>{item.pendingPoints} pts open</span>
+              <span className="text-muted-foreground/60">{item.pendingPoints} pts open</span>
             </div>
           </div>
         );

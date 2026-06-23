@@ -21,7 +21,7 @@ import {
   DailyStudyTimeChart,
   TaskCompletionChart,
   ActivityHeatmap,
-  ClusterBreakdownBars,
+  ClusterBreakdownAnalytics,
 } from "@/features/analytics/components/charts";
 import { WidgetPinButton } from "@/features/analytics/components/widget-pin-button";
 import { PeriodToggle } from "@/features/analytics/components/period-toggle";
@@ -33,7 +33,14 @@ interface AnalyticsPageProps {
   period: AnalyticsPeriod;
 }
 
+const DAILY_TREND_WIDGETS: WidgetId[] = [
+  "daily_study_time",
+  "task_completion_rate",
+];
+
 export default async function AnalyticsPage({ period }: AnalyticsPageProps) {
+  const showDailyTrendCharts = period !== "today";
+
   const [
     { data: pinned },
     { data: summary },
@@ -46,8 +53,12 @@ export default async function AnalyticsPage({ period }: AnalyticsPageProps) {
   ] = await Promise.all([
     getDashboardWidgets(),
     getAnalyticsSummary(period),
-    getDailyStudyTimeForPeriod(period),
-    getTaskCompletionRateForPeriod(period),
+    showDailyTrendCharts
+      ? getDailyStudyTimeForPeriod(period)
+      : Promise.resolve({ data: [], error: null }),
+    showDailyTrendCharts
+      ? getTaskCompletionRateForPeriod(period)
+      : Promise.resolve({ data: [], error: null }),
     getActivityHeatmap(),
     getClusterBreakdown(period),
     getTasksByCluster(period),
@@ -56,11 +67,15 @@ export default async function AnalyticsPage({ period }: AnalyticsPageProps) {
 
   const pinnedWidgets = pinned ?? ["daily_study_time", "activity_heatmap"];
 
+  const visibleWidgets = showDailyTrendCharts
+    ? ALL_WIDGETS
+    : ALL_WIDGETS.filter((id) => !DAILY_TREND_WIDGETS.includes(id));
+
   const chartMap: Record<WidgetId, React.ReactNode> = {
     daily_study_time: <DailyStudyTimeChart data={dailyStudy ?? []} />,
     task_completion_rate: <TaskCompletionChart data={taskCompletion ?? []} />,
     activity_heatmap: <ActivityHeatmap data={heatmap ?? []} />,
-    cluster_breakdown: <ClusterBreakdownBars data={clusterBreakdown ?? []} />,
+    cluster_breakdown: <ClusterBreakdownAnalytics data={clusterBreakdown ?? []} />,
     tasks_by_cluster: <TasksByClusterChart data={tasksByCluster ?? []} />,
   };
 
@@ -91,7 +106,7 @@ export default async function AnalyticsPage({ period }: AnalyticsPageProps) {
       </p>
 
       <div className="grid md:grid-cols-2 gap-4 mb-6">
-        {ALL_WIDGETS.map((id) => {
+        {visibleWidgets.map((id) => {
           const isPinned = pinnedWidgets.includes(id);
           return (
             <div key={id} className="rounded-2xl border border-border bg-card p-6">

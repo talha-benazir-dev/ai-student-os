@@ -12,10 +12,11 @@ import type {
   TaskClusterRow,
 } from "@/features/analytics/types/index";
 import {
-  getPeriodDateKeys,
+  getFullPeriodDateKeys,
   getPeriodSince,
   isDateKeyInPeriod,
   isDueDateInPeriod,
+  localDateKey,
   localDateKeyFromISO,
   localDateRange,
   parseWeekStartsOn,
@@ -150,7 +151,7 @@ export async function getDailyStudyTimeForPeriod(
   if (authError || !user) return { data: null, error: "Not authenticated." };
 
   const weekStartsOn = await fetchWeekStartsOn(supabase, user.id);
-  const dateKeys = getPeriodDateKeys(period, weekStartsOn);
+  const dateKeys = getFullPeriodDateKeys(period, weekStartsOn);
   const since = getPeriodSince(period, weekStartsOn);
 
   let query = supabase
@@ -200,15 +201,25 @@ export async function getDailyStudyTime(days: number = 30): Promise<ActionResult
 
   if (error) return { data: null, error: error.message };
 
-  const map: Record<string, number> = Object.fromEntries(
+  const minuteMap: Record<string, number> = Object.fromEntries(
     localDateRange(days).map((date) => [date, 0]),
   );
   for (const s of data ?? []) {
     const date = localDateKeyFromISO(s.started_at);
-    if (map[date] !== undefined) map[date] += s.duration_minutes ?? 0;
+    if (minuteMap[date] !== undefined) minuteMap[date] += s.duration_minutes ?? 0;
   }
 
-  return { data: Object.entries(map).map(([date, minutes]) => ({ date, minutes })), error: null };
+  const filled: { date: string; minutes: number }[] = [];
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    const key = localDateKey(d);
+    filled.push({ date: key, minutes: minuteMap[key] ?? 0 });
+  }
+
+  return { data: filled, error: null };
 }
 
 export async function getTaskCompletionRateForPeriod(
@@ -219,7 +230,7 @@ export async function getTaskCompletionRateForPeriod(
   if (authError || !user) return { data: null, error: "Not authenticated." };
 
   const weekStartsOn = await fetchWeekStartsOn(supabase, user.id);
-  const dateKeys = getPeriodDateKeys(period, weekStartsOn);
+  const dateKeys = getFullPeriodDateKeys(period, weekStartsOn);
   const since = getPeriodSince(period, weekStartsOn);
 
   let query = supabase

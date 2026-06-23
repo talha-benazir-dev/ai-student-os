@@ -12,6 +12,22 @@ function shortDate(dateStr: string) {
   return new Date(y, m - 1, d).toLocaleDateString("en", { month: "short", day: "numeric" });
 }
 
+/** Today on the right; for short week ranges, future empty bars sit on the left */
+function prepareChartData<T extends { date: string }>(data: T[], maxPoints = 30): T[] {
+  const todayKey = localDateKey(new Date());
+  const sorted = [...data].sort((a, b) => a.date.localeCompare(b.date));
+  const pastAndToday = sorted.filter((d) => d.date <= todayKey);
+  const future = sorted.filter((d) => d.date > todayKey);
+
+  let series: T[];
+  if (future.length > 0 && pastAndToday.length + future.length <= 7) {
+    series = [...future, ...pastAndToday];
+  } else {
+    series = sorted;
+  }
+  return series.slice(-maxPoints);
+}
+
 function chartLabelIndices(length: number): number[] {
   if (length <= 0) return [];
   return [...new Set([0, Math.floor(length / 2), length - 1])];
@@ -21,7 +37,7 @@ function chartLabelIndices(length: number): number[] {
 
 export function DailyStudyTimeChart({ data }: { data: { date: string; minutes: number }[] }) {
   const w = 500, h = 160, pad = 28;
-  const slice = data.slice(-30);
+  const slice = prepareChartData(data);
   const max = Math.max(...slice.map((d) => d.minutes), 1);
   const bw = (w - pad * 2) / slice.length;
 
@@ -63,7 +79,7 @@ export function DailyStudyTimeChart({ data }: { data: { date: string; minutes: n
 
 export function TaskCompletionChart({ data }: { data: { date: string; completed: number }[] }) {
   const w = 500, h = 160, pad = 28;
-  const slice = data.slice(-30);
+  const slice = prepareChartData(data);
   const max = Math.max(...slice.map((d) => d.completed), 1);
   const points = slice.map((d, i) => {
     const x = pad + (i * (w - pad * 2)) / (slice.length - 1 || 1);
@@ -196,6 +212,9 @@ function describeDonutSegment(
 ): string {
   const sweep = endAngle - startAngle;
   if (sweep <= 0) return "";
+  if (sweep >= 2 * Math.PI - 1e-6) {
+    return describeFullDonutRing(cx, cy, outerR, innerR);
+  }
 
   const large = sweep > Math.PI ? 1 : 0;
   const x1 = cx + outerR * Math.cos(startAngle);
@@ -208,6 +227,23 @@ function describeDonutSegment(
   const yi2 = cy + innerR * Math.sin(endAngle);
 
   return `M ${x1} ${y1} A ${outerR} ${outerR} 0 ${large} 1 ${x2} ${y2} L ${xi2} ${yi2} A ${innerR} ${innerR} 0 ${large} 0 ${xi1} ${yi1} Z`;
+}
+
+function describeFullDonutRing(
+  cx: number,
+  cy: number,
+  outerR: number,
+  innerR: number,
+): string {
+  return [
+    `M ${cx + outerR} ${cy}`,
+    `A ${outerR} ${outerR} 0 1 1 ${cx - outerR} ${cy}`,
+    `A ${outerR} ${outerR} 0 1 1 ${cx + outerR} ${cy}`,
+    `L ${cx + innerR} ${cy}`,
+    `A ${innerR} ${innerR} 0 1 0 ${cx - innerR} ${cy}`,
+    `A ${innerR} ${innerR} 0 1 0 ${cx + innerR} ${cy}`,
+    "Z",
+  ].join(" ");
 }
 
 function buildDonutSegments(items: ClusterBreakdownItem[]) {
@@ -239,7 +275,20 @@ function buildDonutSegments(items: ClusterBreakdownItem[]) {
     .filter((segment) => segment.path);
 }
 
-export function ClusterBreakdownDonut({ data }: { data: ClusterBreakdownItem[] }) {
+type ClusterBreakdownDonutSize = "default" | "expanded";
+
+interface ClusterBreakdownDonutProps {
+  data: ClusterBreakdownItem[];
+  showViewAllLink?: boolean;
+  size?: ClusterBreakdownDonutSize;
+}
+
+export function ClusterBreakdownDonut({
+  data,
+  showViewAllLink = true,
+  size = "default",
+}: ClusterBreakdownDonutProps) {
+  const isExpanded = size === "expanded";
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const items = sortClustersByTime(data);
   const totalMinutes = items.reduce((sum, item) => sum + item.minutes, 0);
@@ -258,8 +307,18 @@ export function ClusterBreakdownDonut({ data }: { data: ClusterBreakdownItem[] }
 
   if (data.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-4 min-h-[180px]">
-        <svg viewBox="0 0 180 180" className="w-[140px]">
+      <div
+        className={cn(
+          "flex flex-col items-center justify-center py-4",
+          isExpanded ? "min-h-[200px] w-full" : "min-h-[180px]",
+        )}
+      >
+        <svg
+          viewBox="0 0 180 180"
+          className={cn(
+            isExpanded ? "w-[160px] sm:w-[180px]" : "w-[140px]",
+          )}
+        >
           <circle
             cx={cx}
             cy={cy}
@@ -274,82 +333,113 @@ export function ClusterBreakdownDonut({ data }: { data: ClusterBreakdownItem[] }
     );
   }
 
+  const donutSvg = (
+    <svg
+      viewBox="0 0 180 180"
+      className={cn(
+        "shrink-0 aspect-square",
+        isExpanded
+          ? "w-[min(100%,200px)] sm:w-[180px] lg:w-[200px]"
+          : "w-[130px] sm:w-[150px]",
+      )}
+    >
+      {segments.map((segment, index) => {
+        const isActive = activeIndex === index;
+        const isDimmed = activeIndex !== null && !isActive;
+        const tooltip = `${segment.name} — ${formatHours(segment.minutes)} (${formatPercent(segment.minutes, totalMinutes)})`;
+
+        return (
+          <path
+            key={`${segment.name}-${index}`}
+            d={segment.path}
+            fill={segment.color}
+            fillOpacity={isDimmed ? 0.35 : 0.85}
+            className="cursor-pointer transition-opacity"
+            onMouseEnter={() => setActiveIndex(index)}
+            onClick={() => handleSegmentClick(index)}
+          >
+            <title>{tooltip}</title>
+          </path>
+        );
+      })}
+      <g className="pointer-events-none">
+        {active ? (
+          <>
+            <text
+              x={cx}
+              y={cy - 6}
+              fontSize="11"
+              fontWeight="600"
+              fill="var(--foreground)"
+              textAnchor="middle"
+            >
+              {truncateLabel(active.name)}
+            </text>
+            <text
+              x={cx}
+              y={cy + 10}
+              fontSize="10"
+              fill="var(--muted-foreground)"
+              textAnchor="middle"
+            >
+              {formatHours(active.minutes)} · {formatPercent(active.minutes, totalMinutes)}
+            </text>
+          </>
+        ) : (
+          <>
+            <text
+              x={cx}
+              y={cy - 4}
+              fontSize="14"
+              fontWeight="600"
+              fill="var(--foreground)"
+              textAnchor="middle"
+            >
+              {formatHours(totalMinutes)}
+            </text>
+            <text
+              x={cx}
+              y={cy + 12}
+              fontSize="8"
+              fill="var(--muted-foreground)"
+              textAnchor="middle"
+            >
+              total
+            </text>
+          </>
+        )}
+      </g>
+    </svg>
+  );
+
   return (
-    <div className="flex flex-col gap-2 py-1 min-h-[180px] justify-center">
+    <div
+      className={cn(
+        "flex flex-col gap-2 py-1 justify-center",
+        isExpanded ? "min-h-[200px] w-full" : "min-h-[180px]",
+      )}
+    >
       <div
-        className="flex items-center gap-3 sm:gap-4"
+        className={cn(
+          "flex items-center",
+          isExpanded ? "gap-6 sm:gap-8 w-full" : "gap-3 sm:gap-4",
+        )}
         onMouseLeave={() => setActiveIndex(null)}
       >
-        <svg viewBox="0 0 180 180" className="w-[130px] sm:w-[150px] shrink-0">
-          {segments.map((segment, index) => {
-            const isActive = activeIndex === index;
-            const isDimmed = activeIndex !== null && !isActive;
-            const tooltip = `${segment.name} — ${formatHours(segment.minutes)} (${formatPercent(segment.minutes, totalMinutes)})`;
+        {isExpanded ? (
+          <div className="flex-1 flex justify-center min-w-0">{donutSvg}</div>
+        ) : (
+          donutSvg
+        )}
 
-            return (
-              <path
-                key={`${segment.name}-${index}`}
-                d={segment.path}
-                fill={segment.color}
-                fillOpacity={isDimmed ? 0.35 : 0.85}
-                className="cursor-pointer transition-opacity"
-                onMouseEnter={() => setActiveIndex(index)}
-                onClick={() => handleSegmentClick(index)}
-              >
-                <title>{tooltip}</title>
-              </path>
-            );
-          })}
-          <g className="pointer-events-none">
-            {active ? (
-              <>
-                <text
-                  x={cx}
-                  y={cy - 6}
-                  fontSize="11"
-                  fontWeight="600"
-                  fill="var(--foreground)"
-                  textAnchor="middle"
-                >
-                  {truncateLabel(active.name)}
-                </text>
-                <text
-                  x={cx}
-                  y={cy + 10}
-                  fontSize="10"
-                  fill="var(--muted-foreground)"
-                  textAnchor="middle"
-                >
-                  {formatHours(active.minutes)} · {formatPercent(active.minutes, totalMinutes)}
-                </text>
-              </>
-            ) : (
-              <>
-                <text
-                  x={cx}
-                  y={cy - 4}
-                  fontSize="14"
-                  fontWeight="600"
-                  fill="var(--foreground)"
-                  textAnchor="middle"
-                >
-                  {formatHours(totalMinutes)}
-                </text>
-                <text
-                  x={cx}
-                  y={cy + 12}
-                  fontSize="8"
-                  fill="var(--muted-foreground)"
-                  textAnchor="middle"
-                >
-                  total
-                </text>
-              </>
-            )}
-          </g>
-        </svg>
-
-        <div className="flex flex-col gap-1.5 min-w-0 flex-1">
+        <div
+          className={cn(
+            "flex flex-col gap-1.5 min-w-0",
+            isExpanded
+              ? "w-full max-w-[200px] sm:max-w-[220px] shrink-0"
+              : "flex-1",
+          )}
+        >
           {topItems.map((item, index) => {
             const isActive = activeIndex === index;
             const isDimmed = activeIndex !== null && !isActive;
@@ -379,7 +469,7 @@ export function ClusterBreakdownDonut({ data }: { data: ClusterBreakdownItem[] }
               </button>
             );
           })}
-          {remainingCount > 0 ? (
+          {showViewAllLink && remainingCount > 0 ? (
             <Link
               href="/analytics"
               className="text-xs text-primary/70 hover:text-primary transition px-2 py-1"
@@ -389,10 +479,25 @@ export function ClusterBreakdownDonut({ data }: { data: ClusterBreakdownItem[] }
           ) : null}
         </div>
       </div>
-      <p className="text-[11px] text-muted-foreground">
+      <p
+        className={cn(
+          "text-[11px] text-muted-foreground",
+          isExpanded && "text-center",
+        )}
+      >
         Hover or tap a slice for details
       </p>
     </div>
+  );
+}
+
+export function ClusterBreakdownAnalytics({ data }: { data: ClusterBreakdownItem[] }) {
+  if (data.length > MINI_LEGEND_COUNT) {
+    return <ClusterBreakdownBars data={data} />;
+  }
+
+  return (
+    <ClusterBreakdownDonut data={data} showViewAllLink={false} size="expanded" />
   );
 }
 
