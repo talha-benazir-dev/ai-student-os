@@ -11,7 +11,6 @@ import {
   Sparkles,
   BarChart3,
   Settings,
-  Flame,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
@@ -37,25 +36,18 @@ function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
 
   return (
-    <>
-      <div className="flex items-center gap-2.5 px-5 h-16 border-b border-border">
-        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10 text-primary">
-          <Sparkles className="h-4 w-4" />
+    <div className="flex h-full flex-col">
+      <div className="flex items-center gap-2.5 px-4 h-14 border-b border-sidebar-border">
+        <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary text-primary-foreground">
+          <Sparkles className="h-3.5 w-3.5" />
         </div>
         <div className="leading-tight">
-          <div className="text-[15px] font-semibold tracking-tight">
-            Nucleus
-          </div>
-          <div className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-            Study OS
-          </div>
+          <div className="text-sm font-semibold tracking-tight">Nucleus</div>
+          <div className="text-xs text-muted-foreground">Study OS</div>
         </div>
       </div>
-      <div className="px-3 pt-5">
-        <div className="px-3 pb-2 text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-          Workspace
-        </div>
-        <nav className="flex flex-col gap-0.5">
+      <div className="px-2 py-3">
+        <nav className="flex flex-col gap-px">
           {nav.map(({ to, label, icon: Icon, badge }) => {
             const active = pathname === to;
             return (
@@ -64,55 +56,54 @@ function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
                 href={to}
                 onClick={onNavigate}
                 className={cn(
-                  "group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all",
+                  "flex items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] transition-colors",
                   active
-                    ? "bg-primary/12 text-foreground border border-primary/20 shadow-[inset_0_1px_0_oklch(1_0_0/6%)]"
-                    : "text-muted-foreground hover:text-foreground hover:bg-accent/50",
+                    ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                    : "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/50",
                 )}
               >
-                {active && (
-                  <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-0.5 rounded-r bg-primary" />
-                )}
-                <Icon className={cn("h-4 w-4", active ? "text-primary" : "")} />
-                <span className="flex-1">{label}</span>
+                <Icon
+                  className={cn(
+                    "h-4 w-4 shrink-0",
+                    active ? "text-foreground" : "",
+                  )}
+                />
+                <span className="flex-1 truncate">{label}</span>
                 {badge && (
-                  <span className="text-[9px] tracking-widest px-1.5 py-0.5 rounded border border-primary/30 text-primary bg-primary/10">
-                    {badge}
-                  </span>
+                  <span className="h-1.5 w-1.5 rounded-full bg-primary" />
                 )}
               </Link>
             );
           })}
         </nav>
       </div>
-      <div className="mt-auto px-3 pb-4 space-y-2">
+      <div className="mt-auto border-t border-sidebar-border px-2 py-3 space-y-1">
         <Link
           href="/settings"
           onClick={onNavigate}
-          className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors"
+          className="flex items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/50 transition-colors"
         >
           <Settings className="h-4 w-4" /> Settings
         </Link>
-        <div className="rounded-xl border border-border bg-card/60 p-3 flex items-center gap-3">
-          <div className="h-9 w-9 rounded-full bg-gradient-violet flex items-center justify-center text-xs font-semibold text-primary-foreground shadow-[0_0_16px_-4px_oklch(0.66_0.21_295/0.8)]">
+        <div className="flex items-center gap-2.5 rounded-md px-2.5 py-2">
+          <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center text-xs font-semibold text-primary-foreground shrink-0">
             Z
           </div>
           <div className="min-w-0 flex-1">
-            <div className="text-sm font-medium truncate">Zara Ahmed</div>
-            <div className="text-[11px] text-muted-foreground flex items-center gap-1">
-              Pro plan · <Flame className="h-3 w-3 text-orange-500" /> 7-day
-              streak
+            <div className="text-[13px] font-medium truncate">Zara Ahmed</div>
+            <div className="text-xs text-muted-foreground">
+              Pro plan · 7-day streak
             </div>
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 }
 
 export function AppSidebar() {
   return (
-    <aside className="hidden lg:flex w-[248px] shrink-0 flex-col border-r border-border bg-sidebar">
+    <aside className="hidden lg:flex w-60 shrink-0 flex-col border-r border-sidebar-border bg-sidebar sticky top-0 h-screen">
       <SidebarBody />
     </aside>
   );
