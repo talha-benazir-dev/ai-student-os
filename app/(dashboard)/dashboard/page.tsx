@@ -5,6 +5,7 @@ import {
   DashboardCreateMenu,
 } from "@/features/dashboard/components/create-command-menu";
 import { StatCard } from "@/features/dashboard/components/start-card";
+import { TonightPanel } from "@/features/dashboard/components/tonight-panel";
 import { RecentNotesSection } from "@/features/dashboard/components/recent-notes";
 import {
   getDashboardWidgets,
@@ -51,6 +52,7 @@ export default async function Dashboard() {
   const userId = userData.user?.id;
 
   let profileName = "there";
+  let tonightTasks: { id: string; title: string; priority: "low" | "medium" | "high"; due_date: string | null; completed: boolean }[] = [];
   let activeTasks = 0;
   let notesCount = 0;
   let documentsCount = 0;
@@ -141,10 +143,35 @@ export default async function Dashboard() {
       } catch (e) {}
     };
 
+    const fetchTonightTasks = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("tasks")
+          .select("id, title, priority, due_date, completed")
+          .eq("user_id", userId)
+          .eq("completed", false)
+          .order("created_at", { ascending: true })
+          .limit(20);
+        if (!error && data) {
+          const rank = { high: 0, medium: 1, low: 2 } as const;
+          tonightTasks = [...data]
+            .sort((a, b) => {
+              const p = rank[a.priority as keyof typeof rank] - rank[b.priority as keyof typeof rank];
+              if (p !== 0) return p;
+              if (!a.due_date) return 1;
+              if (!b.due_date) return -1;
+              return a.due_date.localeCompare(b.due_date);
+            })
+            .slice(0, 3);
+        }
+      } catch (e) {}
+    };
+
     await fetchProfile();
 
     await Promise.all([
       fetchTasksCount(),
+      fetchTonightTasks(),
       fetchNotesCount(),
       fetchRecentNotes(),
       fetchDocumentsCount(),
@@ -211,6 +238,8 @@ export default async function Dashboard() {
       </div>
 
       <DashboardCommandSearch />
+
+      <TonightPanel tasks={tonightTasks} />
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3 mb-6">
