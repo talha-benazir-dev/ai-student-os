@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getUser } from "@/lib/supabase/server";
 import { getClusters } from "@/features/clusters/actions/clusters.actions";
 import { ClusterView } from "@/features/clusters/components/cluster-view";
 import { getClusterStudyMinutes } from "@/features/study-sessions/actions/study-sessions.actions";
@@ -14,7 +14,7 @@ export default async function ClusterPage({
 
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await getUser();
 
   if (!user) notFound();
 

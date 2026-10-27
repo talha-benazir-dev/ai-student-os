@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useRequestedDialog } from "@/hooks/use-requested-dialog";
 import {
   ChevronRight,
   Gift,
@@ -36,6 +37,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { useStoredPreference } from "@/hooks/use-stored-preference";
 import {
   createTask,
   deleteTask,
@@ -184,7 +186,7 @@ function ProgressBar({
               <div
                 style={{
                   width: `${generalFillPercent}%`,
-                  backgroundColor: "#7c5cfc",
+                  backgroundColor: "var(--primary)",
                 }}
                 className="absolute left-0 top-0 h-full transition-all duration-500"
               />
@@ -211,7 +213,7 @@ function ProgressBar({
           </>
         ) : null}
       </div>
-      <p className="text-xs text-zinc-500">
+      <p className="text-xs text-muted-foreground">
         {totalPoints > 0
           ? `${completedPoints} pts / ${totalPoints} pts completed`
           : "No tasks yet"}
@@ -271,8 +273,8 @@ function ClusterViewToggle({
         className={cn(
           "rounded-md p-1.5 transition",
           view === "grid"
-            ? "bg-[#7c5cfc]/15 text-[#7c5cfc]"
-            : "text-zinc-500 hover:bg-white/5 hover:text-white",
+            ? "bg-primary/15 text-primary"
+            : "text-muted-foreground hover:bg-white/5 hover:text-white",
         )}
       >
         <LayoutGrid className="h-4 w-4" />
@@ -284,8 +286,8 @@ function ClusterViewToggle({
         className={cn(
           "rounded-md p-1.5 transition",
           view === "list"
-            ? "bg-[#7c5cfc]/15 text-[#7c5cfc]"
-            : "text-zinc-500 hover:bg-white/5 hover:text-white",
+            ? "bg-primary/15 text-primary"
+            : "text-muted-foreground hover:bg-white/5 hover:text-white",
         )}
       >
         <List className="h-4 w-4" />
@@ -309,7 +311,7 @@ function ClusterTaskList({
 }) {
   if (tasks.length === 0) {
     return (
-      <p className="text-xs text-zinc-500">No tasks in this cluster.</p>
+      <p className="text-xs text-muted-foreground">No tasks in this subject yet.</p>
     );
   }
 
@@ -347,7 +349,7 @@ function ClusterGridCard({
   onDelete: (task: Task) => void;
 }) {
   return (
-    <div className="space-y-3 rounded-xl border border-[#ffffff10] bg-[#0f0f17] p-5">
+    <div className="space-y-3 rounded-xl border border-[#ffffff10] bg-card p-5">
       <div className="space-y-2">
         <div className="flex items-center justify-between gap-2">
           <div className="flex min-w-0 items-center gap-2">
@@ -359,7 +361,7 @@ function ClusterGridCard({
               {cluster.name}
             </h3>
           </div>
-          <span className="shrink-0 text-[10px] tabular-nums text-zinc-500">
+          <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground">
             {taskCountLabel(tasks.length)}
           </span>
         </div>
@@ -405,7 +407,7 @@ function ClusterListSection({
       >
         <ChevronRight
           className={cn(
-            "h-4 w-4 shrink-0 text-zinc-500 transition-transform",
+            "h-4 w-4 shrink-0 text-muted-foreground transition-transform",
             !isCollapsed && "rotate-90",
           )}
         />
@@ -416,7 +418,7 @@ function ClusterListSection({
         <span className="min-w-0 flex-1 truncate text-sm font-medium text-white">
           {cluster.name}
         </span>
-        <span className="shrink-0 text-xs text-zinc-500">
+        <span className="shrink-0 text-xs text-muted-foreground">
           {taskCountLabel(tasks.length)} · {progress}%
         </span>
       </button>
@@ -518,16 +520,17 @@ function TaskItem({
   return (
     <div className="group flex items-center gap-3 rounded-lg border border-transparent px-2 py-2 transition-colors hover:border-[#ffffff10] hover:bg-white/[0.02]">
       <Checkbox
+        aria-label={`Mark ${task.title} as ${task.completed ? "incomplete" : "complete"}`}
         checked={task.completed}
         disabled={isPending}
         onCheckedChange={() => onToggle(task)}
-        className="border-white/20 data-[state=checked]:border-[#7c5cfc] data-[state=checked]:bg-[#7c5cfc]"
+        className="border-white/20 data-[state=checked]:border-primary data-[state=checked]:bg-primary"
       />
       <div className="flex min-w-0 flex-1 items-center gap-2">
         <span
           className={cn(
             "truncate text-sm text-white/90",
-            task.completed && "text-white/40 line-through",
+            task.completed && "text-muted-foreground line-through",
           )}
         >
           {task.title}
@@ -540,11 +543,11 @@ function TaskItem({
         >
           {task.priority}
         </span>
-        <span className="shrink-0 text-[10px] text-zinc-500">
+        <span className="shrink-0 text-[10px] text-muted-foreground">
           {task.importance_points} pts
         </span>
         {task.due_date ? (
-          <span className="shrink-0 text-[10px] text-zinc-500">
+          <span className="shrink-0 text-[10px] text-muted-foreground">
             {formatDueDate(task.due_date)}
           </span>
         ) : null}
@@ -553,13 +556,13 @@ function TaskItem({
             <TooltipTrigger asChild>
               <button
                 type="button"
-                className="shrink-0 text-zinc-500 transition-colors hover:text-[#7c5cfc]"
+                className="shrink-0 text-muted-foreground transition-colors hover:text-primary"
                 aria-label="View reward"
               >
                 <Gift className="h-3.5 w-3.5" />
               </button>
             </TooltipTrigger>
-            <TooltipContent className="bg-[#0f0f17] text-white border-[#ffffff10]">
+            <TooltipContent className="bg-card text-white border-[#ffffff10]">
               {task.reward}
             </TooltipContent>
           </Tooltip>
@@ -570,7 +573,7 @@ function TaskItem({
           type="button"
           onClick={() => onEdit(task)}
           disabled={isPending}
-          className="rounded p-1 text-zinc-500 hover:bg-[#7c5cfc]/10 hover:text-[#7c5cfc] disabled:pointer-events-none"
+          className="rounded p-1 text-muted-foreground hover:bg-primary/10 hover:text-primary disabled:pointer-events-none"
           aria-label="Edit task"
         >
           <Pencil className="h-3.5 w-3.5" />
@@ -579,7 +582,7 @@ function TaskItem({
           type="button"
           onClick={() => onDelete(task)}
           disabled={isPending}
-          className="rounded p-1 text-zinc-500 hover:bg-red-500/10 hover:text-red-400 disabled:pointer-events-none"
+          className="rounded p-1 text-muted-foreground hover:bg-red-500/10 hover:text-red-400 disabled:pointer-events-none"
           aria-label="Delete task"
         >
           <Trash2 className="h-3.5 w-3.5" />
@@ -641,9 +644,9 @@ function CreateTaskModal({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="border-[#ffffff10] bg-[#0f0f17] sm:max-w-md">
+      <DialogContent className="border-[#ffffff10] bg-card sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-white">New Task</DialogTitle>
+          <DialogTitle className="text-white">New task</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 pt-2">
           <div className="space-y-2">
@@ -655,7 +658,7 @@ function CreateTaskModal({
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="What do you need to do?"
-              className="border-[#ffffff10] bg-[#0a0a0f] text-white"
+              className="border-[#ffffff10] bg-background text-white"
               required
               autoComplete="off"
             />
@@ -667,10 +670,10 @@ function CreateTaskModal({
               value={priority}
               onValueChange={(v) => setPriority(v as Task["priority"])}
             >
-              <SelectTrigger className="border-[#ffffff10] bg-[#0a0a0f] text-white">
+              <SelectTrigger className="border-[#ffffff10] bg-background text-white">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="border-[#ffffff10] bg-[#0f0f17] text-white">
+              <SelectContent className="border-[#ffffff10] bg-card text-white">
                 <SelectItem value="low">Low</SelectItem>
                 <SelectItem value="medium">Medium</SelectItem>
                 <SelectItem value="high">High</SelectItem>
@@ -679,12 +682,12 @@ function CreateTaskModal({
           </div>
 
           <div className="space-y-2">
-            <Label className="text-white/70">Cluster</Label>
+            <Label className="text-white/70">Subject</Label>
             <Select value={clusterId} onValueChange={setClusterId}>
-              <SelectTrigger className="border-[#ffffff10] bg-[#0a0a0f] text-white">
+              <SelectTrigger className="border-[#ffffff10] bg-background text-white">
                 <SelectValue placeholder="General" />
               </SelectTrigger>
-              <SelectContent className="border-[#ffffff10] bg-[#0f0f17] text-white">
+              <SelectContent className="border-[#ffffff10] bg-card text-white">
                 <SelectItem value={GENERAL_CLUSTER_VALUE}>General</SelectItem>
                 {clusters.map((cluster) => (
                   <SelectItem key={cluster.id} value={cluster.id}>
@@ -706,7 +709,7 @@ function CreateTaskModal({
               max={100}
               value={importancePoints}
               onChange={(e) => setImportancePoints(e.target.value)}
-              className="border-[#ffffff10] bg-[#0a0a0f] text-white"
+              className="border-[#ffffff10] bg-background text-white"
               autoComplete="off"
             />
           </div>
@@ -720,7 +723,7 @@ function CreateTaskModal({
               value={reward}
               onChange={(e) => setReward(e.target.value)}
               placeholder="What will you give yourself after finishing this?"
-              className="border-[#ffffff10] bg-[#0a0a0f] text-white"
+              className="border-[#ffffff10] bg-background text-white"
               autoComplete="off"
             />
           </div>
@@ -734,14 +737,14 @@ function CreateTaskModal({
               type="date"
               value={dueDate}
               onChange={(e) => setDueDate(e.target.value)}
-              className="border-[#ffffff10] bg-[#0a0a0f] text-white [color-scheme:dark]"
+              className="border-[#ffffff10] bg-background text-white [color-scheme:dark]"
               autoComplete="off"
             />
           </div>
 
           <Button
             type="submit"
-            className="w-full bg-[#7c5cfc] text-white hover:bg-[#7c5cfc]/90"
+            className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
           >
             Create Task
           </Button>
@@ -764,23 +767,12 @@ function EditTaskModal({
   clusters: Cluster[];
   onSubmit: (taskId: string, values: TaskFormValues) => void;
 }) {
-  const [title, setTitle] = useState("");
-  const [priority, setPriority] = useState<Task["priority"]>("medium");
-  const [clusterId, setClusterId] = useState(GENERAL_CLUSTER_VALUE);
-  const [importancePoints, setImportancePoints] = useState("10");
-  const [reward, setReward] = useState("");
-  const [dueDate, setDueDate] = useState("");
-
-  useEffect(() => {
-    if (!task || !open) return;
-
-    setTitle(task.title);
-    setPriority(task.priority);
-    setClusterId(task.cluster_id ?? GENERAL_CLUSTER_VALUE);
-    setImportancePoints(String(task.importance_points));
-    setReward(task.reward);
-    setDueDate(task.due_date ?? "");
-  }, [task, open]);
+  const [title, setTitle] = useState(task?.title ?? "");
+  const [priority, setPriority] = useState<Task["priority"]>(task?.priority ?? "medium");
+  const [clusterId, setClusterId] = useState(task?.cluster_id ?? GENERAL_CLUSTER_VALUE);
+  const [importancePoints, setImportancePoints] = useState(String(task?.importance_points ?? 10));
+  const [reward, setReward] = useState(task?.reward ?? "");
+  const [dueDate, setDueDate] = useState(task?.due_date ?? "");
 
   const handleOpenChange = (next: boolean) => {
     onOpenChange(next);
@@ -807,7 +799,7 @@ function EditTaskModal({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="border-[#ffffff10] bg-[#0f0f17] sm:max-w-md">
+      <DialogContent className="border-[#ffffff10] bg-card sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="text-white">Edit Task</DialogTitle>
         </DialogHeader>
@@ -821,7 +813,7 @@ function EditTaskModal({
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="What do you need to do?"
-              className="border-[#ffffff10] bg-[#0a0a0f] text-white"
+              className="border-[#ffffff10] bg-background text-white"
               required
               autoComplete="off"
             />
@@ -833,10 +825,10 @@ function EditTaskModal({
               value={priority}
               onValueChange={(v) => setPriority(v as Task["priority"])}
             >
-              <SelectTrigger className="border-[#ffffff10] bg-[#0a0a0f] text-white">
+              <SelectTrigger className="border-[#ffffff10] bg-background text-white">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="border-[#ffffff10] bg-[#0f0f17] text-white">
+              <SelectContent className="border-[#ffffff10] bg-card text-white">
                 <SelectItem value="low">Low</SelectItem>
                 <SelectItem value="medium">Medium</SelectItem>
                 <SelectItem value="high">High</SelectItem>
@@ -845,12 +837,12 @@ function EditTaskModal({
           </div>
 
           <div className="space-y-2">
-            <Label className="text-white/70">Cluster</Label>
+            <Label className="text-white/70">Subject</Label>
             <Select value={clusterId} onValueChange={setClusterId}>
-              <SelectTrigger className="border-[#ffffff10] bg-[#0a0a0f] text-white">
+              <SelectTrigger className="border-[#ffffff10] bg-background text-white">
                 <SelectValue placeholder="General" />
               </SelectTrigger>
-              <SelectContent className="border-[#ffffff10] bg-[#0f0f17] text-white">
+              <SelectContent className="border-[#ffffff10] bg-card text-white">
                 <SelectItem value={GENERAL_CLUSTER_VALUE}>General</SelectItem>
                 {clusters.map((cluster) => (
                   <SelectItem key={cluster.id} value={cluster.id}>
@@ -872,7 +864,7 @@ function EditTaskModal({
               max={100}
               value={importancePoints}
               onChange={(e) => setImportancePoints(e.target.value)}
-              className="border-[#ffffff10] bg-[#0a0a0f] text-white"
+              className="border-[#ffffff10] bg-background text-white"
               autoComplete="off"
             />
           </div>
@@ -886,7 +878,7 @@ function EditTaskModal({
               value={reward}
               onChange={(e) => setReward(e.target.value)}
               placeholder="What will you give yourself after finishing this?"
-              className="border-[#ffffff10] bg-[#0a0a0f] text-white"
+              className="border-[#ffffff10] bg-background text-white"
               autoComplete="off"
             />
           </div>
@@ -900,14 +892,14 @@ function EditTaskModal({
               type="date"
               value={dueDate}
               onChange={(e) => setDueDate(e.target.value)}
-              className="border-[#ffffff10] bg-[#0a0a0f] text-white [color-scheme:dark]"
+              className="border-[#ffffff10] bg-background text-white [color-scheme:dark]"
               autoComplete="off"
             />
           </div>
 
           <Button
             type="submit"
-            className="w-full bg-[#7c5cfc] text-white hover:bg-[#7c5cfc]/90"
+            className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
           >
             Save Changes
           </Button>
@@ -925,64 +917,28 @@ export default function TasksPage({
   const router = useRouter();
   const [tasks, setTasks] = useState<Task[]>(initialTasks);
   const [clusters] = useState<Cluster[]>(initialClusters);
-  const [createTaskOpen, setCreateTaskOpen] = useState(false);
+  const [createTaskOpen, setCreateTaskOpen] = useRequestedDialog(autoOpenCreate);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
-  const [clusterView, setClusterView] = useState<ClusterView>("grid");
-  const [collapsedClusterIds, setCollapsedClusterIds] = useState<Set<string>>(
-    () => new Set(),
-  );
-
-  const progress = useProgressData(tasks, clusters);
-
-  useEffect(() => {
-    const saved = localStorage.getItem(CLUSTER_VIEW_STORAGE_KEY);
-    if (saved === "grid" || saved === "list") {
-      setClusterView(saved);
-      return;
-    }
-
-    setClusterView(
-      window.matchMedia("(max-width: 767px)").matches ? "list" : "grid",
-    );
-  }, []);
-
-  useEffect(() => {
+  const [storedView, setStoredView] = useStoredPreference(CLUSTER_VIEW_STORAGE_KEY, "list");
+  const clusterView: ClusterView = storedView === "grid" ? "grid" : "list";
+  const [storedCollapsed, setStoredCollapsed] = useStoredPreference(CLUSTER_COLLAPSED_STORAGE_KEY, "[]");
+  const collapsedClusterIds = useMemo(() => {
     try {
-      const saved = localStorage.getItem(CLUSTER_COLLAPSED_STORAGE_KEY);
-      if (!saved) return;
-      const parsed = JSON.parse(saved) as unknown;
-      if (Array.isArray(parsed)) {
-        setCollapsedClusterIds(new Set(parsed.filter((id) => typeof id === "string")));
-      }
-    } catch {
-      // ignore invalid storage
-    }
-  }, []);
-
-  const handleClusterViewChange = useCallback((view: ClusterView) => {
-    setClusterView(view);
-    localStorage.setItem(CLUSTER_VIEW_STORAGE_KEY, view);
-  }, []);
-
+      const parsed: unknown = JSON.parse(storedCollapsed);
+      return new Set<string>(Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === "string") : []);
+    } catch { return new Set<string>(); }
+  }, [storedCollapsed]);
+  const progress = useProgressData(tasks, clusters);
+  const handleClusterViewChange = useCallback((view: ClusterView) => setStoredView(view), [setStoredView]);
   const handleToggleClusterCollapsed = useCallback((clusterId: string) => {
-    setCollapsedClusterIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(clusterId)) {
-        next.delete(clusterId);
-      } else {
-        next.add(clusterId);
-      }
-      localStorage.setItem(
-        CLUSTER_COLLAPSED_STORAGE_KEY,
-        JSON.stringify([...next]),
-      );
-      return next;
-    });
-  }, []);
+    const next = new Set(collapsedClusterIds);
+    if (next.has(clusterId)) next.delete(clusterId);
+    else next.add(clusterId);
+    setStoredCollapsed(JSON.stringify([...next]));
+  }, [collapsedClusterIds, setStoredCollapsed]);
 
   useEffect(() => {
     if (!autoOpenCreate) return;
-    setCreateTaskOpen(true);
     router.replace("/tasks", { scroll: false });
   }, [autoOpenCreate, router]);
 
@@ -1124,33 +1080,30 @@ export default function TasksPage({
 
       setTasks((prev) => prev.map((t) => (t.id === tempId ? data : t)));
     },
-    [],
+    [setCreateTaskOpen],
   );
 
   return (
     <TooltipProvider>
-      <div className="w-full min-h-full bg-[#0a0a0f]">
+      <div className="w-full min-h-full bg-background">
         <div className="w-full space-y-8 px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10 xl:px-10">
-          <ProgressBar {...progress} />
-
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <h1 className="text-2xl font-semibold tracking-tight text-white sm:text-[28px]">
-              Tasks
-            </h1>
+            <div><h1 className="text-2xl font-medium tracking-tight text-foreground sm:text-[28px]">Tasks</h1><p className="mt-1.5 max-w-xl text-sm leading-relaxed text-muted-foreground">Make the next step specific: explain one idea, read a few pages, or solve three questions.</p></div>
             <Button
               size="sm"
               onClick={() => setCreateTaskOpen(true)}
-              className="bg-[#7c5cfc] text-white hover:bg-[#7c5cfc]/90"
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
             >
               <Plus className="mr-1.5 h-3.5 w-3.5" />
-              New Task
+              New task
             </Button>
           </div>
 
+          {tasks.length > 0 && <ProgressBar {...progress} />}
           <section className="space-y-3">
-            <h2 className="text-sm font-medium text-white/60">General Tasks</h2>
+            <h2 className="text-sm font-medium text-muted-foreground">Unsorted tasks</h2>
             {generalTasks.length === 0 ? (
-              <p className="text-sm text-zinc-500">No general tasks yet.</p>
+              <p className="text-sm text-muted-foreground">Nothing here yet. Add a small task with the New task button above.</p>
             ) : (
               <div className="space-y-0.5">
                 {generalTasks.map((task) => (
@@ -1169,7 +1122,7 @@ export default function TasksPage({
           {clusters.length > 0 ? (
             <section className="space-y-4">
               <div className="flex items-center justify-between gap-3">
-                <h2 className="text-sm font-medium text-white/60">Clusters</h2>
+                <h2 className="text-sm font-medium text-muted-foreground">Subjects</h2>
                 <ClusterViewToggle
                   view={clusterView}
                   onViewChange={handleClusterViewChange}
@@ -1196,6 +1149,7 @@ export default function TasksPage({
           />
 
           <EditTaskModal
+            key={editingTask?.id ?? "closed"}
             task={editingTask}
             open={editingTask !== null}
             onOpenChange={(open) => {

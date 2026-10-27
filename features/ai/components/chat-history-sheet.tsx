@@ -126,44 +126,44 @@ export function ChatHistorySheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="right"
-        className="flex w-full flex-col border-l-[#ffffff10] bg-[#0f0f17] p-0 sm:max-w-sm [&>button]:text-white/60 [&>button]:hover:text-white"
+        className="flex w-full flex-col border-l-[#ffffff10] bg-card p-0 sm:max-w-sm [&>button]:text-muted-foreground [&>button]:hover:text-white"
       >
         <SheetHeader className="border-b border-[#ffffff10] px-5 py-4 text-left">
           <SheetTitle className="flex items-center gap-2 text-white">
-            <History className="h-4 w-4 text-violet-400" />
+            <History className="h-4 w-4 text-primary" />
             Chat history
           </SheetTitle>
-          <SheetDescription className="text-white/45">
+          <SheetDescription className="text-muted-foreground">
             Ctrl+H history · Ctrl+N new chat
           </SheetDescription>
         </SheetHeader>
 
         <div className="border-b border-[#ffffff10] px-4 py-3">
           <div className="flex items-center gap-2 rounded-xl border border-[#ffffff10] bg-[#ffffff08] px-3 py-2">
-            <Search className="h-4 w-4 shrink-0 text-white/35" />
+            <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Search chats..."
-              className="w-full bg-transparent text-sm text-white outline-none placeholder:text-white/35"
+              className="w-full bg-transparent text-sm text-white outline-none placeholder:text-muted-foreground"
             />
           </div>
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
           {isLoading ? (
-            <p className="px-2 py-6 text-center text-sm text-white/40">
+            <p className="px-2 py-6 text-center text-sm text-muted-foreground">
               Loading chats...
             </p>
           ) : groups.length === 0 ? (
-            <p className="px-2 py-6 text-center text-sm text-white/40">
+            <p className="px-2 py-6 text-center text-sm text-muted-foreground">
               {query ? "No chats match your search." : "No saved chats yet."}
             </p>
           ) : (
             <div className="space-y-4">
               {groups.map((group) => (
                 <div key={group.label}>
-                  <p className="mb-2 px-2 text-[10px] font-medium uppercase tracking-[0.14em] text-white/35">
+                  <p className="mb-2 px-2 text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
                     {group.label}
                   </p>
                   <div className="space-y-1">
@@ -173,7 +173,7 @@ export function ChatHistorySheet({
                         className={cn(
                           "group flex w-full items-center gap-2 rounded-xl px-1 py-1 transition-colors",
                           activeConversationId === conversation.id
-                            ? "bg-[#7c5cfc1a]"
+                            ? "bg-primary/10"
                             : "hover:bg-[#ffffff08]",
                         )}
                       >
@@ -185,7 +185,7 @@ export function ChatHistorySheet({
                           <span className="block truncate text-sm text-white/80 group-hover:text-white">
                             {conversation.title}
                           </span>
-                          <span className="mt-0.5 block text-[11px] text-white/35">
+                          <span className="mt-0.5 block text-[11px] text-muted-foreground">
                             {formatRelativeTime(conversation.updated_at)}
                           </span>
                         </button>

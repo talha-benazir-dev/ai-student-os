@@ -35,7 +35,7 @@ export function ReadmeViewToggle({
             index > 0 && "border-l border-[#ffffff10]",
             value === option.value
               ? "bg-white/10 text-white"
-              : "text-white/50 hover:bg-white/5 hover:text-white/80",
+              : "text-muted-foreground hover:bg-white/5 hover:text-white/80",
           )}
         >
           {option.label}

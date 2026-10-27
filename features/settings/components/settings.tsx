@@ -77,7 +77,7 @@ export default function SettingsPage() {
           setStudyHoursPeriod(result.data.study_hours_period);
           setWeekStartsOn(result.data.week_starts_on);
         }
-      } catch (err) {
+      } catch {
         setError("Failed to load settings");
       } finally {
         setLoading(false);
@@ -97,7 +97,7 @@ export default function SettingsPage() {
         setSettings(result.data);
         setIsEditDialogOpen(false);
       }
-    } catch (err) {
+    } catch {
       setError("Failed to update settings");
     } finally {
       setIsSaving(false);
@@ -287,7 +287,7 @@ export default function SettingsPage() {
 
         <div className="rounded-2xl border border-destructive/20 bg-destructive/5 p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h3 className="text-sm font-medium text-destructive-foreground">
+            <h3 className="text-sm font-medium text-destructive">
               Sign Out
             </h3>
             <p className="text-xs text-muted-foreground mt-0.5">

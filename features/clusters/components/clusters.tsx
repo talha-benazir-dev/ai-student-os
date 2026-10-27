@@ -1,6 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useRequestedDialog } from "@/hooks/use-requested-dialog";
+
+import { useEffect, useState } from "react";
 import { Pencil, Plus, Sparkles, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -31,11 +34,13 @@ const DEFAULT_COLOR = DEFAULT_CLUSTER_COLOR;
 interface ClustersClientProps {
   initialClusters: Cluster[];
   studyMinutesByCluster: Record<string, number>;
+  autoOpenCreate?: boolean;
 }
 
 export function ClustersClient({
   initialClusters,
   studyMinutesByCluster,
+  autoOpenCreate = false,
 }: ClustersClientProps) {
   const {
     addCluster,
@@ -44,13 +49,18 @@ export function ClustersClient({
   } = useClusters();
   const { openDrawer } = useAIDrawer();
   const [clusters, setClusters] = useState<Cluster[]>(initialClusters);
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isCreateOpen, setIsCreateOpen] = useRequestedDialog(autoOpenCreate);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [selectedCluster, setSelectedCluster] = useState<Cluster | null>(null);
   const [name, setName] = useState("");
   const [color, setColor] = useState<string>(DEFAULT_COLOR);
   const [loading, setLoading] = useState(false);
+
+  const router = useRouter();
+  useEffect(() => {
+    if (autoOpenCreate) router.replace("/clusters", { scroll: false });
+  }, [autoOpenCreate, router]);
 
   const handleCreateOpen = () => {
     setName("");
@@ -89,7 +99,7 @@ export function ClustersClient({
     setIsCreateOpen(false);
     setName("");
     setColor(DEFAULT_COLOR);
-    toast.success("Cluster created");
+    toast.success("Subject created");
   };
 
   const handleEditSubmit = async (e: React.FormEvent) => {
@@ -114,7 +124,7 @@ export function ClustersClient({
     updateClusterCtx(data);
     setIsEditOpen(false);
     setSelectedCluster(null);
-    toast.success("Cluster updated");
+    toast.success("Subject updated");
   };
 
   const handleDeleteConfirm = async () => {
@@ -133,33 +143,33 @@ export function ClustersClient({
     removeCluster(selectedCluster.id);
     setIsDeleteOpen(false);
     setSelectedCluster(null);
-    toast.success("Cluster deleted");
+    toast.success("Subject deleted");
   };
 
   return (
-    <div className="min-h-full w-full bg-[#0a0a0f]">
+    <div className="min-h-full w-full bg-background">
       <div className="mx-auto w-full max-w-[1200px] px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
         <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h1 className="text-2xl font-semibold tracking-tight text-white/95 sm:text-[28px]">
-              Clusters
+              Subjects
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Manage your workspaces
+              Keep related notes, tasks, flashcards, and readings together. Start with one subject.
             </p>
           </div>
           <Button
             onClick={handleCreateOpen}
-            className="bg-[#7c5cfc] text-white hover:bg-[#7c5cfc]/90"
+            className="bg-primary text-primary-foreground hover:bg-primary/90"
           >
             <Plus className="mr-1.5 h-4 w-4" />
-            New Cluster
+            New subject
           </Button>
         </div>
 
         {clusters.length === 0 ? (
           <p className="py-16 text-center text-sm text-muted-foreground">
-            No clusters yet. Create one to get started.
+            Give one subject a home. Add Biology, History, or anything you’re learning.
           </p>
         ) : (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -192,7 +202,7 @@ export function ClustersClient({
                           clusterNames: [cluster.name],
                         });
                       }}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-violet-400 border border-[#7c5cfc30] bg-[#7c5cfc08] hover:bg-[#7c5cfc15] transition-colors"
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-primary border border-primary/20 bg-primary/5 hover:bg-primary/10 transition-colors"
                     >
                       <Sparkles className="w-3.5 h-3.5" />
                       Autopilot
@@ -224,7 +234,7 @@ export function ClustersClient({
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
         <DialogContent className="border-border bg-card sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>New Cluster</DialogTitle>
+            <DialogTitle>New subject</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleCreateSubmit} className="space-y-4">
             <div className="space-y-2">
@@ -279,7 +289,7 @@ export function ClustersClient({
               <Button
                 type="submit"
                 disabled={loading || !name.trim()}
-                className="bg-[#7c5cfc] text-white hover:bg-[#7c5cfc]/90"
+                className="bg-primary text-primary-foreground hover:bg-primary/90"
               >
                 Create
               </Button>
@@ -297,7 +307,7 @@ export function ClustersClient({
       >
         <DialogContent className="border-border bg-card sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Edit Cluster</DialogTitle>
+            <DialogTitle>Edit subject</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleEditSubmit} className="space-y-4">
             <div className="space-y-2">
@@ -352,7 +362,7 @@ export function ClustersClient({
               <Button
                 type="submit"
                 disabled={loading || !name.trim()}
-                className="bg-[#7c5cfc] text-white hover:bg-[#7c5cfc]/90"
+                className="bg-primary text-primary-foreground hover:bg-primary/90"
               >
                 Save
               </Button>
@@ -370,7 +380,7 @@ export function ClustersClient({
       >
         <DialogContent className="border-border bg-card sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Delete Cluster</DialogTitle>
+            <DialogTitle>Delete subject</DialogTitle>
             <DialogDescription>
               All items in this cluster will move to General. This cannot be
               undone.

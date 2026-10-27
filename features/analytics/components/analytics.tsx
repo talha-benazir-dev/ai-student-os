@@ -137,6 +137,7 @@ export default async function AnalyticsPage({ period }: AnalyticsPageProps) {
           Individual study sessions for the selected period.
         </p>
         <SessionHistoryTable
+          key={period}
           period={period}
           initialRows={sessionHistory?.rows ?? []}
           initialHasMore={sessionHistory?.hasMore ?? false}

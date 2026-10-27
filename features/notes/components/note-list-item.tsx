@@ -33,20 +33,20 @@ export const NoteListItem = memo(function NoteListItem({
       className={cn(
         "group grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2 rounded-lg border border-transparent px-3 h-[64px] transition-all",
         isActive
-          ? "bg-[#16161f] border-l-2 border-l-[#7c5cfc] border-[#ffffff10] shadow-[0_0_24px_-8px_rgba(124,92,252,0.35)] pl-[10px]"
-          : "hover:bg-[#14141c] border-l-2 border-l-transparent",
+          ? "bg-secondary border-l-2 border-l-primary border-[#ffffff10] pl-[10px]"
+          : "hover:bg-accent/50 border-l-2 border-l-transparent",
       )}
     >
       <button
         type="button"
         onClick={() => onSelect(note)}
-        className="min-w-0 flex h-full flex-col justify-center text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7c5cfc]/50 rounded-lg"
+        className="min-w-0 flex h-full flex-col justify-center text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 rounded-lg"
       >
         <TruncatedText
           text={title}
           className="text-sm font-medium text-white/90"
         />
-        <p className="mt-1 truncate text-[11px] text-white/40">
+        <p className="mt-1 truncate text-[11px] text-muted-foreground">
           {formatRelativeTime(note.updated_at)}
         </p>
       </button>
@@ -63,7 +63,7 @@ export const NoteListItem = memo(function NoteListItem({
         }}
         aria-label={`Delete ${title}`}
         className={cn(
-          "h-8 w-8 shrink-0 self-center text-white/35 hover:text-red-400 hover:bg-red-400/10 transition-all duration-200",
+          "h-8 w-8 shrink-0 self-center text-muted-foreground hover:text-red-400 hover:bg-red-400/10 transition-all duration-200",
           "opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 focus-visible:opacity-100 cursor-pointer",
           isActive && "sm:opacity-100",
         )}

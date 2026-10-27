@@ -1,23 +1,39 @@
-import { Metadata } from "next";
+import type { Metadata } from "next";
 import Link from "next/link";
+import { Suspense, type ReactNode } from "react";
+import type { DashboardStudyPeriod } from "@/features/analytics/types/period";
 import {
-  DashboardCommandSearch,
-  DashboardCreateMenu,
-} from "@/features/dashboard/components/create-command-menu";
+  ArrowUpRight,
+  CheckSquare,
+  Clock,
+  FileText,
+  Layers,
+} from "lucide-react";
+import {
+  createClient,
+  getUser,
+  getWorkspaceProfile,
+} from "@/lib/supabase/server";
+import { DashboardCreateMenu } from "@/features/dashboard/components/create-command-menu";
 import { StatCard } from "@/features/dashboard/components/start-card";
 import { RecentNotesSection } from "@/features/dashboard/components/recent-notes";
+import { StudyGuide } from "@/features/dashboard/components/study-guide";
+import { StudyTimer } from "@/features/study-sessions/components/study-timer";
+import { getClusters } from "@/features/clusters/actions/clusters.actions";
 import {
-  getDashboardWidgets,
+  getAnalyticsSummary,
   getDailyStudyTimeForPeriod,
   getTaskCompletionRateForPeriod,
   getActivityHeatmap,
   getClusterBreakdown,
-  getAnalyticsSummary,
   getTasksByCluster,
 } from "@/features/analytics/actions/analytics.actions";
-import { WIDGET_LABELS, type WidgetId } from "@/features/analytics/types/widgets";
+import {
+  ALL_WIDGETS,
+  WIDGET_LABELS,
+  type WidgetId,
+} from "@/features/analytics/types/widgets";
 import { PERIOD_LABELS } from "@/features/analytics/types/period";
-import type { DashboardStudyPeriod } from "@/features/analytics/types/period";
 import { parseDashboardStudyPeriod } from "@/features/analytics/lib/date-utils";
 import {
   DailyStudyTimeChart,
@@ -27,366 +43,328 @@ import {
 } from "@/features/analytics/components/charts";
 import { TasksByClusterChart } from "@/features/analytics/components/tasks-by-cluster-chart";
 import { formatStudyHours } from "@/features/study-sessions/utils/format-study-hours";
-import {
-  Clock,
-  CheckSquare,
-  FileText,
-  Sparkles,
-  Flame,
-  Bell,
-  ArrowUpRight,
-} from "lucide-react";
-import { createClient } from "@/lib/supabase/server";
-import { getStreakData } from "@/features/study-sessions/actions/study-sessions.actions";
-import { StudyTimer } from "@/features/study-sessions/components/study-timer";
 
 export const metadata: Metadata = {
-  title: "Dashboard — Nucleus",
-  description: "Your AI study operating system.",
+  title: "Home — Nucleus",
+  description: "One clear next step for your studies.",
 };
 
 export default async function Dashboard() {
   const supabase = await createClient();
-  const { data: userData } = await supabase.auth.getUser();
-  const userId = userData.user?.id;
+  const [
+    {
+      data: { user },
+    },
+    { data: profile },
+  ] = await Promise.all([getUser(), getWorkspaceProfile()]);
+  const userId = user?.id ?? "";
+  const period = parseDashboardStudyPeriod(profile?.study_hours_period);
+  const selected: unknown[] = Array.isArray(profile?.dashboard_widgets)
+    ? profile.dashboard_widgets
+    : ["daily_study_time", "activity_heatmap"];
+  const pinnedWidgets = [
+    ...new Set(
+      selected.filter((id): id is WidgetId =>
+        ALL_WIDGETS.includes(id as WidgetId),
+      ),
+    ),
+  ].slice(0, 2);
+  if (!pinnedWidgets.length)
+    pinnedWidgets.push("daily_study_time", "activity_heatmap");
 
-  let profileName = "there";
-  let activeTasks = 0;
-  let notesCount = 0;
-  let documentsCount = 0;
-  let recentNotes: { id: string; title: string; content: string | null; updated_at: string }[] = [];
-  let recentDocuments: { id: string; title: string; file_size: number | null; subject: string | null; created_at: string }[] = [];
-  let studyHoursPeriod: DashboardStudyPeriod = "week";
-  let studyHoursDisplay = "--";
-  let streakData = { current_streak: 0, longest_streak: 0 };
-  let pinnedWidgets: WidgetId[] = ["daily_study_time", "activity_heatmap"];
-  let dailyStudy: { date: string; minutes: number }[] = [];
-  let taskCompletion: { date: string; completed: number }[] = [];
-  let heatmap: { date: string; minutes: number }[] = [];
-  let clusterBreakdown: { name: string; minutes: number; color: string }[] = [];
-  let tasksByCluster: {
-    name: string;
-    color: string;
-    completedCount: number;
-    completedPoints: number;
-    pendingCount: number;
-    pendingPoints: number;
-  }[] = [];
-
-  if (userId) {
-    const fetchProfile = async () => {
-      try {
-        const { data, error } = await supabase
-          .from("profiles")
-          .select("name, study_hours_period")
-          .eq("id", userId)
-          .single();
-        if (!error && data?.name) profileName = data.name;
-        studyHoursPeriod = parseDashboardStudyPeriod(data?.study_hours_period);
-      } catch (e) {}
-    };
-
-    const fetchTasksCount = async () => {
-      try {
-        const { count, error } = await supabase
-          .from("tasks")
-          .select("id", { count: "exact", head: true })
-          .eq("user_id", userId)
-          .eq("completed", false);
-        if (!error && count !== null) activeTasks = count;
-      } catch (e) {}
-    };
-
-    const fetchNotesCount = async () => {
-      try {
-        const { count, error } = await supabase
-          .from("notes")
-          .select("id", { count: "exact", head: true })
-          .eq("user_id", userId);
-        if (!error && count !== null) notesCount = count;
-      } catch (e) {}
-    };
-
-    const fetchRecentNotes = async () => {
-      try {
-        const { data, error } = await supabase
-          .from("notes")
-          .select("id, title, content, updated_at")
-          .eq("user_id", userId)
-          .order("updated_at", { ascending: false })
-          .limit(4);
-        if (!error && data) recentNotes = data;
-      } catch (e) {}
-    };
-
-    const fetchDocumentsCount = async () => {
-      try {
-        const { count, error } = await supabase
-          .from("documents")
-          .select("id", { count: "exact", head: true })
-          .eq("user_id", userId);
-        if (!error && count !== null) documentsCount = count;
-      } catch (e) {}
-    };
-
-    const fetchRecentDocuments = async () => {
-      try {
-        const { data, error } = await supabase
-          .from("documents")
-          .select("id, title, file_size, subject, created_at")
-          .eq("user_id", userId)
-          .order("created_at", { ascending: false })
-          .limit(4);
-        if (!error && data) recentDocuments = data;
-      } catch (e) {}
-    };
-
-    await fetchProfile();
-
+  // Start independent work together. Only the two visible charts are fetched.
+  const [notes, documents, tasks, dueCards, clusters, summary] =
     await Promise.all([
-      fetchTasksCount(),
-      fetchNotesCount(),
-      fetchRecentNotes(),
-      fetchDocumentsCount(),
-      fetchRecentDocuments(),
-      getStreakData().then(({ data }) => {
-        if (data) streakData = data;
-      }),
-      getDashboardWidgets().then(({ data }) => {
-        pinnedWidgets = (data ?? ["daily_study_time", "activity_heatmap"]) as WidgetId[];
-      }),
-      getDailyStudyTimeForPeriod(studyHoursPeriod).then(({ data }) => { dailyStudy = data ?? []; }),
-      getTaskCompletionRateForPeriod(studyHoursPeriod).then(({ data }) => { taskCompletion = data ?? []; }),
-      getActivityHeatmap().then(({ data }) => { heatmap = data ?? []; }),
-      getClusterBreakdown(studyHoursPeriod).then(({ data }) => { clusterBreakdown = data ?? []; }),
-      getTasksByCluster(studyHoursPeriod).then(({ data }) => { tasksByCluster = data ?? []; }),
+      supabase
+        .from("notes")
+        .select("id, title, updated_at", { count: "exact" })
+        .eq("user_id", userId)
+        .order("updated_at", { ascending: false })
+        .limit(4),
+      supabase
+        .from("documents")
+        .select("id, title, file_size, subject, created_at", { count: "exact" })
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false })
+        .limit(4),
+      supabase
+        .from("tasks")
+        .select("id, title, priority, due_date", { count: "exact" })
+        .eq("user_id", userId)
+        .eq("completed", false)
+        .order("due_date", { ascending: true, nullsFirst: false })
+        .order("created_at", { ascending: false })
+        .limit(3),
+      supabase
+        .from("flashcards")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", userId)
+        .lte("next_review", new Date().toISOString().slice(0, 10)),
+      getClusters(),
+      getAnalyticsSummary(period),
     ]);
-
-    const summaryResult = await getAnalyticsSummary(studyHoursPeriod);
-    if (summaryResult.data && summaryResult.data.studyMinutes > 0) {
-      studyHoursDisplay = formatStudyHours(summaryResult.data.studyMinutes);
-    }
-  }
-
-  const chartMap: Record<WidgetId, React.ReactNode> = {
-    daily_study_time: <DailyStudyTimeChart data={dailyStudy} />,
-    task_completion_rate: <TaskCompletionChart data={taskCompletion} />,
-    activity_heatmap: <ActivityHeatmap data={heatmap} />,
-    cluster_breakdown: <ClusterBreakdownDonut data={clusterBreakdown} />,
-    tasks_by_cluster: <TasksByClusterChart data={tasksByCluster} />,
+  const progress = {
+    subjects: clusters.data?.length ?? 0,
+    notes: notes.count ?? 0,
+    documents: documents.count ?? 0,
+    tasks: tasks.count ?? 0,
+    dueCards: dueCards.count ?? 0,
+    completedTasks: summary.data?.tasksCompletedCount ?? 0,
   };
-
-  const dashboardWidgetNote: Partial<Record<WidgetId, string>> = {
-    daily_study_time: PERIOD_LABELS[studyHoursPeriod],
-    task_completion_rate: PERIOD_LABELS[studyHoursPeriod],
-    activity_heatmap: "Last 90 days",
-    cluster_breakdown: PERIOD_LABELS[studyHoursPeriod],
-    tasks_by_cluster: PERIOD_LABELS[studyHoursPeriod],
-  };
-
-  const subtitle =
-    activeTasks > 0
-      ? `You have ${activeTasks} task${activeTasks === 1 ? "" : "s"} pending today. Keep pushing.`
-      : "All clear. Nothing pending — add tasks to stay on track.";
+  const hasMaterial = progress.notes + progress.documents > 0;
+  const hasError =
+    notes.error ||
+    documents.error ||
+    tasks.error ||
+    dueCards.error ||
+    clusters.error;
 
   return (
-    <div className="px-4 sm:px-6 lg:px-10 xl:px-12 py-6 sm:py-8 mx-auto w-full max-w-350">
-      {/* Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4 mb-6 sm:mb-7">
-        <div className="min-w-0 flex-1">
-          <h1 className="text-2xl sm:text-[28px] font-semibold tracking-tight break-words">
-            Welcome back, {profileName}
+    <div className="mx-auto w-full max-w-[1320px] px-4 py-7 sm:px-8 sm:py-10 lg:px-10">
+      <header className="mb-8 flex flex-wrap items-start justify-between gap-5">
+        <div>
+          <h1 className="text-2xl font-medium tracking-tight sm:text-[28px]">
+            Welcome back, {profile?.name || "there"}
           </h1>
-          <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-            {subtitle}
+          <p className="mt-1.5 text-sm text-muted-foreground">
+            A little progress starts with one clear next step.
           </p>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <button className="h-9 w-9 rounded-lg border border-border bg-card hover:bg-accent transition flex items-center justify-center text-muted-foreground hover:text-foreground">
-            <Bell className="h-4 w-4" />
-          </button>
-          <StudyTimer />
-          <DashboardCreateMenu className="hidden sm:inline-flex" />
-        </div>
+        <DashboardCreateMenu className="hidden sm:inline-flex" />
+      </header>
+      {hasError && (
+        <p
+          role="alert"
+          className="mb-5 rounded-md border border-destructive/25 p-4 text-sm text-destructive"
+        >
+          Some of your study material couldn’t load. Refresh the page to try
+          again.
+        </p>
+      )}
+      <StudyGuide progress={progress} />
+      <div className="mb-8 grid gap-7 lg:grid-cols-[1.35fr_1fr]">
+        <section
+          aria-labelledby="focus-title"
+          className="rounded-lg border border-border bg-card p-5 sm:p-6"
+        >
+          <div className="mb-5 flex items-start justify-between gap-3">
+            <div>
+              <h2 id="focus-title" className="text-sm font-medium">
+                On your list
+              </h2>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Pick one. You don’t have to do everything today.
+              </p>
+            </div>
+            <Link
+              href="/tasks"
+              className="text-xs text-muted-foreground hover:text-foreground"
+            >
+              All tasks <span aria-hidden="true">↗</span>
+            </Link>
+          </div>
+          {tasks.data?.length ? (
+            <div className="divide-y divide-border">
+              {tasks.data.map((task) => (
+                <Link
+                  href="/tasks"
+                  key={task.id}
+                  className="flex items-center gap-3 py-3.5 text-sm transition-colors hover:text-primary"
+                >
+                  <span className="size-4 shrink-0 rounded border border-input" />
+                  <span className="min-w-0 flex-1 truncate">{task.title}</span>
+                  {task.priority === "high" && (
+                    <span className="text-[10px] text-muted-foreground">
+                      High priority
+                    </span>
+                  )}
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <div className="py-5">
+              <p className="text-sm text-muted-foreground">
+                What would you like to understand next?
+              </p>
+              <Link
+                href="/tasks?new=task"
+                className="mt-3 inline-flex text-xs text-primary hover:underline"
+              >
+                Add one small task
+              </Link>
+            </div>
+          )}
+        </section>
+        <section
+          aria-labelledby="session-title"
+          className="flex flex-col justify-center rounded-lg border border-border px-5 py-6 sm:px-6"
+        >
+          <div className="mb-3 flex items-center gap-2 text-sm font-medium">
+            <Clock className="size-4 text-primary" />
+            <h2 id="session-title">Make a little room to focus</h2>
+          </div>
+          <p className="mb-5 text-xs leading-relaxed text-muted-foreground">
+            Choose a subject and start the timer. Stop when you’re ready; your
+            time is saved automatically.
+          </p>
+          <div className="max-w-full self-start">
+            <StudyTimer />
+          </div>
+        </section>
       </div>
-
-      <DashboardCommandSearch />
-
-      {/* Stat cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3 mb-6">
+      <section
+        aria-label="Your workspace at a glance"
+        className="mb-8 grid grid-cols-2 divide-x divide-border overflow-hidden rounded-lg border border-border sm:grid-cols-4"
+      >
         <StatCard
-          active
           icon={Clock}
-          label="Study hours"
-          value={studyHoursDisplay}
-          sublabel={PERIOD_LABELS[studyHoursPeriod]}
+          label="Study time"
+          value={formatStudyHours(summary.data?.studyMinutes ?? 0)}
+          sublabel={PERIOD_LABELS[period]}
         />
         <StatCard
           icon={CheckSquare}
-          label="Active tasks"
-          value={activeTasks.toString()}
+          label="Open tasks"
+          value={String(progress.tasks)}
         />
-        <StatCard icon={FileText} label="Notes" value={notesCount.toString()} />
         <StatCard
           icon={FileText}
-          label="Documents"
-          value={documentsCount.toString()}
+          label="Your notes"
+          value={String(progress.notes)}
         />
         <StatCard
-          icon={Flame}
-          label="Streak"
-          value={streakData.current_streak.toString()}
-          unit="days"
-          delta={"best " + streakData.longest_streak}
-          deltaTone="neutral"
+          icon={Layers}
+          label="Ready to review"
+          value={String(progress.dueCards)}
         />
-      </div>
-
-      {/* Analytics — pinned widgets */}
-      <section className="rounded-2xl border border-border bg-card p-4 sm:p-6 mb-6">
-        <div className="flex items-start justify-between gap-3 mb-4 flex-wrap">
-          <div className="min-w-0">
-            <h2 className="text-base font-semibold">Productivity analytics</h2>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Your 2 pinned charts · <a href="/analytics" className="text-primary/70 hover:text-primary transition">manage in Analytics</a>
-            </p>
+      </section>
+      <div className="mb-8 grid items-start gap-7 lg:grid-cols-2">
+        <section className="min-w-0 rounded-lg border border-border bg-card p-5 sm:p-6">
+          <RecentNotesSection
+            notes={(notes.data ?? []).map((note) => ({
+              ...note,
+              content: null,
+            }))}
+          />
+        </section>
+        <section className="min-w-0 rounded-lg border border-border bg-card p-5 sm:p-6">
+          <div className="mb-5 flex items-center justify-between">
+            <h2 className="text-sm font-medium">Your reading</h2>
+            <Link
+              href="/documents"
+              className="text-xs text-muted-foreground hover:text-foreground"
+            >
+              Open library <span aria-hidden="true">↗</span>
+            </Link>
           </div>
-        </div>
-        <div className="grid md:grid-cols-2 gap-4">
-          {pinnedWidgets.map((id) => (
-            <div key={id} className="rounded-xl border border-border/60 bg-background/40 p-4">
-              <p className="text-xs font-medium text-muted-foreground mb-0.5">
-                {WIDGET_LABELS[id].title}
-              </p>
-              {dashboardWidgetNote[id] && (
-                <p className="text-[10px] text-muted-foreground/70 mb-3">
-                  {dashboardWidgetNote[id]}
-                </p>
-              )}
-              {!dashboardWidgetNote[id] && <div className="mb-3" />}
-              {chartMap[id]}
+          {documents.data?.length ? (
+            <div className="divide-y divide-border">
+              {documents.data.map((doc) => (
+                <Link
+                  key={doc.id}
+                  href="/documents"
+                  className="flex items-center gap-3 py-3.5 text-sm hover:text-primary"
+                >
+                  <FileText className="size-4 shrink-0 text-muted-foreground" />
+                  <span className="truncate">{doc.title}</span>
+                  <ArrowUpRight className="ml-auto size-3 shrink-0 text-muted-foreground" />
+                </Link>
+              ))}
             </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Recent notes */}
-      <section className="rounded-2xl border border-border bg-card p-4 sm:p-6 mb-6">
-        <RecentNotesSection notes={recentNotes} />
-      </section>
-
-      {/* Documents */}
-      <section className="rounded-2xl border border-border bg-card p-4 sm:p-6">
-        <SectionHeader
-          title="Recent documents"
-          subtitle="Your uploaded PDFs"
-          action="Open library"
-          href="/documents"
-        />
-        {recentDocuments.length > 0 ? (
-          <div className="divide-y divide-border">
-            {recentDocuments.map((doc) => (
-              <DocRow
-                key={doc.id}
-                title={doc.title}
-                meta={
-                  doc.file_size ? formatBytes(doc.file_size) : "Unknown size"
-                }
-                tag={doc.subject || ""}
-                ai={false}
-              />
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-10 px-4 text-sm text-muted-foreground border border-dashed border-border rounded-xl">
-            No documents yet. Upload your first PDF in the Documents page.
-          </div>
-        )}
-      </section>
-    </div>
-  );
-}
-
-function formatBytes(bytes: number) {
-  if (!+bytes) return "0 B";
-  const k = 1024;
-  const sizes = ["B", "KB", "MB", "GB"];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
-}
-
-function SectionHeader({
-  title,
-  subtitle,
-  action,
-  href,
-  extra,
-}: {
-  title: string;
-  subtitle?: string;
-  action?: string;
-  href?: string;
-  extra?: React.ReactNode;
-}) {
-  return (
-    <div className="flex items-start justify-between mb-4">
-      <div>
-        <h2 className="text-base font-semibold">{title}</h2>
-        {subtitle && (
-          <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>
-        )}
-      </div>
-      <div className="flex items-center gap-2">
-        {extra}
-        {action && (
-          <>
-            {href ? (
+          ) : (
+            <div className="py-5 text-sm text-muted-foreground">
+              <p>Keep a reading or lecture PDF close to your notes.</p>
               <Link
-                href={href}
-                className="text-xs text-primary-soft hover:text-foreground transition inline-flex items-center gap-1"
+                href="/documents"
+                className="mt-3 inline-flex text-xs text-primary hover:underline"
               >
-                {action} <ArrowUpRight className="h-3 w-3" />
+                Add your first document
               </Link>
-            ) : (
-              <button className="text-xs text-primary-soft hover:text-foreground transition inline-flex items-center gap-1">
-                {action} <ArrowUpRight className="h-3 w-3" />
-              </button>
-            )}
-          </>
-        )}
+            </div>
+          )}
+        </section>
       </div>
-    </div>
-  );
-}
-
-function DocRow({
-  title,
-  meta,
-  tag,
-  ai,
-}: {
-  title: string;
-  meta: string;
-  tag: string;
-  ai?: boolean;
-}) {
-  return (
-    <div className="flex items-center gap-3 py-3 group">
-      <div className="h-9 w-9 shrink-0 rounded-lg border border-border bg-background/60 flex items-center justify-center text-muted-foreground">
-        <FileText className="h-4 w-4" />
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="text-sm font-medium truncate">{title}</div>
-        <div className="text-xs text-muted-foreground">{meta}</div>
-      </div>
-      <span className="text-[10px] px-1.5 py-0.5 rounded border border-border bg-white/5 text-muted-foreground hidden sm:inline">
-        {tag}
-      </span>
-      {ai && (
-        <span className="text-[10px] px-1.5 py-0.5 rounded bg-success/10 border border-success/25 text-success inline-flex items-center gap-1">
-          <Sparkles className="h-2.5 w-2.5" /> AI summary
-        </span>
+      {hasMaterial && (
+        <Suspense
+          fallback={
+            <p role="status" className="py-6 text-xs text-muted-foreground">
+              Loading your study patterns…
+            </p>
+          }
+        >
+          <StudyPatterns widgets={pinnedWidgets} period={period} />
+        </Suspense>
       )}
     </div>
+  );
+}
+
+async function StudyPatterns({
+  widgets: pinnedWidgets,
+  period,
+}: {
+  widgets: WidgetId[];
+  period: DashboardStudyPeriod;
+}) {
+  const charts = await Promise.all(
+    pinnedWidgets.map(
+      async (id): Promise<{ id: WidgetId; chart: ReactNode }> => {
+        switch (id) {
+          case "daily_study_time": {
+            const { data } = await getDailyStudyTimeForPeriod(period);
+            return { id, chart: <DailyStudyTimeChart data={data ?? []} /> };
+          }
+          case "task_completion_rate": {
+            const { data } = await getTaskCompletionRateForPeriod(period);
+            return { id, chart: <TaskCompletionChart data={data ?? []} /> };
+          }
+          case "activity_heatmap": {
+            const { data } = await getActivityHeatmap();
+            return { id, chart: <ActivityHeatmap data={data ?? []} /> };
+          }
+          case "cluster_breakdown": {
+            const { data } = await getClusterBreakdown(period);
+            return { id, chart: <ClusterBreakdownDonut data={data ?? []} /> };
+          }
+          case "tasks_by_cluster": {
+            const { data } = await getTasksByCluster(period);
+            return { id, chart: <TasksByClusterChart data={data ?? []} /> };
+          }
+        }
+      },
+    ),
+  );
+  return (
+    <section aria-labelledby="study-pattern-title">
+      <div className="mb-4 flex items-center justify-between">
+        <div>
+          <h2 id="study-pattern-title" className="text-sm font-medium">
+            Your study patterns
+          </h2>
+          <p className="mt-1 text-xs text-muted-foreground">
+            A view of your learning over time. Every session counts.
+          </p>
+        </div>
+        <Link
+          href="/analytics"
+          className="text-xs text-muted-foreground hover:text-foreground"
+        >
+          View analytics <span aria-hidden="true">↗</span>
+        </Link>
+      </div>
+      <div className="grid gap-5 md:grid-cols-2">
+        {charts.map(({ id, chart }) => (
+          <div
+            key={id}
+            className="min-w-0 rounded-lg border border-border bg-card p-5"
+          >
+            <p className="mb-4 text-xs text-muted-foreground">
+              {WIDGET_LABELS[id].title}
+            </p>
+            {chart}
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }

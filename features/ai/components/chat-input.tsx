@@ -120,7 +120,7 @@ export function ChatInput({
 
     document.addEventListener("mousedown", handleOutsideClick);
     return () => document.removeEventListener("mousedown", handleOutsideClick);
-  }, [slashOpen, autopilotPickerOpen]);
+  }, [slashOpen, autopilotPickerOpen, textareaRef]);
 
   const handleSlashSelect = (command: string) => {
     if (command === "/studypack") {
@@ -211,14 +211,14 @@ export function ChatInput({
 
   return (
     <div
-      className="flex flex-col gap-2 rounded-2xl border border-[#ffffff10] bg-[#0f0f17] p-3"
+      className="flex flex-col gap-2 rounded-2xl border border-[#ffffff10] bg-card p-3"
       onDragOver={(event) => event.preventDefault()}
       onDrop={handleDrop}
     >
       {showTopRow ? (
         <div className="flex flex-wrap items-center gap-2">
           {selectedClusterName ? (
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-[#7c5cfc30] bg-[#7c5cfc1a] px-2.5 py-1 text-xs text-violet-300">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-xs text-primary-soft">
               <span
                 className="h-2 w-2 shrink-0 rounded-full"
                 style={{
@@ -238,7 +238,7 @@ export function ChatInput({
           ) : null}
 
           {curriculumMode ? (
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-[#7c5cfc30] bg-[#7c5cfc1a] px-2.5 py-1 text-xs text-violet-300">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-xs text-primary-soft">
               Curriculum
               <button
                 type="button"
@@ -256,9 +256,9 @@ export function ChatInput({
       {autopilotPickerOpen ? (
         <div
           ref={slashRef}
-          className="rounded-2xl border border-[#ffffff10] bg-[#0f0f17] p-2 shadow-xl"
+          className="rounded-2xl border border-[#ffffff10] bg-card p-2 shadow-xl"
         >
-          <p className="mb-2 px-2 text-xs font-medium text-white/40">
+          <p className="mb-2 px-2 text-xs font-medium text-muted-foreground">
             Choose a cluster for Autopilot
           </p>
           <div className="flex max-h-48 flex-col gap-0.5 overflow-y-auto overscroll-contain">
@@ -283,7 +283,7 @@ export function ChatInput({
       {showSlashMenu && filteredSlashCommands.length > 0 ? (
         <div
           ref={slashRef}
-          className="rounded-2xl border border-[#ffffff10] bg-[#0f0f17] p-2 shadow-xl"
+          className="rounded-2xl border border-[#ffffff10] bg-card p-2 shadow-xl"
         >
           <div className="flex flex-col gap-0.5">
             {filteredSlashCommands.map((item) => (
@@ -293,10 +293,10 @@ export function ChatInput({
                 onClick={() => handleSlashSelect(item.command)}
                 className="flex cursor-pointer items-center justify-between gap-3 rounded-lg px-2 py-1.5 text-left hover:bg-[#ffffff08]"
               >
-                <span className="text-sm font-medium text-violet-400">
+                <span className="text-sm font-medium text-primary">
                   {item.command}
                 </span>
-                <span className="text-xs text-white/50">{item.description}</span>
+                <span className="text-xs text-muted-foreground">{item.description}</span>
               </button>
             ))}
           </div>
@@ -331,9 +331,9 @@ export function ChatInput({
           {popoverOpen ? (
             <div
               ref={popoverRef}
-              className="absolute bottom-14 left-0 z-50 w-64 rounded-2xl border border-[#ffffff10] bg-[#0f0f17] p-3 shadow-xl"
+              className="absolute bottom-14 left-0 z-50 w-64 rounded-2xl border border-[#ffffff10] bg-card p-3 shadow-xl"
             >
-              <p className="mb-2 text-xs font-medium text-white/40">
+              <p className="mb-2 text-xs font-medium text-muted-foreground">
                 Assign to cluster
               </p>
               <div className="flex max-h-48 flex-col gap-0.5 overflow-y-auto overscroll-contain">
@@ -345,7 +345,7 @@ export function ChatInput({
                   <span className="h-2 w-2 shrink-0 rounded-full bg-white/30" />
                   General
                   {selectedClusterId === null ? (
-                    <Check className="ml-auto h-3.5 w-3.5 text-violet-400" />
+                    <Check className="ml-auto h-3.5 w-3.5 text-primary" />
                   ) : null}
                 </button>
                 {clusters.map((cluster) => (
@@ -363,7 +363,7 @@ export function ChatInput({
                     />
                     {cluster.name}
                     {selectedClusterId === cluster.id ? (
-                      <Check className="ml-auto h-3.5 w-3.5 text-violet-400" />
+                      <Check className="ml-auto h-3.5 w-3.5 text-primary" />
                     ) : null}
                   </button>
                 ))}
@@ -379,13 +379,13 @@ export function ChatInput({
                 }}
                 className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-white hover:bg-[#ffffff08]"
               >
-                <ImagePlus className="h-4 w-4 text-violet-400" />
+                <ImagePlus className="h-4 w-4 text-primary" />
                 Attach image
               </button>
 
               <div className="my-2 border-t border-[#ffffff08]" />
 
-              <p className="mb-2 text-xs font-medium text-white/40">
+              <p className="mb-2 text-xs font-medium text-muted-foreground">
                 Curriculum mode
               </p>
               <div className="flex items-center justify-between px-2 py-1.5">
@@ -397,7 +397,7 @@ export function ChatInput({
                   onClick={() => onCurriculumToggle(!curriculumMode)}
                   className={cn(
                     "relative h-5 w-9 rounded-full transition-colors",
-                    curriculumMode ? "bg-[#7c5cfc]" : "bg-[#ffffff15]",
+                    curriculumMode ? "bg-primary" : "bg-[#ffffff15]",
                   )}
                 >
                   <span

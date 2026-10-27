@@ -1,5 +1,5 @@
 export const CLUSTER_COLORS = [
-  "#7c5cfc",
+  "#a6be98",
   "#3b82f6",
   "#10b981",
   "#f59e0b",

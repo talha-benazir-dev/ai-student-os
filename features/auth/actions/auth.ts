@@ -1,15 +1,14 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getUser } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { ensureProfile } from "@/features/onboarding/actions/onboarding.actions";
 
 async function redirectAfterAuth() {
-  const supabase = await createClient();
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await getUser();
 
   if (!user) {
     redirect("/login");
@@ -20,7 +19,7 @@ async function redirectAfterAuth() {
   redirect(profile?.onboarded === true ? "/dashboard" : "/onboarding");
 }
 
-export async function login(prevState: any, formData: FormData) {
+export async function login(prevState: unknown, formData: FormData) {
   const supabase = await createClient();
 
   const email = formData.get("email") as string;
@@ -42,7 +41,7 @@ export async function login(prevState: any, formData: FormData) {
   await redirectAfterAuth();
 }
 
-export async function signup(prevState: any, formData: FormData) {
+export async function signup(prevState: unknown, formData: FormData) {
   const supabase = await createClient();
 
   const email = formData.get("email") as string;

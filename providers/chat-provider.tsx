@@ -191,10 +191,13 @@ export function ChatProvider({
   );
 
   const stateRef = useRef(state);
-  stateRef.current = state;
   const conversationIdRef = useRef<string | null>(null);
   const isHydratingRef = useRef(isHydratingConversation);
-  isHydratingRef.current = isHydratingConversation;
+
+  useEffect(() => {
+    stateRef.current = state;
+    isHydratingRef.current = isHydratingConversation;
+  }, [state, isHydratingConversation]);
 
   const clusterNameForId = useCallback(
     (id: string | null) => {
@@ -215,11 +218,8 @@ export function ChatProvider({
     setConversations(result.data ?? []);
   }, []);
 
-  const loadConversationById = useCallback(
-    async (id: string, options?: { syncRoute?: boolean }) => {
-      setIsHydratingConversation(true);
-
-      const result = await getConversation(id);
+  const applyConversation = useCallback(
+    (result: Awaited<ReturnType<typeof getConversation>>, options?: { syncRoute?: boolean }) => {
       if (result.error || !result.data) {
         setIsHydratingConversation(false);
         toast.error(result.error ?? "Could not load chat");
@@ -257,16 +257,22 @@ export function ChatProvider({
 
       if (options?.syncRoute !== false) {
         if (pathname === "/ai" || pathname.startsWith("/ai/c/")) {
-          router.push(`/ai/c/${id}`);
+          router.push(`/ai/c/${conversation.id}`);
         }
       }
     },
     [clusterNameForId, pathname, router],
   );
 
+  const loadConversationById = useCallback(async (id: string) => {
+    const result = await getConversation(id);
+    applyConversation(result);
+  }, [applyConversation]);
+
   const loadConversation = useCallback(
     async (id: string) => {
       setHistoryOpen(false);
+      setIsHydratingConversation(true);
       await loadConversationById(id);
     },
     [loadConversationById],
@@ -283,29 +289,27 @@ export function ChatProvider({
 
   const openHistory = useCallback(() => {
     setHistoryOpen(true);
-  }, []);
+    void refreshConversations();
+  }, [refreshConversations]);
 
   const closeHistory = useCallback(() => {
     setHistoryOpen(false);
   }, []);
 
   const toggleHistory = useCallback(() => {
-    setHistoryOpen((open) => !open);
-  }, []);
-
-  useEffect(() => {
-    if (!historyOpen) return;
-    void refreshConversations();
+    setHistoryOpen(!historyOpen);
+    if (!historyOpen) void refreshConversations();
   }, [historyOpen, refreshConversations]);
 
   useEffect(() => {
-    if (!initialConversationId) {
-      setIsHydratingConversation(false);
-      return;
-    }
+    if (!initialConversationId) return;
 
-    void loadConversationById(initialConversationId, { syncRoute: false });
-  }, [initialConversationId, loadConversationById]);
+    let cancelled = false;
+    void getConversation(initialConversationId).then(result => {
+      if (!cancelled) applyConversation(result, { syncRoute: false });
+    });
+    return () => { cancelled = true; };
+  }, [initialConversationId, applyConversation]);
 
   useEffect(() => {
     conversationIdRef.current = state.conversationId;

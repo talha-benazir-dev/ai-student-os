@@ -31,10 +31,23 @@ export async function updateSession(request: NextRequest) {
 
   const path = request.nextUrl.pathname;
 
-  if (!user && path === "/onboarding") {
+  function redirectTo(pathname: string) {
     const url = request.nextUrl.clone();
-    url.pathname = "/login";
-    return NextResponse.redirect(url);
+    url.pathname = pathname;
+    const response = NextResponse.redirect(url);
+    // Token refreshes must survive redirects as well as successful renders.
+    supabaseResponse.cookies
+      .getAll()
+      .forEach((cookie) => response.cookies.set(cookie));
+    for (const name of ["cache-control", "expires", "pragma"]) {
+      const value = supabaseResponse.headers.get(name);
+      if (value) response.headers.set(name, value);
+    }
+    return response;
+  }
+
+  if (!user && path === "/onboarding") {
+    return redirectTo("/login");
   }
 
   const protectedPaths = [
@@ -52,9 +65,7 @@ export async function updateSession(request: NextRequest) {
   const isProtectedPath = protectedPaths.some((p) => path.startsWith(p));
 
   if (!user && isProtectedPath) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/login";
-    return NextResponse.redirect(url);
+    return redirectTo("/login");
   }
 
   if (user) {
@@ -68,22 +79,16 @@ export async function updateSession(request: NextRequest) {
 
     // Redirect logged-in users away from login/signup
     if (path === "/login" || path === "/signup") {
-      const url = request.nextUrl.clone();
-      url.pathname = onboarded ? "/dashboard" : "/onboarding";
-      return NextResponse.redirect(url);
+      return redirectTo(onboarded ? "/dashboard" : "/onboarding");
     }
 
     if (!onboarded && isProtectedPath) {
-      const url = request.nextUrl.clone();
-      url.pathname = "/onboarding";
-      return NextResponse.redirect(url);
+      return redirectTo("/onboarding");
     }
 
     // Redirect to dashboard if already onboarded and visiting /onboarding
     if (onboarded && path === "/onboarding") {
-      const url = request.nextUrl.clone();
-      url.pathname = "/dashboard";
-      return NextResponse.redirect(url);
+      return redirectTo("/dashboard");
     }
   }
 

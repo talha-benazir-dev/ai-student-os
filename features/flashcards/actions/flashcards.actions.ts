@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getUser } from "@/lib/supabase/server";
 import type { Flashcard, FlashcardUpdate } from "../types";
 
 type ActionResult<T> = {
@@ -14,7 +14,7 @@ export async function getFlashcards(): Promise<ActionResult<Flashcard[]>> {
   const {
     data: { user },
     error: authError,
-  } = await supabase.auth.getUser();
+  } = await getUser();
 
   if (authError || !user) {
     return { data: null, error: "You must be signed in to view flashcards." };
@@ -34,7 +34,7 @@ export async function getDueFlashcards(): Promise<ActionResult<Flashcard[]>> {
   const {
     data: { user },
     error: authError,
-  } = await supabase.auth.getUser();
+  } = await getUser();
 
   if (authError || !user) {
     return { data: null, error: "You must be signed in to view flashcards." };
@@ -61,7 +61,7 @@ export async function createFlashcard(
   const {
     data: { user },
     error: authError,
-  } = await supabase.auth.getUser();
+  } = await getUser();
 
   if (authError || !user) {
     return { data: null, error: "You must be signed in to create flashcards." };
@@ -98,7 +98,7 @@ export async function updateFlashcard(
   const {
     data: { user },
     error: authError,
-  } = await supabase.auth.getUser();
+  } = await getUser();
 
   if (authError || !user) {
     return { data: null, error: "You must be signed in to update flashcards." };
@@ -137,7 +137,7 @@ export async function reviewFlashcard(
   const {
     data: { user },
     error: authError,
-  } = await supabase.auth.getUser();
+  } = await getUser();
 
   if (authError || !user) {
     return { data: null, error: "You must be signed in to review flashcards." };
@@ -196,7 +196,7 @@ export async function deleteFlashcard(
   const {
     data: { user },
     error: authError,
-  } = await supabase.auth.getUser();
+  } = await getUser();
 
   if (authError || !user) {
     return { data: null, error: "You must be signed in to delete flashcards." };

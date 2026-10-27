@@ -1,8 +1,10 @@
 "use client";
 
-import Link from "next/link";
+import Link, { useLinkStatus } from "next/link";
+import { NucleusMark } from "@/components/nucleus-mark";
 import { usePathname } from "next/navigation";
-import { memo, useEffect, useState } from "react";
+import { memo, useState } from "react";
+import { useStoredPreference } from "@/hooks/use-stored-preference";
 import {
   LayoutDashboard,
   FileText,
@@ -12,12 +14,11 @@ import {
   Sparkles,
   BarChart3,
   Settings,
-  Flame,
+  Loader2,
   ChevronRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
-import { getSettings } from "@/features/settings/actions/settings.actions";
 import type { UserSettings } from "@/features/settings/types";
 import { useClusters } from "@/providers/clusters-provider";
 
@@ -29,12 +30,13 @@ type NavItem = {
 };
 
 const nav: NavItem[] = [
-  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { to: "/dashboard", label: "Home", icon: LayoutDashboard },
+  { to: "/clusters", label: "Subjects", icon: Layers },
   { to: "/notes", label: "Notes", icon: FileText },
   { to: "/tasks", label: "Tasks", icon: CheckSquare },
   { to: "/documents", label: "Documents", icon: FolderOpen },
   { to: "/flashcards", label: "Flashcards", icon: Layers },
-  { to: "/ai", label: "AI Workspace", icon: Sparkles, badge: "CORE" },
+  { to: "/ai", label: "Study assistant", icon: Sparkles },
   { to: "/analytics", label: "Analytics", icon: BarChart3 },
 ];
 
@@ -91,31 +93,23 @@ function NavLink({
   collapsed = false,
 }: NavItem & { onClick?: () => void; collapsed?: boolean }) {
   const pathname = usePathname();
-  const active = pathname === to;
+  const active = pathname === to || pathname.startsWith(`${to}/`);
   return (
     <Link
       href={to}
-      prefetch={true}
       onClick={onClick}
+      aria-current={active ? "page" : undefined}
       className={cn(
         "group relative flex items-center transition-all duration-200",
         collapsed
           ? "justify-center h-10 w-10 p-0 mx-auto rounded-lg"
           : "gap-3 rounded-lg px-3 py-2 text-sm",
         active
-          ? "bg-primary/12 text-foreground border border-primary/20 shadow-[inset_0_1px_0_oklch(1_0_0/6%)]"
+          ? "bg-sidebar-accent text-foreground font-medium"
           : "text-muted-foreground hover:text-foreground hover:bg-accent/50",
       )}
       title={collapsed ? label : undefined}
     >
-      {active && (
-        <span
-          className={cn(
-            "absolute left-0 top-1/2 -translate-y-1/2 rounded-r bg-primary transition-all duration-200",
-            collapsed ? "h-6 w-0.5" : "h-5 w-0.5",
-          )}
-        />
-      )}
       <Icon
         className={cn(
           "h-4 w-4 shrink-0 transition-colors duration-200",
@@ -123,6 +117,7 @@ function NavLink({
         )}
       />
       {!collapsed && <span className="flex-1 truncate">{label}</span>}
+      <NavigationProgress />
       {!collapsed && badge && (
         <span className="text-[9px] tracking-widest px-1.5 py-0.5 rounded border border-primary/30 text-primary bg-primary/10 animate-fade-in">
           {badge}
@@ -132,29 +127,28 @@ function NavLink({
   );
 }
 
+function NavigationProgress() {
+  const { pending } = useLinkStatus();
+  return pending ? (
+    <span role="status" aria-label="Opening page">
+      <Loader2 className="size-3 shrink-0 animate-spin text-muted-foreground" />
+    </span>
+  ) : null;
+}
+
 function SidebarBody({
+  settings,
   onNavigate,
   collapsed = false,
   onToggleCollapse,
 }: {
+  settings: UserSettings | null;
   onNavigate?: () => void;
   collapsed?: boolean;
   onToggleCollapse?: () => void;
 }) {
   const { clusters } = useClusters();
-  const [settings, setSettings] = useState<UserSettings | null>(null);
-  const [logoHovered, setLogoHovered] = useState(false);
   const [clustersOpen, setClustersOpen] = useState(true);
-
-  useEffect(() => {
-    async function fetchSettings() {
-      const result = await getSettings();
-      if (result.data) {
-        setSettings(result.data);
-      }
-    }
-    fetchSettings();
-  }, []);
 
   return (
     <>
@@ -162,30 +156,24 @@ function SidebarBody({
         <div className="flex items-center justify-center h-16 border-b border-border">
           <button
             onClick={onToggleCollapse}
-            onMouseEnter={() => setLogoHovered(true)}
-            onMouseLeave={() => setLogoHovered(false)}
             className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-all duration-200 cursor-pointer"
             title="Expand sidebar"
           >
-            {logoHovered ? (
-              <PanelRightCloseIcon className="h-4 w-4" />
-            ) : (
-              <Sparkles className="h-4 w-4" />
-            )}
+            <PanelRightCloseIcon className="h-4 w-4" />
           </button>
         </div>
       ) : (
         <div className="flex items-center justify-between px-5 h-16 border-b border-border">
           <div className="flex items-center gap-2.5">
             <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10 text-primary">
-              <Sparkles className="h-4 w-4" />
+              <NucleusMark className="size-5" />
             </div>
             <div className="leading-tight">
               <div className="text-[15px] font-semibold tracking-tight">
                 Nucleus
               </div>
-              <div className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-                Study OS
+              <div className="text-[11px] text-muted-foreground">
+                Personal workspace
               </div>
             </div>
           </div>
@@ -208,7 +196,7 @@ function SidebarBody({
         )}
       >
         {!collapsed && (
-          <div className="px-3 pb-2 text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+          <div className="px-3 pb-2 text-[11px] text-muted-foreground">
             Workspace
           </div>
         )}
@@ -226,9 +214,9 @@ function SidebarBody({
           <div className="mt-4">
             <button
               onClick={() => setClustersOpen((prev) => !prev)}
-              className="w-full flex items-center justify-between px-3 pb-2 text-[10px] uppercase tracking-[0.14em] text-muted-foreground hover:text-foreground transition-colors"
+              className="w-full flex items-center justify-between px-3 pb-2 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
             >
-              <span>Clusters</span>
+              <span>Subjects</span>
               <ChevronRight
                 className={cn(
                   "h-3 w-3 transition-transform duration-200",
@@ -242,7 +230,6 @@ function SidebarBody({
                   <Link
                     key={cluster.id}
                     href={`/clusters/${cluster.id}`}
-                    prefetch={true}
                     onClick={onNavigate}
                     className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-all duration-200"
                   >
@@ -255,13 +242,12 @@ function SidebarBody({
                 ))}
                 <Link
                   href="/clusters"
-                  prefetch={true}
                   onClick={onNavigate}
                   className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-all duration-200"
                 >
                   <span className="h-2 w-2 rounded-full shrink-0 border border-muted-foreground/40" />
                   <span className="flex-1 truncate text-muted-foreground/60">
-                    Manage clusters
+                    Manage subjects
                   </span>
                 </Link>
               </div>
@@ -278,7 +264,6 @@ function SidebarBody({
       >
         <Link
           href="/settings"
-          prefetch={true}
           onClick={onNavigate}
           className={cn(
             "flex items-center text-sm text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-all duration-200",
@@ -299,23 +284,22 @@ function SidebarBody({
               ? "flex justify-center py-2 bg-transparent border-transparent"
               : "rounded-xl border border-border bg-card/60 p-3 flex items-center gap-3",
           )}
-          title={collapsed ? settings?.name || "Zara Ahmed" : undefined}
+          title={collapsed ? settings?.name || "Your workspace" : undefined}
         >
-          <div className="h-9 w-9 rounded-full bg-gradient-violet flex items-center justify-center text-xs font-semibold text-primary-foreground shadow-[0_0_16px_-4px_oklch(0.66_0.21_295/0.8)] shrink-0">
-            {settings?.name?.[0] || "Z"}
+          <div className="h-8 w-8 rounded-md bg-secondary flex items-center justify-center text-xs font-medium text-foreground shrink-0">
+            {settings?.name?.[0]?.toUpperCase() || "N"}
           </div>
           {!collapsed && (
             <div className="min-w-0 flex-1 animate-fade-in">
               <div className="text-sm font-medium truncate">
-                {settings?.name || "Zara Ahmed"}
+                {settings?.name || "Your workspace"}
               </div>
               <div className="text-[11px] text-muted-foreground flex items-center gap-1">
                 {settings?.plan === "pro"
                   ? "Pro plan"
                   : settings?.plan === "enterprise"
                     ? "Enterprise plan"
-                    : "Free plan"}{" "}
-                · <Flame className="h-3 w-3 text-orange-500" /> 7-day streak
+                    : "Free plan"}
               </div>
             </div>
           )}
@@ -325,38 +309,44 @@ function SidebarBody({
   );
 }
 
-export const AppSidebar = memo(function AppSidebar() {
-  const [collapsed, setCollapsed] = useState(false);
-
-  useEffect(() => {
-    const saved = localStorage.getItem("sidebar-collapsed");
-    if (saved === "true") {
-      setCollapsed(true);
-    }
-  }, []);
+export const AppSidebar = memo(function AppSidebar({
+  settings,
+}: {
+  settings: UserSettings | null;
+}) {
+  const [storedCollapsed, setStoredCollapsed] = useStoredPreference(
+    "sidebar-collapsed",
+    "false",
+  );
+  const collapsed = storedCollapsed === "true";
 
   const handleToggle = () => {
     const next = !collapsed;
-    setCollapsed(next);
-    localStorage.setItem("sidebar-collapsed", String(next));
+    setStoredCollapsed(String(next));
   };
 
   return (
     <aside
       className={cn(
-        "hidden lg:flex shrink-0 flex-col border-r border-border bg-sidebar sticky top-0 h-screen transition-all duration-300 ease-in-out",
-        collapsed ? "w-[68px]" : "w-[248px]",
+        "hidden lg:flex shrink-0 flex-col border-r border-border bg-sidebar sticky top-0 h-screen",
+        collapsed ? "w-[68px]" : "w-[232px]",
       )}
     >
-      <SidebarBody collapsed={collapsed} onToggleCollapse={handleToggle} />
+      <SidebarBody
+        settings={settings}
+        collapsed={collapsed}
+        onToggleCollapse={handleToggle}
+      />
     </aside>
   );
 });
 
 export function MobileSidebar({
+  settings,
   open,
   onOpenChange,
 }: {
+  settings: UserSettings | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
@@ -367,7 +357,11 @@ export function MobileSidebar({
         className="p-0 w-[270px] bg-sidebar border-r-border"
       >
         <SheetTitle className="sr-only">Navigation</SheetTitle>
-        <SidebarBody onNavigate={() => onOpenChange(false)} collapsed={false} />
+        <SidebarBody
+          settings={settings}
+          onNavigate={() => onOpenChange(false)}
+          collapsed={false}
+        />
       </SheetContent>
     </Sheet>
   );

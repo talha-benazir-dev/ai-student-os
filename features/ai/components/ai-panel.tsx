@@ -109,7 +109,7 @@ export function AIPanel({ className }: AIPanelProps = {}) {
       <div className="flex shrink-0 flex-col gap-2 border-b border-[#ffffff08] py-4">
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-white/35">
+            <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
               AI Workspace
             </p>
             <h1 className="truncate text-lg font-semibold tracking-tight text-white">
@@ -146,7 +146,7 @@ export function AIPanel({ className }: AIPanelProps = {}) {
             >
               <SelectTrigger
                 className={cn(
-                  "h-8 w-32 rounded-lg border-[#ffffff10] bg-[#0f0f17] text-xs text-white/70",
+                  "h-8 w-32 rounded-lg border-[#ffffff10] bg-card text-xs text-white/70",
                   showAutonomousPrompt &&
                     "animate-pulse border-violet-400/50 ring-1 ring-violet-400/30",
                 )}
@@ -164,12 +164,12 @@ export function AIPanel({ className }: AIPanelProps = {}) {
           </div>
         </div>
         {isSavedChat ? (
-          <p className="text-xs text-white/40">
+          <p className="text-xs text-muted-foreground">
             Messages stay in this chat until you start a{" "}
             <button
               type="button"
               onClick={newChat}
-              className="text-violet-300 underline-offset-2 hover:underline"
+              className="text-primary-soft underline-offset-2 hover:underline"
             >
               new chat
             </button>
@@ -184,12 +184,12 @@ export function AIPanel({ className }: AIPanelProps = {}) {
 
       {showAutonomousPrompt ? (
         <div className="shrink-0 border-t border-[#ffffff08] px-1 py-3">
-          <div className="flex items-center justify-between gap-3 rounded-xl border border-violet-400/25 bg-[#7c5cfc12] px-4 py-3">
+          <div className="flex items-center justify-between gap-3 rounded-xl border border-primary/25 bg-primary/10 px-4 py-3">
             <div className="min-w-0">
               <p className="text-sm font-medium text-white">
                 Ready to execute this plan?
               </p>
-              <p className="mt-0.5 text-xs text-white/50">
+              <p className="mt-0.5 text-xs text-muted-foreground">
                 Switch to Autonomous mode to create everything automatically.
               </p>
             </div>
@@ -198,7 +198,7 @@ export function AIPanel({ className }: AIPanelProps = {}) {
               size="sm"
               disabled={isLoading}
               onClick={() => void switchToAutonomousAndRun()}
-              className="shrink-0 gap-1.5 bg-[#7c5cfc] hover:bg-[#8a6dfd] text-white"
+              className="shrink-0 gap-1.5 bg-primary hover:bg-primary text-primary-foreground"
             >
               <Sparkles className="h-3.5 w-3.5" />
               Switch & run

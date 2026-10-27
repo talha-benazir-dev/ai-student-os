@@ -55,16 +55,16 @@ export function CreateClusterModal({
       return;
     }
 
-    toast.success("Cluster created");
+    toast.success("Subject created");
     handleOpenChange(false);
     onSuccess?.();
   };
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="border-[#ffffff10] bg-[#0f0f17] sm:max-w-md">
+      <DialogContent className="border-[#ffffff10] bg-card sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-white">New Cluster</DialogTitle>
+          <DialogTitle className="text-white">New subject</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 pt-2">
           <div className="space-y-2">
@@ -76,7 +76,7 @@ export function CreateClusterModal({
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Calculus, Exam prep"
-              className="border-[#ffffff10] bg-[#0a0a0f] text-white"
+              className="border-[#ffffff10] bg-background text-white"
               required
               disabled={isSubmitting}
             />
@@ -107,9 +107,9 @@ export function CreateClusterModal({
           <Button
             type="submit"
             disabled={isSubmitting || !name.trim()}
-            className="w-full bg-[#7c5cfc] text-white hover:bg-[#7c5cfc]/90"
+            className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
           >
-            {isSubmitting ? "Creating…" : "Create Cluster"}
+            {isSubmitting ? "Creating…" : "Create subject"}
           </Button>
         </form>
       </DialogContent>

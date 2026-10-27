@@ -41,7 +41,7 @@ export function NotesListPanel({
   return (
     <div
       className={cn(
-        "@container/note-list flex flex-col h-full min-w-0 bg-[#0f0f17]",
+        "@container/note-list flex flex-col h-full min-w-0 bg-card",
         showBorder && "border-r border-[#ffffff10]",
         className,
       )}
@@ -53,7 +53,7 @@ export function NotesListPanel({
           size="sm"
           onClick={onCreateClick}
           disabled={isCreating}
-          className="h-8 bg-[#7c5cfc] hover:bg-[#6b4ce8] text-white shadow-[0_0_20px_-6px_rgba(124,92,252,0.6)]"
+          className="h-8 bg-primary hover:bg-primary/90 text-primary-foreground"
         >
           <Plus className="h-3.5 w-3.5 mr-1" aria-hidden />
           New
@@ -65,9 +65,7 @@ export function NotesListPanel({
           <div className="p-3 space-y-4 min-w-0">
             {notes.length === 0 ? (
               <div className="flex items-center justify-center px-3 py-16 text-center">
-                <p className="text-sm text-white/40">
-                  No notes yet. Create your first note.
-                </p>
+                <div><p className="text-sm text-muted-foreground">Start with one idea from your latest lesson.</p><Button variant="outline" size="sm" onClick={onCreateClick} className="mt-4">Write your first note</Button><p className="mt-3 text-xs leading-relaxed text-muted-foreground">Try explaining it in your own words. It doesn’t have to be polished.</p></div>
               </div>
             ) : (
               <>
@@ -93,7 +91,7 @@ export function NotesListPanel({
                       title={cluster.name}
                       count={clusterNotes.length}
                       dotColor={cluster.color}
-                      emptyMessage="No notes in this cluster."
+                      emptyMessage="No notes in this subject yet."
                       notes={clusterNotes}
                       activeNoteId={activeNoteId}
                       isCollapsed={collapsedIds.has(cluster.id)}

@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, createContext, useContext } from "react";
+import { createContext, useContext } from "react";
+import { useStoredPreference } from "@/hooks/use-stored-preference";
 import { LayoutGrid, List, Sparkles, ArrowUpRight } from "lucide-react";
 import Link from "next/link";
 
@@ -22,18 +23,11 @@ type Note = {
 type Props = { notes: Note[] };
 
 function NotesViewProvider({ children }: { children: React.ReactNode }) {
-  const [view, setView] = useState<"grid" | "list">("grid");
-
-  useEffect(() => {
-    const saved = localStorage.getItem("nucleus_notes_view");
-    if (saved === "grid" || saved === "list") {
-      setView(saved);
-    }
-  }, []);
+  const [storedView, setStoredView] = useStoredPreference("nucleus_notes_view", "list");
+  const view = storedView === "grid" ? "grid" : "list";
 
   const handleToggle = (newView: "grid" | "list") => {
-    setView(newView);
-    localStorage.setItem("nucleus_notes_view", newView);
+    setStoredView(newView);
   };
 
   return (
@@ -49,6 +43,7 @@ export function NotesViewToggle() {
   return (
     <div className="flex items-center gap-1">
       <button
+        aria-label="Show notes as cards"
         onClick={() => setView("grid")}
         className={`p-1.5 rounded-md transition ${
           view === "grid"
@@ -59,6 +54,7 @@ export function NotesViewToggle() {
         <LayoutGrid className="h-4 w-4" />
       </button>
       <button
+        aria-label="Show notes as a list"
         onClick={() => setView("list")}
         className={`p-1.5 rounded-md transition ${
           view === "list"
@@ -116,6 +112,7 @@ function RecentNotesContent({ notes }: Props) {
             {notes.map((note) => (
               <NoteCard
                 key={note.id}
+                href={`/notes?note=${encodeURIComponent(note.id)}`}
                 title={note.title || "Untitled"}
                 time={getRelativeTime(note.updated_at)}
                 body={extractPlainText(note.content)}
@@ -129,6 +126,7 @@ function RecentNotesContent({ notes }: Props) {
             {notes.map((note) => (
               <NoteCardList
                 key={note.id}
+                href={`/notes?note=${encodeURIComponent(note.id)}`}
                 title={note.title || "Untitled"}
                 time={getRelativeTime(note.updated_at)}
                 tags={[]}
@@ -139,7 +137,8 @@ function RecentNotesContent({ notes }: Props) {
         )
       ) : (
         <div className="text-center py-10 px-4 text-sm text-muted-foreground border border-dashed border-border rounded-xl">
-          No notes yet. Start writing in the Notes page.
+          <p>Capture a thought from your latest lesson.</p>
+          <Link href="/notes?new=note" className="mt-3 inline-flex text-xs text-primary hover:underline">Write your first note</Link>
         </div>
       )}
     </>
@@ -167,7 +166,7 @@ function getRelativeTime(dateString: string): string {
 }
 
 function extractPlainText(content: string | null): string {
-  if (!content) return "No content yet.";
+  if (!content) return "Open to continue reading.";
   // Strip markdown headings, bold, italic, code blocks, links
   const plain = content
     .replace(/```[\s\S]*?```/g, "")
@@ -185,12 +184,14 @@ function extractPlainText(content: string | null): string {
 }
 
 function NoteCard({
+  href,
   title,
   time,
   body,
   tags,
   ai,
 }: {
+  href: string;
   title: string;
   time: string;
   body: string;
@@ -198,7 +199,7 @@ function NoteCard({
   ai?: boolean;
 }) {
   return (
-    <div className="rounded-xl border border-border bg-background/50 p-4 hover:border-primary/30 hover:bg-background transition cursor-pointer group">
+    <Link href={href} className="block rounded-lg border border-border bg-background/50 p-4 hover:border-primary/30 hover:bg-background transition-colors group">
       <div className="flex items-start justify-between gap-2 mb-1.5">
         <h3 className="text-sm font-medium leading-tight">{title}</h3>
         <span className="text-[11px] text-muted-foreground shrink-0">
@@ -221,23 +222,25 @@ function NoteCard({
           </span>
         )}
       </div>
-    </div>
+    </Link>
   );
 }
 
 function NoteCardList({
+  href,
   title,
   time,
   tags,
   ai,
 }: {
+  href: string;
   title: string;
   time: string;
   tags: string[];
   ai?: boolean;
 }) {
   return (
-    <div className="flex items-center gap-3 py-2 px-3 rounded-lg border border-border bg-background/50 hover:border-primary/30 hover:bg-background transition cursor-pointer group">
+    <Link href={href} className="flex items-center gap-3 py-3 px-3 rounded-md border border-border bg-background/50 hover:border-primary/30 hover:bg-background transition-colors group">
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2 mb-1">
           <h3 className="text-sm font-medium truncate">{title}</h3>
@@ -259,6 +262,6 @@ function NoteCardList({
         </div>
       </div>
       <span className="text-[11px] text-muted-foreground shrink-0">{time}</span>
-    </div>
+    </Link>
   );
 }

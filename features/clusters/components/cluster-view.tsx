@@ -111,7 +111,7 @@ export function ClusterView({
         >
           {initialNotes.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              No notes in this cluster.
+              No notes in this subject yet.
             </p>
           ) : (
             <div className="flex flex-col gap-2">
@@ -140,7 +140,7 @@ export function ClusterView({
         >
           {initialTasks.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              No tasks in this cluster.
+              No tasks in this subject yet.
             </p>
           ) : (
             <div className="flex flex-col gap-2">
@@ -187,7 +187,7 @@ export function ClusterView({
         >
           {initialFlashcards.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              No flashcards in this cluster.
+              No flashcards in this subject yet.
             </p>
           ) : (
             <div className="flex flex-col gap-2">
@@ -223,7 +223,7 @@ export function ClusterView({
         >
           {initialDocuments.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              No documents in this cluster.
+              No documents in this subject yet.
             </p>
           ) : (
             <div className="flex flex-col gap-2">

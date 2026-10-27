@@ -11,9 +11,9 @@ export const metadata: Metadata = {
 export default async function Page({
   searchParams,
 }: {
-  searchParams: Promise<{ new?: string }>;
+  searchParams: Promise<{ new?: string; note?: string }>;
 }) {
-  const { new: newParam } = await searchParams;
+  const { new: newParam, note } = await searchParams;
   const [notesResult, clustersResult] = await Promise.all([
     getNotes(),
     getClusters(),
@@ -23,6 +23,7 @@ export default async function Page({
     <NotesPage
       initialNotes={notesResult.data ?? []}
       initialClusters={clustersResult.data ?? []}
+      initialNoteId={note}
       autoOpenCreate={newParam === "note"}
     />
   );

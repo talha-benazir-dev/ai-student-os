@@ -1,6 +1,6 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getUser } from "@/lib/supabase/server";
 import { requireProAction } from "@/lib/ai/require-pro";
 import type { Note, NoteType, NoteUpdate } from "@/features/notes/types";
 
@@ -14,7 +14,7 @@ export async function getNotes(): Promise<ActionResult<Note[]>> {
   const {
     data: { user },
     error: authError,
-  } = await supabase.auth.getUser();
+  } = await getUser();
 
   if (authError || !user) {
     return { data: null, error: "You must be signed in to view notes." };
@@ -48,7 +48,7 @@ export async function createNote(
   const {
     data: { user },
     error: authError,
-  } = await supabase.auth.getUser();
+  } = await getUser();
 
   if (authError || !user) {
     return { data: null, error: "You must be signed in to create notes." };
@@ -102,7 +102,7 @@ export async function updateNote(
   const {
     data: { user },
     error: authError,
-  } = await supabase.auth.getUser();
+  } = await getUser();
 
   if (authError || !user) {
     return { data: null, error: "You must be signed in to update notes." };
@@ -135,7 +135,7 @@ export async function deleteNote(id: string): Promise<ActionResult<{ id: string 
   const {
     data: { user },
     error: authError,
-  } = await supabase.auth.getUser();
+  } = await getUser();
 
   if (authError || !user) {
     return { data: null, error: "You must be signed in to delete notes." };
