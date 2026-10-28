@@ -1,5 +1,6 @@
 "use client";
 
+import { WorkspacePageHeader } from "@/features/dashboard/components/workspace-page";
 import { useState, useMemo, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useRequestedDialog } from "@/hooks/use-requested-dialog";
@@ -233,7 +234,7 @@ function FlashcardGridItem({
   }
 
   return (
-    <div className="group relative rounded-xl border border-[#ffffff10] bg-card/60 backdrop-blur-md p-5 transition-all hover:border-[#ffffff20] hover:bg-card/80 flex flex-col h-[180px]">
+    <div className="group relative rounded-lg border border-border bg-transparent p-5 transition-colors hover:border-input hover:bg-accent/20 flex flex-col h-[180px]">
       <div className="flex-1 min-h-0">
         <p className="text-white/90 font-medium line-clamp-2 text-sm whitespace-pre-wrap">
           {card.front}
@@ -263,11 +264,12 @@ function FlashcardGridItem({
         </span>
       </div>
 
-      <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 bg-card p-1 rounded-lg border border-[#ffffff10]">
+      <div className="absolute top-3 right-3 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 transition-opacity flex gap-1 bg-card p-1 rounded-md border border-border">
         <Button
           variant="ghost"
           size="icon"
           onClick={onEditStart}
+          aria-label="Edit flashcard"
           className="h-7 w-7 text-muted-foreground hover:text-white"
         >
           <Pencil className="h-3.5 w-3.5" />
@@ -276,6 +278,7 @@ function FlashcardGridItem({
           variant="ghost"
           size="icon"
           onClick={onDelete}
+          aria-label="Delete flashcard"
           className="h-7 w-7 text-muted-foreground hover:text-red-400"
         >
           <Trash2 className="h-3.5 w-3.5" />
@@ -353,8 +356,11 @@ function ReviewSession({
             aria-label={flipped ? undefined : "Reveal answer"}
             tabIndex={flipped ? -1 : 0}
             onClick={() => !flipped && setFlipped(true)}
-            onKeyDown={event => {
-              if (!flipped && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); setFlipped(true); }
+            onKeyDown={(event) => {
+              if (!flipped && (event.key === "Enter" || event.key === " ")) {
+                event.preventDefault();
+                setFlipped(true);
+              }
             }}
             className={cn(
               "relative w-full min-h-[300px] transition-transform duration-400 ease-in-out preserve-3d cursor-pointer",
@@ -447,7 +453,14 @@ export default function FlashcardsPage({
   const router = useRouter();
   const [cards, setCards] = useState<Flashcard[]>(initialCards);
   const [clusters] = useState<Cluster[]>(initialClusters);
-  const [mode, setMode] = useState<Mode>(() => autoStartReview && initialCards.some(card => card.next_review <= new Date().toISOString().slice(0, 10)) ? "REVIEW" : "LIBRARY");
+  const [mode, setMode] = useState<Mode>(() =>
+    autoStartReview &&
+    initialCards.some(
+      (card) => card.next_review <= new Date().toISOString().slice(0, 10),
+    )
+      ? "REVIEW"
+      : "LIBRARY",
+  );
 
   const [showCreate, setShowCreate] = useRequestedDialog(autoOpenCreate);
   const [createError, setCreateError] = useState<string | null>(null);
@@ -466,7 +479,15 @@ export default function FlashcardsPage({
     medium: 0,
     hard: 0,
   });
-  const [activeReviewCards, setActiveReviewCards] = useState<Flashcard[]>(() => autoStartReview ? initialCards.filter(card => card.next_review <= new Date().toISOString().slice(0, 10)).sort((a, b) => a.next_review.localeCompare(b.next_review)) : []);
+  const [activeReviewCards, setActiveReviewCards] = useState<Flashcard[]>(() =>
+    autoStartReview
+      ? initialCards
+          .filter(
+            (card) => card.next_review <= new Date().toISOString().slice(0, 10),
+          )
+          .sort((a, b) => a.next_review.localeCompare(b.next_review))
+      : [],
+  );
 
   const today = useMemo(() => new Date().toISOString().split("T")[0], []);
 
@@ -685,40 +706,46 @@ export default function FlashcardsPage({
   }
 
   return (
-    <div className="flex flex-col min-h-[calc(100dvh-3.5rem)] lg:min-h-[100dvh] bg-background">
-      <div className="w-full max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 flex flex-col flex-1">
-        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-8">
-          <div>
-            <h1 className="text-2xl sm:text-[28px] font-semibold tracking-tight text-white/95">
-              Flashcards
-            </h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Try remembering first. Reveal the answer, then decide when to revisit it.
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            {dueCards.length > 0 && (
+    <div className="flex flex-col min-h-[calc(100dvh-3.5rem)] lg:min-h-[calc(100dvh-44px)] bg-background">
+      <div className="workspace-page flex flex-col flex-1">
+        <WorkspacePageHeader
+          icon="review"
+          title="Flashcards"
+          description="A question, a pause, then an answer. Return to what you want to remember."
+          actions={
+            <div className="flex items-center gap-3">
+              {dueCards.length > 0 && (
+                <Button
+                  onClick={() => {
+                    setActiveReviewCards([...dueCards]);
+                    setMode("REVIEW");
+                  }}
+                  className="bg-primary hover:bg-primary/90 text-primary-foreground"
+                >
+                  Study Now ({dueCards.length})
+                </Button>
+              )}
               <Button
+                variant="outline"
                 onClick={() => {
-                  setActiveReviewCards([...dueCards]);
-                  setMode("REVIEW");
+                  setCreateError(null);
+                  setShowCreate(true);
                 }}
-                className="bg-primary hover:bg-primary/90 text-primary-foreground"
+                className="border-[#ffffff20] text-white hover:bg-[#ffffff10]"
               >
-                Study Now ({dueCards.length})
+                <Plus className="w-4 h-4 mr-2" /> Create Flashcard
               </Button>
-            )}
-            <Button
-              variant="outline"
-              onClick={() => {
-                setCreateError(null);
-                setShowCreate(true);
-              }}
-              className="border-[#ffffff20] text-white hover:bg-[#ffffff10]"
-            >
-              <Plus className="w-4 h-4 mr-2" /> Create Flashcard
-            </Button>
-          </div>
+            </div>
+          }
+        />
+        <div className="workspace-summary">
+          <span>
+            <strong>{dueCards.length}</strong>ready to review
+          </span>
+          <span>
+            <strong>{cards.length}</strong>cards in your library
+          </span>
+          <span>A little practice goes a long way.</span>
         </div>
 
         {cards.length > 0 && (
@@ -791,7 +818,7 @@ export default function FlashcardsPage({
           </div>
         )}
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-3 gap-4">
           {visibleCards.map((c) => (
             <FlashcardGridItem
               key={c.id}
@@ -821,9 +848,12 @@ export default function FlashcardsPage({
                 Turn an idea into a question
               </p>
               <p className="text-sm text-muted-foreground mt-1 max-w-xs">
-                Put a question on the front and the answer in your own words on the back. Try recalling the answer before revealing it.
+                Put a question on the front and the answer in your own words on
+                the back. Try recalling the answer before revealing it.
               </p>
-              <Button className="mt-5" onClick={() => setShowCreate(true)}>Create your first flashcard</Button>
+              <Button className="mt-5" onClick={() => setShowCreate(true)}>
+                Create your first flashcard
+              </Button>
             </div>
           )}
         </div>

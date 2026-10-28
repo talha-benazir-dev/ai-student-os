@@ -1,3 +1,4 @@
+import { WorkspacePageHeader } from "@/features/dashboard/components/workspace-page";
 import { Suspense } from "react";
 import { Pin } from "lucide-react";
 import {
@@ -75,18 +76,19 @@ export default async function AnalyticsPage({ period }: AnalyticsPageProps) {
     daily_study_time: <DailyStudyTimeChart data={dailyStudy ?? []} />,
     task_completion_rate: <TaskCompletionChart data={taskCompletion ?? []} />,
     activity_heatmap: <ActivityHeatmap data={heatmap ?? []} />,
-    cluster_breakdown: <ClusterBreakdownAnalytics data={clusterBreakdown ?? []} />,
+    cluster_breakdown: (
+      <ClusterBreakdownAnalytics data={clusterBreakdown ?? []} />
+    ),
     tasks_by_cluster: <TasksByClusterChart data={tasksByCluster ?? []} />,
   };
 
   return (
-    <div className="px-4 sm:px-6 lg:px-10 xl:px-12 py-6 sm:py-10 mx-auto w-full max-w-[1400px]">
-      <h1 className="text-2xl sm:text-[28px] font-semibold tracking-tight">
-        Analytics
-      </h1>
-      <p className="text-sm text-muted-foreground mt-1 mb-6">
-        A long view of your focus and consistency.
-      </p>
+    <div className="workspace-page">
+      <WorkspacePageHeader
+        icon="analytics"
+        title="Analytics"
+        description="Notice when you focus best. Build a rhythm that works for you."
+      />
 
       <div className="mb-6">
         <Suspense fallback={null}>
@@ -109,7 +111,10 @@ export default async function AnalyticsPage({ period }: AnalyticsPageProps) {
         {visibleWidgets.map((id) => {
           const isPinned = pinnedWidgets.includes(id);
           return (
-            <div key={id} className="rounded-2xl border border-border bg-card p-6">
+            <div
+              key={id}
+              className="rounded-lg border border-border bg-transparent p-6"
+            >
               <div className="flex items-start justify-between mb-3">
                 <div>
                   <h2 className="text-sm font-semibold">
@@ -131,7 +136,7 @@ export default async function AnalyticsPage({ period }: AnalyticsPageProps) {
         })}
       </div>
 
-      <section className="rounded-2xl border border-border bg-card px-6 pt-6 pb-2">
+      <section className="rounded-lg border border-border bg-transparent px-6 pt-6 pb-2">
         <h2 className="text-sm font-semibold">Session history</h2>
         <p className="text-xs text-muted-foreground mt-0.5 mb-4">
           Individual study sessions for the selected period.

@@ -16,6 +16,7 @@ export default defineConfig({
       url: "http://127.0.0.1:3100",
       timeout: 120_000,
       env: {
+        NEXT_DIST_DIR: ".next-e2e",
         NEXT_PUBLIC_SUPABASE_URL: "http://127.0.0.1:54329",
         NEXT_PUBLIC_SUPABASE_ANON_KEY: "test-public-key",
         NEXT_PUBLIC_SITE_URL: "http://127.0.0.1:3100",

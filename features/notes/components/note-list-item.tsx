@@ -31,9 +31,9 @@ export const NoteListItem = memo(function NoteListItem({
     <div
       role="listitem"
       className={cn(
-        "group grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2 rounded-lg border border-transparent px-3 h-[64px] transition-all",
+        "group grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2 rounded-md border border-transparent px-3 h-[58px] transition-colors",
         isActive
-          ? "bg-secondary border-l-2 border-l-primary border-[#ffffff10] pl-[10px]"
+          ? "bg-white/5 border-l-2 border-l-primary/60 pl-[10px]"
           : "hover:bg-accent/50 border-l-2 border-l-transparent",
       )}
     >

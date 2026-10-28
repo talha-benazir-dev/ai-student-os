@@ -1,5 +1,6 @@
 "use client";
 
+import { WorkspacePageHeader } from "@/features/dashboard/components/workspace-page";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useRequestedDialog } from "@/hooks/use-requested-dialog";
@@ -59,9 +60,9 @@ const PRIORITY_ORDER: Record<Task["priority"], number> = {
 };
 
 const PRIORITY_STYLES: Record<Task["priority"], string> = {
-  low: "bg-green-500/15 text-green-400",
-  medium: "bg-yellow-500/15 text-yellow-400",
-  high: "bg-red-500/15 text-red-400",
+  low: "bg-white/5 text-muted-foreground",
+  medium: "bg-[#bda883]/10 text-[#c5b391]",
+  high: "bg-[#c58f83]/10 text-[#d5a19a]",
 };
 
 const GENERAL_CLUSTER_VALUE = "__general__";
@@ -311,7 +312,9 @@ function ClusterTaskList({
 }) {
   if (tasks.length === 0) {
     return (
-      <p className="text-xs text-muted-foreground">No tasks in this subject yet.</p>
+      <p className="text-xs text-muted-foreground">
+        No tasks in this cluster yet.
+      </p>
     );
   }
 
@@ -526,10 +529,10 @@ function TaskItem({
         onCheckedChange={() => onToggle(task)}
         className="border-white/20 data-[state=checked]:border-primary data-[state=checked]:bg-primary"
       />
-      <div className="flex min-w-0 flex-1 items-center gap-2">
+      <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">
         <span
           className={cn(
-            "truncate text-sm text-white/90",
+            "min-w-0 basis-full truncate text-sm text-white/90 sm:basis-auto",
             task.completed && "text-muted-foreground line-through",
           )}
         >
@@ -537,7 +540,7 @@ function TaskItem({
         </span>
         <span
           className={cn(
-            "shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide",
+            "shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium capitalize",
             PRIORITY_STYLES[task.priority],
           )}
         >
@@ -568,7 +571,7 @@ function TaskItem({
           </Tooltip>
         ) : null}
       </div>
-      <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-all group-hover:opacity-100">
+      <div className="flex shrink-0 items-center gap-0.5 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
         <button
           type="button"
           onClick={() => onEdit(task)}
@@ -682,7 +685,7 @@ function CreateTaskModal({
           </div>
 
           <div className="space-y-2">
-            <Label className="text-white/70">Subject</Label>
+            <Label className="text-white/70">Cluster</Label>
             <Select value={clusterId} onValueChange={setClusterId}>
               <SelectTrigger className="border-[#ffffff10] bg-background text-white">
                 <SelectValue placeholder="General" />
@@ -768,9 +771,15 @@ function EditTaskModal({
   onSubmit: (taskId: string, values: TaskFormValues) => void;
 }) {
   const [title, setTitle] = useState(task?.title ?? "");
-  const [priority, setPriority] = useState<Task["priority"]>(task?.priority ?? "medium");
-  const [clusterId, setClusterId] = useState(task?.cluster_id ?? GENERAL_CLUSTER_VALUE);
-  const [importancePoints, setImportancePoints] = useState(String(task?.importance_points ?? 10));
+  const [priority, setPriority] = useState<Task["priority"]>(
+    task?.priority ?? "medium",
+  );
+  const [clusterId, setClusterId] = useState(
+    task?.cluster_id ?? GENERAL_CLUSTER_VALUE,
+  );
+  const [importancePoints, setImportancePoints] = useState(
+    String(task?.importance_points ?? 10),
+  );
   const [reward, setReward] = useState(task?.reward ?? "");
   const [dueDate, setDueDate] = useState(task?.due_date ?? "");
 
@@ -837,7 +846,7 @@ function EditTaskModal({
           </div>
 
           <div className="space-y-2">
-            <Label className="text-white/70">Subject</Label>
+            <Label className="text-white/70">Cluster</Label>
             <Select value={clusterId} onValueChange={setClusterId}>
               <SelectTrigger className="border-[#ffffff10] bg-background text-white">
                 <SelectValue placeholder="General" />
@@ -917,25 +926,44 @@ export default function TasksPage({
   const router = useRouter();
   const [tasks, setTasks] = useState<Task[]>(initialTasks);
   const [clusters] = useState<Cluster[]>(initialClusters);
-  const [createTaskOpen, setCreateTaskOpen] = useRequestedDialog(autoOpenCreate);
+  const [createTaskOpen, setCreateTaskOpen] =
+    useRequestedDialog(autoOpenCreate);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
-  const [storedView, setStoredView] = useStoredPreference(CLUSTER_VIEW_STORAGE_KEY, "list");
+  const [storedView, setStoredView] = useStoredPreference(
+    CLUSTER_VIEW_STORAGE_KEY,
+    "list",
+  );
   const clusterView: ClusterView = storedView === "grid" ? "grid" : "list";
-  const [storedCollapsed, setStoredCollapsed] = useStoredPreference(CLUSTER_COLLAPSED_STORAGE_KEY, "[]");
+  const [storedCollapsed, setStoredCollapsed] = useStoredPreference(
+    CLUSTER_COLLAPSED_STORAGE_KEY,
+    "[]",
+  );
   const collapsedClusterIds = useMemo(() => {
     try {
       const parsed: unknown = JSON.parse(storedCollapsed);
-      return new Set<string>(Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === "string") : []);
-    } catch { return new Set<string>(); }
+      return new Set<string>(
+        Array.isArray(parsed)
+          ? parsed.filter((id): id is string => typeof id === "string")
+          : [],
+      );
+    } catch {
+      return new Set<string>();
+    }
   }, [storedCollapsed]);
   const progress = useProgressData(tasks, clusters);
-  const handleClusterViewChange = useCallback((view: ClusterView) => setStoredView(view), [setStoredView]);
-  const handleToggleClusterCollapsed = useCallback((clusterId: string) => {
-    const next = new Set(collapsedClusterIds);
-    if (next.has(clusterId)) next.delete(clusterId);
-    else next.add(clusterId);
-    setStoredCollapsed(JSON.stringify([...next]));
-  }, [collapsedClusterIds, setStoredCollapsed]);
+  const handleClusterViewChange = useCallback(
+    (view: ClusterView) => setStoredView(view),
+    [setStoredView],
+  );
+  const handleToggleClusterCollapsed = useCallback(
+    (clusterId: string) => {
+      const next = new Set(collapsedClusterIds);
+      if (next.has(clusterId)) next.delete(clusterId);
+      else next.add(clusterId);
+      setStoredCollapsed(JSON.stringify([...next]));
+    },
+    [collapsedClusterIds, setStoredCollapsed],
+  );
 
   useEffect(() => {
     if (!autoOpenCreate) return;
@@ -1086,24 +1114,39 @@ export default function TasksPage({
   return (
     <TooltipProvider>
       <div className="w-full min-h-full bg-background">
-        <div className="w-full space-y-8 px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10 xl:px-10">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div><h1 className="text-2xl font-medium tracking-tight text-foreground sm:text-[28px]">Tasks</h1><p className="mt-1.5 max-w-xl text-sm leading-relaxed text-muted-foreground">Make the next step specific: explain one idea, read a few pages, or solve three questions.</p></div>
-            <Button
-              size="sm"
-              onClick={() => setCreateTaskOpen(true)}
-              className="bg-primary text-primary-foreground hover:bg-primary/90"
-            >
-              <Plus className="mr-1.5 h-3.5 w-3.5" />
-              New task
-            </Button>
+        <div className="workspace-page space-y-7">
+          <WorkspacePageHeader
+            icon="tasks"
+            title="Tasks"
+            description="Give your next step a clear finish. Work through one small thing at a time."
+            actions={
+              <Button size="sm" onClick={() => setCreateTaskOpen(true)}>
+                <Plus className="size-3.5" />
+                New task
+              </Button>
+            }
+          />
+          <div className="workspace-summary">
+            <span>
+              <strong>{tasks.filter((t) => !t.completed).length}</strong>to do
+            </span>
+            <span>
+              <strong>{tasks.filter((t) => t.completed).length}</strong>
+              completed
+            </span>
+            <span>Grouped by cluster</span>
           </div>
 
           {tasks.length > 0 && <ProgressBar {...progress} />}
           <section className="space-y-3">
-            <h2 className="text-sm font-medium text-muted-foreground">Unsorted tasks</h2>
+            <h2 className="text-sm font-medium text-muted-foreground">
+              Unsorted tasks
+            </h2>
             {generalTasks.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Nothing here yet. Add a small task with the New task button above.</p>
+              <p className="text-sm text-muted-foreground">
+                Nothing here yet. Add a small task with the New task button
+                above.
+              </p>
             ) : (
               <div className="space-y-0.5">
                 {generalTasks.map((task) => (
@@ -1122,7 +1165,9 @@ export default function TasksPage({
           {clusters.length > 0 ? (
             <section className="space-y-4">
               <div className="flex items-center justify-between gap-3">
-                <h2 className="text-sm font-medium text-muted-foreground">Subjects</h2>
+                <h2 className="text-sm font-medium text-muted-foreground">
+                  Clusters
+                </h2>
                 <ClusterViewToggle
                   view={clusterView}
                   onViewChange={handleClusterViewChange}

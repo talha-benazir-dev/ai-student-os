@@ -2,21 +2,21 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { getStudyNextStep } from "../features/dashboard/lib/study-next-step.ts";
 
-const empty = { subjects: 0, notes: 0, documents: 0, tasks: 0, dueCards: 0 };
-test("a new student starts with one subject, not an empty analytics dashboard", () => {
+const empty = { clusters: 0, notes: 0, documents: 0, tasks: 0, dueCards: 0 };
+test("a new student starts with one cluster, not an empty analytics dashboard", () => {
   const step = getStudyNextStep(empty);
-  assert.equal(step.href, "/clusters?new=subject");
-  assert.equal(step.title, "Give one subject a home");
+  assert.equal(step.href, "/clusters?new=cluster");
+  assert.equal(step.title, "Create your first cluster");
 });
-test("students with a subject are guided to capture material", () => {
+test("students with a cluster are guided to capture material", () => {
   assert.equal(
-    getStudyNextStep({ ...empty, subjects: 1 }).href,
+    getStudyNextStep({ ...empty, clusters: 1 }).href,
     "/notes?new=note",
   );
 });
 test("material without a task leads to a small study goal", () => {
   assert.equal(
-    getStudyNextStep({ ...empty, subjects: 1, documents: 1 }).href,
+    getStudyNextStep({ ...empty, clusters: 1, documents: 1 }).href,
     "/tasks?new=task",
   );
 });

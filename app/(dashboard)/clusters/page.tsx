@@ -12,7 +12,7 @@ export default async function ClustersPage({ searchParams }: { searchParams: Pro
     <ClustersClient
       initialClusters={clusters ?? []}
       studyMinutesByCluster={studyMinutesByCluster ?? {}}
-      autoOpenCreate={params.new === "subject"}
+      autoOpenCreate={params.new === "cluster" || params.new === "subject"}
     />
   );
 }

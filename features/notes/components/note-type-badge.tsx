@@ -20,8 +20,8 @@ export function NoteTypeBadge({ type, className }: NoteTypeBadgeProps) {
       title={meta.label}
       aria-label={`Note type: ${meta.label}`}
       className={cn(
-        "inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full px-1.5 text-[10px] font-medium",
-        meta.className,
+        "inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-sm px-1.5 text-[10px] font-medium",
+        "bg-white/[.035] text-muted-foreground",
         className,
       )}
     >

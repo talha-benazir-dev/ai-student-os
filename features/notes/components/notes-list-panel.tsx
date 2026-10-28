@@ -91,7 +91,7 @@ export function NotesListPanel({
                       title={cluster.name}
                       count={clusterNotes.length}
                       dotColor={cluster.color}
-                      emptyMessage="No notes in this subject yet."
+                      emptyMessage="No notes in this cluster yet."
                       notes={clusterNotes}
                       activeNoteId={activeNoteId}
                       isCollapsed={collapsedIds.has(cluster.id)}

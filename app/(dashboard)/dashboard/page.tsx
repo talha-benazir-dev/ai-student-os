@@ -1,3 +1,4 @@
+import { WorkspacePageHeader } from "@/features/dashboard/components/workspace-page";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense, type ReactNode } from "react";
@@ -104,7 +105,7 @@ export default async function Dashboard() {
       getAnalyticsSummary(period),
     ]);
   const progress = {
-    subjects: clusters.data?.length ?? 0,
+    clusters: clusters.data?.length ?? 0,
     notes: notes.count ?? 0,
     documents: documents.count ?? 0,
     tasks: tasks.count ?? 0,
@@ -119,19 +120,18 @@ export default async function Dashboard() {
     dueCards.error ||
     clusters.error;
 
+  // Snapshot this dynamic server request once; serialize it for stable hydration.
+  // eslint-disable-next-line react-hooks/purity
+  const referenceTime = Date.now();
+
   return (
-    <div className="mx-auto w-full max-w-[1320px] px-4 py-7 sm:px-8 sm:py-10 lg:px-10">
-      <header className="mb-8 flex flex-wrap items-start justify-between gap-5">
-        <div>
-          <h1 className="text-2xl font-medium tracking-tight sm:text-[28px]">
-            Welcome back, {profile?.name || "there"}
-          </h1>
-          <p className="mt-1.5 text-sm text-muted-foreground">
-            A little progress starts with one clear next step.
-          </p>
-        </div>
-        <DashboardCreateMenu className="hidden sm:inline-flex" />
-      </header>
+    <div className="workspace-page">
+      <WorkspacePageHeader
+        icon="home"
+        title={`Welcome back, ${profile?.name || "there"}`}
+        description="A little progress starts with one clear next step."
+        actions={<DashboardCreateMenu className="hidden sm:inline-flex" />}
+      />
       {hasError && (
         <p
           role="alert"
@@ -204,7 +204,7 @@ export default async function Dashboard() {
             <h2 id="session-title">Make a little room to focus</h2>
           </div>
           <p className="mb-5 text-xs leading-relaxed text-muted-foreground">
-            Choose a subject and start the timer. Stop when you’re ready; your
+            Choose a cluster and start the timer. Stop when you’re ready; your
             time is saved automatically.
           </p>
           <div className="max-w-full self-start">
@@ -241,6 +241,7 @@ export default async function Dashboard() {
       <div className="mb-8 grid items-start gap-7 lg:grid-cols-2">
         <section className="min-w-0 rounded-lg border border-border bg-card p-5 sm:p-6">
           <RecentNotesSection
+            referenceTime={referenceTime}
             notes={(notes.data ?? []).map((note) => ({
               ...note,
               content: null,

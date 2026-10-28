@@ -15,7 +15,7 @@ const tools = [
   {
     icon: FileText,
     title: "Give every idea a home",
-    text: "Lecture notes, PDFs, diagrams, and loose thoughts. Keep them together by subject so you can pick up where you left off.",
+    text: "Lecture notes, PDFs, diagrams, and loose thoughts. Keep them together by cluster so you can pick up where you left off.",
     detail: "Notes & documents",
   },
   {
@@ -80,7 +80,7 @@ export function LandingPage() {
             <WorkspacePreview />
           </div>
           <div className="landing-product-caption">
-            <span>Your subjects. Your pace. One place.</span>
+            <span>Your clusters. Your pace. One place.</span>
             <span>An interactive look inside Nucleus</span>
           </div>
         </section>
@@ -179,7 +179,7 @@ export function LandingPage() {
               <ul>
                 {[
                   "Notes, tasks, and flashcards",
-                  "Subjects to keep things connected",
+                  "Clusters to keep things connected",
                   "5 document uploads per month",
                   "Focus sessions and study analytics",
                 ].map((item) => (
@@ -227,7 +227,7 @@ export function LandingPage() {
           <NucleusMark className="size-10" />
           <h2>Make space for your next idea.</h2>
           <p>
-            A new subject, a tricky chapter, a fresh start. Begin with one
+            A new cluster, a tricky chapter, a fresh start. Begin with one
             thing.
           </p>
           <Link href="/signup" className="landing-button">

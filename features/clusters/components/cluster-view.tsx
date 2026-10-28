@@ -1,5 +1,6 @@
 "use client";
 
+import { WorkspaceIcon } from "@/components/workspace-icon";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -41,8 +42,8 @@ function SectionCard({
   children,
 }: SectionCardProps) {
   return (
-    <div className="rounded-xl border border-border bg-card">
-      <div className="flex items-center justify-between border-b border-border px-5 py-4">
+    <div className="cluster-resource">
+      <div className="cluster-resource-heading">
         <div className="flex items-center gap-2">
           <Icon className="h-4 w-4 text-primary" />
           <span className="text-sm font-medium">{sectionTitle}</span>
@@ -55,7 +56,7 @@ function SectionCard({
           View all →
         </Link>
       </div>
-      <div className="p-5">{children}</div>
+      <div className="cluster-resource-content">{children}</div>
     </div>
   );
 }
@@ -75,7 +76,7 @@ export function ClusterView({
     initialDocuments.length;
 
   return (
-    <div className="mx-auto max-w-6xl px-6 py-8">
+    <div className="workspace-page">
       <div className="mb-8 flex items-start justify-between gap-4">
         <div className="flex min-w-0 items-center gap-4">
           <Link
@@ -85,10 +86,9 @@ export function ClusterView({
           >
             <ArrowLeft className="h-4 w-4" />
           </Link>
-          <span
-            className="h-3 w-3 shrink-0 rounded-full"
-            style={{ backgroundColor: cluster.color }}
-          />
+          <span className="cluster-tile-icon" style={{ color: cluster.color }}>
+            <WorkspaceIcon name="clusters" className="size-5" />
+          </span>
           <div className="min-w-0">
             <h1 className="text-2xl font-semibold">{cluster.name}</h1>
             <p className="text-sm text-muted-foreground">{totalCount} items</p>
@@ -102,7 +102,11 @@ export function ClusterView({
         </div>
       </div>
 
-      <div className="flex flex-col gap-6">
+      <p className="mb-8 max-w-xl text-sm leading-relaxed text-muted-foreground">
+        Everything you’re learning about {cluster.name}, connected in one place.
+        Open a note to continue, or choose an area to add something new.
+      </p>
+      <div className="cluster-map">
         <SectionCard
           icon={FileText}
           sectionTitle="Notes"
@@ -111,14 +115,15 @@ export function ClusterView({
         >
           {initialNotes.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              No notes in this subject yet.
+              No notes in this cluster yet.
             </p>
           ) : (
             <div className="flex flex-col gap-2">
               {initialNotes.map((note) => (
-                <div
+                <Link
+                  href={`/notes?note=${note.id}`}
                   key={note.id}
-                  className="flex items-center justify-between border-b border-border/50 py-2 last:border-0"
+                  className="flex items-center justify-between border-b border-border/50 py-2 last:border-0 hover:text-primary"
                 >
                   <span className="truncate text-sm">
                     {note.title || "Untitled"}
@@ -126,7 +131,7 @@ export function ClusterView({
                   <span className="ml-4 shrink-0 text-xs text-muted-foreground">
                     {note.type}
                   </span>
-                </div>
+                </Link>
               ))}
             </div>
           )}
@@ -140,7 +145,7 @@ export function ClusterView({
         >
           {initialTasks.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              No tasks in this subject yet.
+              No tasks in this cluster yet.
             </p>
           ) : (
             <div className="flex flex-col gap-2">
@@ -162,8 +167,7 @@ export function ClusterView({
                   <span
                     className={cn(
                       "flex-1 truncate text-sm",
-                      task.completed &&
-                        "text-muted-foreground line-through",
+                      task.completed && "text-muted-foreground line-through",
                     )}
                   >
                     {task.title}
@@ -187,7 +191,7 @@ export function ClusterView({
         >
           {initialFlashcards.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              No flashcards in this subject yet.
+              No flashcards in this cluster yet.
             </p>
           ) : (
             <div className="flex flex-col gap-2">
@@ -223,7 +227,7 @@ export function ClusterView({
         >
           {initialDocuments.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              No documents in this subject yet.
+              No documents in this cluster yet.
             </p>
           ) : (
             <div className="flex flex-col gap-2">

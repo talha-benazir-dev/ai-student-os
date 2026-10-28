@@ -15,10 +15,10 @@ export function StudyGuide({ progress }: { progress: StudyProgress }) {
   const gettingStarted = progress.notes + progress.documents === 0;
   const steps = [
     {
-      title: "Choose a subject",
+      title: "Choose a cluster",
       detail: "A home for related ideas",
-      done: progress.subjects > 0,
-      href: "/clusters?new=subject",
+      done: progress.clusters > 0,
+      href: "/clusters?new=cluster",
       icon: NotebookPen,
     },
     {

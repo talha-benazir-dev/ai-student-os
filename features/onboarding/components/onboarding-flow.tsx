@@ -134,7 +134,7 @@ export function OnboardingFlow({ prefillName }: OnboardingFlowProps) {
       ? "Add your research areas or modules. Press Enter or comma to add."
       : studyStage === "self_learning"
         ? "Add topics you're exploring. Press Enter or comma to add."
-        : "Start with just one subject. We’ll create a space for its notes, tasks, and flashcards. You can add more later.";
+        : "Start with just one subject. We’ll create a cluster for its notes, tasks, and flashcards. You can add more later.";
 
   return (
     <div className="flex min-h-screen flex-col bg-background text-white">
@@ -172,7 +172,7 @@ export function OnboardingFlow({ prefillName }: OnboardingFlowProps) {
             <div className="space-y-6">
               <StepHeader
                 heading="What should we call you?"
-                subtext="We’ll help you set up one subject, then show you where to begin."
+                subtext="We’ll help you create a cluster for one subject, then show you where to begin."
               />
               <input
                 ref={nameInputRef}

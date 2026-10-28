@@ -20,10 +20,13 @@ type Note = {
   updated_at: string;
 };
 
-type Props = { notes: Note[] };
+type Props = { notes: Note[]; referenceTime: number };
 
 function NotesViewProvider({ children }: { children: React.ReactNode }) {
-  const [storedView, setStoredView] = useStoredPreference("nucleus_notes_view", "list");
+  const [storedView, setStoredView] = useStoredPreference(
+    "nucleus_notes_view",
+    "list",
+  );
   const view = storedView === "grid" ? "grid" : "list";
 
   const handleToggle = (newView: "grid" | "list") => {
@@ -68,15 +71,15 @@ export function NotesViewToggle() {
   );
 }
 
-export default function RecentNotes({ notes }: Props) {
+export default function RecentNotes({ notes, referenceTime }: Props) {
   return (
     <NotesViewProvider>
-      <RecentNotesContent notes={notes} />
+      <RecentNotesContent notes={notes} referenceTime={referenceTime} />
     </NotesViewProvider>
   );
 }
 
-export function RecentNotesSection({ notes }: Props) {
+export function RecentNotesSection({ notes, referenceTime }: Props) {
   return (
     <NotesViewProvider>
       <div className="flex items-start justify-between mb-4">
@@ -96,12 +99,12 @@ export function RecentNotesSection({ notes }: Props) {
           </Link>
         </div>
       </div>
-      <RecentNotesContent notes={notes} />
+      <RecentNotesContent notes={notes} referenceTime={referenceTime} />
     </NotesViewProvider>
   );
 }
 
-function RecentNotesContent({ notes }: Props) {
+function RecentNotesContent({ notes, referenceTime }: Props) {
   const { view } = useContext(NotesViewContext);
 
   return (
@@ -114,7 +117,7 @@ function RecentNotesContent({ notes }: Props) {
                 key={note.id}
                 href={`/notes?note=${encodeURIComponent(note.id)}`}
                 title={note.title || "Untitled"}
-                time={getRelativeTime(note.updated_at)}
+                time={getRelativeTime(note.updated_at, referenceTime)}
                 body={extractPlainText(note.content)}
                 tags={[]}
                 ai={false}
@@ -128,7 +131,7 @@ function RecentNotesContent({ notes }: Props) {
                 key={note.id}
                 href={`/notes?note=${encodeURIComponent(note.id)}`}
                 title={note.title || "Untitled"}
-                time={getRelativeTime(note.updated_at)}
+                time={getRelativeTime(note.updated_at, referenceTime)}
                 tags={[]}
                 ai={false}
               />
@@ -138,18 +141,22 @@ function RecentNotesContent({ notes }: Props) {
       ) : (
         <div className="text-center py-10 px-4 text-sm text-muted-foreground border border-dashed border-border rounded-xl">
           <p>Capture a thought from your latest lesson.</p>
-          <Link href="/notes?new=note" className="mt-3 inline-flex text-xs text-primary hover:underline">Write your first note</Link>
+          <Link
+            href="/notes?new=note"
+            className="mt-3 inline-flex text-xs text-primary hover:underline"
+          >
+            Write your first note
+          </Link>
         </div>
       )}
     </>
   );
 }
 
-function getRelativeTime(dateString: string): string {
+function getRelativeTime(dateString: string, referenceTime: number): string {
   if (!dateString) return "Just now";
   const date = new Date(dateString);
-  const now = new Date();
-  const diffMs = Math.max(0, now.getTime() - date.getTime());
+  const diffMs = Math.max(0, referenceTime - date.getTime());
   const diffMins = Math.floor(diffMs / 60000);
   const diffHours = Math.floor(diffMs / 3600000);
   const diffDays = Math.floor(diffMs / 86400000);
@@ -160,9 +167,13 @@ function getRelativeTime(dateString: string): string {
   if (diffDays === 1) return "Yesterday";
   if (diffDays < 7) {
     const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-    return days[date.getDay()];
+    return days[date.getUTCDay()];
   }
-  return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  });
 }
 
 function extractPlainText(content: string | null): string {
@@ -199,7 +210,10 @@ function NoteCard({
   ai?: boolean;
 }) {
   return (
-    <Link href={href} className="block rounded-lg border border-border bg-background/50 p-4 hover:border-primary/30 hover:bg-background transition-colors group">
+    <Link
+      href={href}
+      className="block rounded-lg border border-border bg-background/50 p-4 hover:border-primary/30 hover:bg-background transition-colors group"
+    >
       <div className="flex items-start justify-between gap-2 mb-1.5">
         <h3 className="text-sm font-medium leading-tight">{title}</h3>
         <span className="text-[11px] text-muted-foreground shrink-0">
@@ -240,7 +254,10 @@ function NoteCardList({
   ai?: boolean;
 }) {
   return (
-    <Link href={href} className="flex items-center gap-3 py-3 px-3 rounded-md border border-border bg-background/50 hover:border-primary/30 hover:bg-background transition-colors group">
+    <Link
+      href={href}
+      className="flex items-center gap-3 py-3 px-3 rounded-md border border-border bg-background/50 hover:border-primary/30 hover:bg-background transition-colors group"
+    >
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2 mb-1">
           <h3 className="text-sm font-medium truncate">{title}</h3>

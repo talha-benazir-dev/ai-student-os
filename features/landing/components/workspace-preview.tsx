@@ -52,17 +52,17 @@ export function WorkspacePreview() {
             {label}
           </button>
         ))}
-        <span className="preview-section-label">Subjects</span>
+        <span className="preview-section-label">Clusters</span>
         <div className="preview-nav-item">
-          <i className="subject-dot subject-biology" />
+          <i className="cluster-dot cluster-biology" />
           Biology
         </div>
         <div className="preview-nav-item">
-          <i className="subject-dot subject-physics" />
+          <i className="cluster-dot cluster-physics" />
           Physics
         </div>
         <div className="preview-nav-item">
-          <i className="subject-dot subject-literature" />
+          <i className="cluster-dot cluster-literature" />
           Literature
         </div>
         <div className="preview-user">

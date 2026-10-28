@@ -1,5 +1,7 @@
 "use client";
 
+import { WorkspaceIcon } from "@/components/workspace-icon";
+import { NotesContext } from "./notes-context";
 import dynamic from "next/dynamic";
 import type {
   AppState,
@@ -119,7 +121,8 @@ function sortNotesByUpdated(notes: Note[]): Note[] {
 }
 
 function formatCreatedDate(dateString: string): string {
-  return new Date(dateString).toLocaleDateString(undefined, {
+  return new Date(dateString).toLocaleDateString("en-US", {
+    timeZone: "UTC",
     month: "long",
     day: "numeric",
     year: "numeric",
@@ -390,7 +393,7 @@ function NoteTypePickerModal({
         </DialogHeader>
         <div className="space-y-4 pt-2">
           <div className="space-y-2">
-            <Label className="text-white/70">Subject</Label>
+            <Label className="text-white/70">Cluster</Label>
             <NoteClusterSelect
               value={clusterIdFromSelectValue(clusterId)}
               clusters={clusters}
@@ -513,23 +516,29 @@ const TextNoteEditor = memo(function TextNoteEditor({
   };
 
   return (
-    <section className="flex flex-col h-full w-full min-w-0 min-h-0 bg-background">
+    <section className="notes-page-editor w-full min-w-0 bg-background">
       <header className="flex items-start justify-between gap-4 px-4 sm:px-6 lg:px-10 pt-4 lg:pt-6 pb-4 border-b border-[#ffffff10] shrink-0">
         <div className="flex flex-1 min-w-0 items-start gap-2">
-          {layout === "stacked" ? <NoteEditorBackButton onClose={onClose} /> : null}
+          {layout === "stacked" ? (
+            <NoteEditorBackButton onClose={onClose} />
+          ) : null}
           <div className="flex-1 min-w-0">
-          <label htmlFor={`note-title-${note.id}`} className="sr-only">
-            Note title
-          </label>
-          <input
-            id={`note-title-${note.id}`}
-            type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            onKeyDown={handleTitleKeyDown}
-            placeholder="Untitled"
-            className="w-full bg-transparent text-2xl sm:text-3xl font-semibold tracking-tight text-white/95 placeholder:text-muted-foreground focus:outline-none"
-          />
+            <WorkspaceIcon
+              name="notes"
+              className="mb-4 size-6 text-primary/80"
+            />
+            <label htmlFor={`note-title-${note.id}`} className="sr-only">
+              Note title
+            </label>
+            <input
+              id={`note-title-${note.id}`}
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              onKeyDown={handleTitleKeyDown}
+              placeholder="Untitled"
+              className="w-full bg-transparent text-2xl sm:text-3xl font-semibold tracking-tight text-white/95 placeholder:text-muted-foreground focus:outline-none"
+            />
           </div>
         </div>
         <EditorToolbar
@@ -589,7 +598,9 @@ const ReadmeNoteEditor = memo(function ReadmeNoteEditor({
     <section className="flex flex-col h-full w-full min-w-0 min-h-0 bg-background">
       <header className="flex items-center justify-between gap-3 px-4 sm:px-6 lg:px-10 pt-4 lg:pt-6 pb-4 border-b border-[#ffffff10] shrink-0">
         <div className="flex flex-1 min-w-0 items-center gap-2">
-          {layout === "stacked" ? <NoteEditorBackButton onClose={onClose} /> : null}
+          {layout === "stacked" ? (
+            <NoteEditorBackButton onClose={onClose} />
+          ) : null}
           <label htmlFor={`readme-title-${note.id}`} className="sr-only">
             Note title
           </label>
@@ -721,7 +732,9 @@ const CanvasNoteEditor = memo(function CanvasNoteEditor({
     <section className="flex flex-col h-full w-full min-w-0 min-h-0 bg-background">
       <header className="flex items-center justify-between gap-3 px-4 sm:px-6 lg:px-10 pt-4 lg:pt-6 pb-4 border-b border-[#ffffff10] shrink-0">
         <div className="flex flex-1 min-w-0 items-center gap-2">
-          {layout === "stacked" ? <NoteEditorBackButton onClose={onClose} /> : null}
+          {layout === "stacked" ? (
+            <NoteEditorBackButton onClose={onClose} />
+          ) : null}
           <label htmlFor={`canvas-title-${note.id}`} className="sr-only">
             Note title
           </label>
@@ -780,7 +793,9 @@ const ChartNoteEditor = memo(function ChartNoteEditor({
     <section className="flex flex-col h-full w-full min-w-0 min-h-0 bg-background">
       <header className="flex items-center justify-between gap-3 px-4 sm:px-6 lg:px-10 pt-4 lg:pt-6 pb-4 border-b border-[#ffffff10] shrink-0">
         <div className="flex flex-1 min-w-0 items-center gap-2">
-          {layout === "stacked" ? <NoteEditorBackButton onClose={onClose} /> : null}
+          {layout === "stacked" ? (
+            <NoteEditorBackButton onClose={onClose} />
+          ) : null}
           <label htmlFor={`chart-title-${note.id}`} className="sr-only">
             Note title
           </label>
@@ -840,7 +855,9 @@ const DiagramNoteEditor = memo(function DiagramNoteEditor({
     <section className="flex flex-col h-full w-full min-w-0 min-h-0 bg-background">
       <header className="flex items-center justify-between gap-3 px-4 sm:px-6 lg:px-10 pt-4 lg:pt-6 pb-4 border-b border-[#ffffff10] shrink-0">
         <div className="flex flex-1 min-w-0 items-center gap-2">
-          {layout === "stacked" ? <NoteEditorBackButton onClose={onClose} /> : null}
+          {layout === "stacked" ? (
+            <NoteEditorBackButton onClose={onClose} />
+          ) : null}
           <label htmlFor={`diagram-title-${note.id}`} className="sr-only">
             Note title
           </label>
@@ -957,9 +974,12 @@ function EditorEmptyState() {
         <div className="inline-flex h-14 w-14 rounded-2xl bg-primary/10 border border-primary/25 items-center justify-center mb-5">
           <PenLine className="h-6 w-6 text-primary" aria-hidden />
         </div>
-        <h2 className="text-lg font-medium text-white/90">Room for your next idea</h2>
+        <h2 className="text-lg font-medium text-white/90">
+          Room for your next idea
+        </h2>
         <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
-          Open a note to pick up where you left off, or choose New to capture something you’re learning.
+          Open a note to pick up where you left off, or choose New to capture
+          something you’re learning.
         </p>
       </div>
     </div>
@@ -981,7 +1001,9 @@ export default function NotesPage({
 
   const [notes, setNotes] = useState<Note[]>(normalizedInitial);
   const [clusters] = useState<Cluster[]>(initialClusters);
-  const [activeNote, setActiveNote] = useState<Note | null>(() => normalizedInitial.find(note => note.id === initialNoteId) ?? null);
+  const [activeNote, setActiveNote] = useState<Note | null>(
+    () => normalizedInitial.find((note) => note.id === initialNoteId) ?? null,
+  );
   const [isCreating, setIsCreating] = useState(false);
   const [pickerOpen, setPickerOpen] = useRequestedDialog(autoOpenCreate);
   const [noteToDelete, setNoteToDelete] = useState<Note | null>(null);
@@ -1146,7 +1168,7 @@ export default function NotesPage({
   };
 
   return (
-    <div className="flex flex-col h-[calc(100dvh-3.5rem)] lg:h-[100dvh] max-h-[100dvh] bg-background">
+    <div className="notes-workspace flex bg-background">
       {isSplitView ? (
         <ResizablePanelGroup
           id="notes-layout"
@@ -1155,9 +1177,9 @@ export default function NotesPage({
         >
           <ResizablePanel
             id="notes-list"
-            defaultSize={280}
-            minSize={240}
-            maxSize={420}
+            defaultSize={240}
+            minSize={220}
+            maxSize={360}
             className="min-w-0"
           >
             <NotesListPanel {...listPanelProps} />
@@ -1204,6 +1226,13 @@ export default function NotesPage({
           )}
         </div>
       )}
+
+      <NotesContext
+        note={activeNote}
+        notes={notes}
+        clusters={clusters}
+        onSelect={handleSelectNote}
+      />
 
       <NoteTypePickerModal
         open={pickerOpen}

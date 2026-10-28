@@ -1,5 +1,6 @@
 "use client";
 
+import { WorkspacePageHeader } from "@/features/dashboard/components/workspace-page";
 import Link from "next/link";
 import { useState, useMemo, useEffect } from "react";
 import type { Cluster, Document } from "../types";
@@ -45,12 +46,7 @@ type ClusterFilter = "all" | "general" | string;
 const GENERAL_CLUSTER_VALUE = "";
 
 type OverviewStatus =
-  | "idle"
-  | "loading"
-  | "ready"
-  | "no_text"
-  | "upgrade_required"
-  | "error";
+  "idle" | "loading" | "ready" | "no_text" | "upgrade_required" | "error";
 
 function clusterIdFromSelectValue(value: string): string | null {
   return value === GENERAL_CLUSTER_VALUE ? null : value;
@@ -82,9 +78,17 @@ export function DocumentsPage({
     rawText: string;
   } | null>(null);
   const { isPro } = usePlan();
-  const [overview, setOverview] = useState<{ docId: string; status: OverviewStatus; text: string } | null>(null);
+  const [overview, setOverview] = useState<{
+    docId: string;
+    status: OverviewStatus;
+    text: string;
+  } | null>(null);
   const currentOverview = overview?.docId === selectedDoc?.id ? overview : null;
-  const overviewStatus: OverviewStatus = !selectedDoc ? "idle" : selectedDoc.ai_summary ? "ready" : currentOverview?.status ?? (isPro ? "loading" : "upgrade_required");
+  const overviewStatus: OverviewStatus = !selectedDoc
+    ? "idle"
+    : selectedDoc.ai_summary
+      ? "ready"
+      : (currentOverview?.status ?? (isPro ? "loading" : "upgrade_required"));
   const overviewText = selectedDoc?.ai_summary ?? currentOverview?.text ?? "";
   const [overviewRetry, setOverviewRetry] = useState(0);
 
@@ -114,21 +118,43 @@ export function DocumentsPage({
     if (!selectedDoc || selectedDoc.ai_summary || !isPro) return;
     const doc = selectedDoc;
     const controller = new AbortController();
-    fetch(`/api/documents/${doc.id}/overview`, { method: "POST", signal: controller.signal })
-      .then(async response => {
-        const data = await response.json().catch(() => ({})) as { overview?: string; error?: string };
+    fetch(`/api/documents/${doc.id}/overview`, {
+      method: "POST",
+      signal: controller.signal,
+    })
+      .then(async (response) => {
+        const data = (await response.json().catch(() => ({}))) as {
+          overview?: string;
+          error?: string;
+        };
         if (controller.signal.aborted) return;
-        const status: OverviewStatus = parseAiApiError(response.status, data) === "upgrade_required"
-          ? "upgrade_required" : response.status === 422 && data.error === "no_text"
-            ? "no_text" : response.ok && data.overview ? "ready" : "error";
+        const status: OverviewStatus =
+          parseAiApiError(response.status, data) === "upgrade_required"
+            ? "upgrade_required"
+            : response.status === 422 && data.error === "no_text"
+              ? "no_text"
+              : response.ok && data.overview
+                ? "ready"
+                : "error";
         setOverview({ docId: doc.id, status, text: data.overview ?? "" });
         if (status === "ready" && data.overview) {
-          setDocuments(prev => prev.map(item => item.id === doc.id ? { ...item, ai_summary: data.overview! } : item));
-          setSelectedDoc(prev => prev?.id === doc.id ? { ...prev, ai_summary: data.overview! } : prev);
+          setDocuments((prev) =>
+            prev.map((item) =>
+              item.id === doc.id
+                ? { ...item, ai_summary: data.overview! }
+                : item,
+            ),
+          );
+          setSelectedDoc((prev) =>
+            prev?.id === doc.id
+              ? { ...prev, ai_summary: data.overview! }
+              : prev,
+          );
         }
       })
       .catch(() => {
-        if (!controller.signal.aborted) setOverview({ docId: doc.id, status: "error", text: "" });
+        if (!controller.signal.aborted)
+          setOverview({ docId: doc.id, status: "error", text: "" });
       });
     return () => controller.abort();
   }, [selectedDoc, isPro, overviewRetry]);
@@ -297,23 +323,28 @@ export function DocumentsPage({
 
   return (
     <div className="w-full min-h-full bg-background text-zinc-100 flex relative overflow-hidden">
-      <div className="flex-1 overflow-y-auto p-6 lg:p-10">
-        <div className="max-w-5xl mx-auto space-y-6">
-          {/* TOP BAR */}
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-semibold text-white">Documents</h1>
-              <p className="text-zinc-400 mt-1">
-                Your uploaded study materials.
-              </p>
-            </div>
-            <button
-              onClick={() => setShowUpload(true)}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-lg text-primary-foreground font-medium transition-colors bg-primary hover:bg-[#6b4ce6]"
-            >
-              <UploadCloud className="w-5 h-5" />
-              <span>Upload PDF</span>
-            </button>
+      <div className="flex-1 min-w-0">
+        <div className="workspace-page space-y-6">
+          <WorkspacePageHeader
+            icon="documents"
+            title="Documents"
+            description="Keep your source material close. Read with a question, then capture what you understand."
+            actions={
+              <button
+                onClick={() => setShowUpload(true)}
+                className="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-2 text-xs font-medium text-primary-foreground hover:bg-primary/90"
+              >
+                <UploadCloud className="size-4" />
+                Upload PDF
+              </button>
+            }
+          />
+          <div className="workspace-summary">
+            <span>
+              <strong>{documents.length}</strong>
+              {documents.length === 1 ? "document" : "documents"}
+            </span>
+            <span>PDFs & course reading</span>
           </div>
 
           {/* UPLOAD PANEL */}
@@ -426,7 +457,7 @@ export function DocumentsPage({
                     <button
                       onClick={handleUpload}
                       disabled={!file || !title || isUploading}
-                      className="flex-1 py-2.5 px-4 rounded-lg font-medium bg-primary hover:bg-[#6b4ce6] text-primary-foreground transition-colors disabled:opacity-50 disabled:bg-zinc-800 disabled:text-muted-foreground"
+                      className="flex-1 py-2.5 px-4 rounded-lg font-medium bg-primary hover:bg-primary/90 text-primary-foreground transition-colors disabled:opacity-50 disabled:bg-zinc-800 disabled:text-muted-foreground"
                     >
                       {isUploading ? "Uploading..." : "Upload"}
                     </button>
@@ -524,15 +555,16 @@ export function DocumentsPage({
               </div>
             ) : null}
             {documents.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-20 border border-dashed border-zinc-800 rounded-2xl bg-card">
-                <div className="w-16 h-16 rounded-2xl bg-zinc-900 flex items-center justify-center mb-4">
-                  <FileIcon className="w-8 h-8 text-zinc-600" />
+              <div className="flex flex-col items-center justify-center py-20 border-y border-border">
+                <div className="w-12 h-12 rounded-lg bg-secondary flex items-center justify-center mb-4">
+                  <FileIcon className="w-6 h-6 text-muted-foreground" />
                 </div>
                 <h3 className="text-lg font-medium text-white mb-1">
                   Keep your reading close
                 </h3>
                 <p className="text-muted-foreground mb-6 text-center max-w-sm">
-                  Add a lecture PDF or a chapter you’re reading. Keep it with your subject, then capture the ideas you want to remember.
+                  Add a lecture PDF or a chapter you’re reading. Keep it with
+                  your cluster, then capture the ideas you want to remember.
                 </p>
                 <button
                   onClick={() => setShowUpload(true)}
@@ -546,46 +578,51 @@ export function DocumentsPage({
                 {visibleDocuments.map((doc) => (
                   <div
                     key={doc.id}
-                    onClick={() => setSelectedDoc(doc)}
-                    className="group flex items-center p-4 bg-card border border-[#ffffff10] rounded-xl hover:bg-card cursor-pointer transition-colors"
+                    className="group flex items-center p-4 border-b border-border hover:bg-accent/30 cursor-pointer transition-colors"
                   >
-                    <div className="w-10 h-10 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center shrink-0 mr-4">
-                      <FileText className="w-5 h-5 text-red-400" />
-                    </div>
-
-                    <div className="flex-1 min-w-0 mr-4">
-                      <h4 className="text-base font-semibold text-zinc-100 truncate">
-                        {doc.title}
-                      </h4>
-                      <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-                        {doc.cluster_id && (
-                          <span className="px-2 py-0.5 rounded-full bg-white/5 text-white/70 inline-flex items-center gap-1.5">
-                            <span
-                              className="h-1.5 w-1.5 rounded-full"
-                              style={{
-                                backgroundColor:
-                                  clusterMap.get(doc.cluster_id)?.color ||
-                                  "#7c5cfc",
-                              }}
-                            />
-                            {clusterMap.get(doc.cluster_id)?.name || "Unknown"}
-                          </span>
-                        )}
-                        <span>
-                          {doc.file_size
-                            ? formatBytes(doc.file_size)
-                            : "Unknown size"}
-                        </span>
-                        <span>•</span>
-                        <span>{formatDate(doc.created_at)}</span>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedDoc(doc)}
+                      className="flex flex-1 min-w-0 items-center text-left"
+                    >
+                      <div className="w-10 h-10 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center shrink-0 mr-4">
+                        <FileText className="w-5 h-5 text-muted-foreground" />
                       </div>
-                    </div>
 
+                      <div className="flex-1 min-w-0 mr-4">
+                        <h4 className="text-sm font-medium text-foreground truncate">
+                          {doc.title}
+                        </h4>
+                        <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+                          {doc.cluster_id && (
+                            <span className="px-2 py-0.5 rounded-full bg-white/5 text-white/70 inline-flex items-center gap-1.5">
+                              <span
+                                className="h-1.5 w-1.5 rounded-full"
+                                style={{
+                                  backgroundColor:
+                                    clusterMap.get(doc.cluster_id)?.color ||
+                                    "#7c5cfc",
+                                }}
+                              />
+                              {clusterMap.get(doc.cluster_id)?.name ||
+                                "Unknown"}
+                            </span>
+                          )}
+                          <span>
+                            {doc.file_size
+                              ? formatBytes(doc.file_size)
+                              : "Unknown size"}
+                          </span>
+                          <span>•</span>
+                          <span>{formatDate(doc.created_at)}</span>
+                        </div>
+                      </div>
+                    </button>
                     <div className="flex items-center gap-4 shrink-0">
                       <button
                         onClick={(e) => handleDelete(e, doc)}
-                        className="p-2 text-muted-foreground hover:text-red-400 hover:bg-red-400/10 rounded-lg opacity-0 group-hover:opacity-100 transition-all"
-                        title="Delete Document"
+                        className="p-2 text-muted-foreground hover:text-red-400 hover:bg-red-400/10 rounded-lg opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 transition-opacity"
+                        aria-label={`Delete ${doc.title}`}
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -623,8 +660,8 @@ export function DocumentsPage({
             </div>
 
             <div className="flex-1 overflow-y-auto p-6">
-              <div className="w-16 h-16 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center mb-6">
-                <FileText className="w-8 h-8 text-red-400" />
+              <div className="w-12 h-12 rounded-lg bg-secondary border border-zinc-800 flex items-center justify-center mb-6">
+                <FileText className="w-8 h-8 text-muted-foreground" />
               </div>
 
               <h2 className="text-2xl font-bold text-white mb-4 leading-tight">
@@ -721,7 +758,10 @@ export function DocumentsPage({
                       </p>
                       <button
                         type="button"
-                        onClick={() => { setOverview(null); setOverviewRetry((n) => n + 1); }}
+                        onClick={() => {
+                          setOverview(null);
+                          setOverviewRetry((n) => n + 1);
+                        }}
                         className="text-xs font-medium text-primary hover:text-primary transition-colors"
                       >
                         Retry
@@ -768,7 +808,7 @@ export function DocumentsPage({
               </p>
               <button
                 onClick={() => setShowPdfModal(false)}
-                className="w-full py-2.5 px-4 rounded-lg bg-primary hover:bg-[#6b4ce6] text-primary-foreground font-medium transition-colors"
+                className="w-full py-2.5 px-4 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground font-medium transition-colors"
               >
                 Got it
               </button>

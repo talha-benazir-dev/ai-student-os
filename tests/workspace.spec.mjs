@@ -126,7 +126,7 @@ test("landing navigation and layout work on mobile without JavaScript", async ({
   await context.close();
 });
 
-test("new student can follow the guide to create a subject and a first note", async ({
+test("new student can follow the guide to create a cluster and a first note", async ({
   context,
   page,
   request,
@@ -134,8 +134,8 @@ test("new student can follow the guide to create a subject and a first note", as
   await signIn(context);
   await request.get(`${backend}/__reset?scenario=empty`);
   await page.goto("/dashboard");
-  await page.getByRole("link", { name: "Add your first subject" }).click();
-  const subjectDialog = page.getByRole("dialog", { name: "New subject" });
+  await page.getByRole("link", { name: "Add your first cluster" }).click();
+  const subjectDialog = page.getByRole("dialog", { name: "New cluster" });
   await expect(subjectDialog).toBeVisible();
   await subjectDialog.getByRole("textbox", { name: "Name" }).fill("Biology");
   await subjectDialog
@@ -182,7 +182,11 @@ test("new student can follow the guide to create a subject and a first note", as
   });
   await expect(completion).toBeEnabled();
   await completion.click();
-  await expect(page.getByRole("checkbox", { name: "Mark Explain osmosis in my own words as incomplete" })).toBeChecked();
+  await expect(
+    page.getByRole("checkbox", {
+      name: "Mark Explain osmosis in my own words as incomplete",
+    }),
+  ).toBeChecked();
   // Wait for persistence, then confirm the next suggestion leads to retrieval practice.
   await expect
     .poll(async () =>
@@ -316,6 +320,7 @@ test("desktop and mobile layouts, preview controls, and workspace pages", async 
   await page.screenshot({
     path: `${screenshots}/landing-desktop.png`,
     fullPage: true,
+    animations: "disabled",
   });
   await page
     .getByRole("button", { name: "Tasks", exact: true })
@@ -343,6 +348,7 @@ test("desktop and mobile layouts, preview controls, and workspace pages", async 
   await page.screenshot({
     path: `${screenshots}/home-desktop.png`,
     fullPage: true,
+    animations: "disabled",
   });
   await page.getByRole("link", { name: /^Cell transport/ }).click();
   await expect(
@@ -361,9 +367,13 @@ test("desktop and mobile layouts, preview controls, and workspace pages", async 
     const response = await page.goto(path);
     expect(response.status()).toBe(200);
     await expect(page.locator("main")).toBeVisible();
+    await page.getByRole("button", { name: "Create something" }).click();
+    await expect(page.getByRole("dialog")).toBeVisible();
+    await page.keyboard.press("Escape");
     await page.screenshot({
       path: `${screenshots}/${path.slice(1)}-desktop.png`,
       fullPage: true,
+      animations: "disabled",
     });
     expect(
       await page.evaluate(
@@ -391,8 +401,129 @@ test("desktop and mobile layouts, preview controls, and workspace pages", async 
         await page.screenshot({
           path: `${screenshots}/${path === "/" ? "landing" : "home"}-mobile.png`,
           fullPage: true,
+          animations: "disabled",
         });
     }
   }
+  expect(errors).toEqual([]);
+});
+
+test("cluster library opens connected material in the focused note workspace", async ({
+  context,
+  page,
+  request,
+}) => {
+  await request.get(`${backend}/__reset`);
+  await signIn(context);
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto("/clusters");
+  await page
+    .getByRole("link", { name: "Biology Notes, tasks & study material" })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Biology", exact: true }),
+  ).toBeVisible();
+  await page.getByRole("link", { name: "Cell transport text" }).click();
+  await expect(
+    page.getByRole("textbox", { name: "Note title", exact: true }),
+  ).toHaveValue("Cell transport");
+  const rail = page.getByRole("complementary", { name: "Note context" });
+  await expect(rail).toBeVisible();
+  await expect(
+    rail.getByRole("link", { name: "Biology", exact: true }),
+  ).toBeVisible();
+  await expect(
+    rail.getByRole("link", { name: "Create a recall card" }),
+  ).toHaveAttribute("href", "/flashcards?new=card");
+  await page.screenshot({
+    path: `${screenshots}/note-editor-desktop.png`,
+    fullPage: true,
+    animations: "disabled",
+  });
+  await page.setViewportSize({ width: 375, height: 812 });
+  await expect(rail).not.toBeVisible();
+  await expect(
+    page.getByRole("textbox", { name: "Note content", exact: true }),
+  ).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBeTruthy();
+  await page.screenshot({
+    path: `${screenshots}/note-editor-mobile.png`,
+    fullPage: true,
+    animations: "disabled",
+  });
+});
+
+test("motion respects reduced-motion preferences without hiding content", async ({
+  context,
+  page,
+  request,
+}) => {
+  await request.get(`${backend}/__reset`);
+  await signIn(context);
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/");
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  expect(
+    await page
+      .locator(".landing-product-frame")
+      .evaluate((el) => parseFloat(getComputedStyle(el).animationDuration)),
+  ).toBeLessThan(0.001);
+  await page.goto("/tasks");
+  await page.getByRole("button", { name: "New task", exact: true }).click();
+  await expect(page.getByRole("dialog")).toBeVisible();
+  await page.keyboard.press("Escape");
+  expect(
+    await page
+      .locator(".workspace-route")
+      .evaluate((el) => parseFloat(getComputedStyle(el).animationDuration)),
+  ).toBeLessThan(0.001);
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  expect(
+    await page
+      .locator(".workspace-route")
+      .evaluate((el) => getComputedStyle(el).animationName),
+  ).toBe("workspace-arrive");
+});
+
+test("mobile quick-create closes navigation before opening a task", async ({
+  context,
+  page,
+  request,
+}) => {
+  await request.get(`${backend}/__reset`);
+  await signIn(context);
+  await page.setViewportSize({ width: 375, height: 812 });
+  await page.goto("/tasks");
+  await page.getByRole("button", { name: "Open menu", exact: true }).click();
+  await expect(page.getByRole("dialog", { name: "Navigation" })).toBeVisible();
+  await page.getByRole("button", { name: "Create something" }).click();
+  await page.getByRole("option", { name: /New task/ }).click();
+  await expect(page.getByRole("dialog", { name: "New Task" })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog")).not.toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "New task", exact: true }),
+  ).toBeVisible();
+});
+
+test("home timestamps hydrate consistently when the student's clock differs", async ({
+  context,
+  page,
+  request,
+}) => {
+  await request.get(`${backend}/__reset`);
+  await signIn(context);
+  const errors = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.clock.setFixedTime(new Date(Date.now() + 120_000));
+  await page.goto("/dashboard");
+  await page.getByRole("button", { name: "Show notes as cards" }).click();
+  await expect(
+    page.getByRole("link", { name: /Cell transport/ }),
+  ).toBeVisible();
   expect(errors).toEqual([]);
 });

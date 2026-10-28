@@ -5,18 +5,12 @@ import { NucleusMark } from "@/components/nucleus-mark";
 import { usePathname } from "next/navigation";
 import { memo, useState } from "react";
 import { useStoredPreference } from "@/hooks/use-stored-preference";
+import { Loader2, ChevronRight } from "lucide-react";
 import {
-  LayoutDashboard,
-  FileText,
-  CheckSquare,
-  FolderOpen,
-  Layers,
-  Sparkles,
-  BarChart3,
-  Settings,
-  Loader2,
-  ChevronRight,
-} from "lucide-react";
+  WorkspaceIcon,
+  type WorkspaceIconName,
+} from "@/components/workspace-icon";
+import { WorkspaceQuickCreate } from "./create-command-menu";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import type { UserSettings } from "@/features/settings/types";
@@ -25,19 +19,19 @@ import { useClusters } from "@/providers/clusters-provider";
 type NavItem = {
   to: string;
   label: string;
-  icon: typeof LayoutDashboard;
+  icon: WorkspaceIconName;
   badge?: string;
 };
 
 const nav: NavItem[] = [
-  { to: "/dashboard", label: "Home", icon: LayoutDashboard },
-  { to: "/clusters", label: "Subjects", icon: Layers },
-  { to: "/notes", label: "Notes", icon: FileText },
-  { to: "/tasks", label: "Tasks", icon: CheckSquare },
-  { to: "/documents", label: "Documents", icon: FolderOpen },
-  { to: "/flashcards", label: "Flashcards", icon: Layers },
-  { to: "/ai", label: "Study assistant", icon: Sparkles },
-  { to: "/analytics", label: "Analytics", icon: BarChart3 },
+  { to: "/dashboard", label: "Home", icon: "home" },
+  { to: "/clusters", label: "Clusters", icon: "clusters" },
+  { to: "/notes", label: "Notes", icon: "notes" },
+  { to: "/tasks", label: "Tasks", icon: "tasks" },
+  { to: "/documents", label: "Documents", icon: "documents" },
+  { to: "/flashcards", label: "Flashcards", icon: "review" },
+  { to: "/ai", label: "Study assistant", icon: "assistant" },
+  { to: "/analytics", label: "Analytics", icon: "analytics" },
 ];
 
 // Custom SVG Icon Components
@@ -87,7 +81,7 @@ function PanelRightCloseIcon({ className }: { className?: string }) {
 function NavLink({
   to,
   label,
-  icon: Icon,
+  icon,
   badge,
   onClick,
   collapsed = false,
@@ -103,17 +97,18 @@ function NavLink({
         "group relative flex items-center transition-all duration-200",
         collapsed
           ? "justify-center h-10 w-10 p-0 mx-auto rounded-lg"
-          : "gap-3 rounded-lg px-3 py-2 text-sm",
+          : "gap-2.5 rounded-md px-3 py-2 text-[13px]",
         active
           ? "bg-sidebar-accent text-foreground font-medium"
           : "text-muted-foreground hover:text-foreground hover:bg-accent/50",
       )}
       title={collapsed ? label : undefined}
     >
-      <Icon
+      <WorkspaceIcon
+        name={icon}
         className={cn(
           "h-4 w-4 shrink-0 transition-colors duration-200",
-          active ? "text-primary" : "",
+          active ? "text-foreground" : "",
         )}
       />
       {!collapsed && <span className="flex-1 truncate">{label}</span>}
@@ -153,19 +148,19 @@ function SidebarBody({
   return (
     <>
       {collapsed ? (
-        <div className="flex items-center justify-center h-16 border-b border-border">
+        <div className="flex items-center justify-center h-14">
           <button
             onClick={onToggleCollapse}
-            className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-all duration-200 cursor-pointer"
+            className="flex h-8 w-8 items-center justify-center rounded-md text-foreground hover:bg-primary/20 transition-all duration-200 cursor-pointer"
             title="Expand sidebar"
           >
             <PanelRightCloseIcon className="h-4 w-4" />
           </button>
         </div>
       ) : (
-        <div className="flex items-center justify-between px-5 h-16 border-b border-border">
+        <div className="flex items-center justify-between px-5 h-14">
           <div className="flex items-center gap-2.5">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <div className="flex h-7 w-7 items-center justify-center rounded-md text-foreground">
               <NucleusMark className="size-5" />
             </div>
             <div className="leading-tight">
@@ -191,13 +186,14 @@ function SidebarBody({
 
       <div
         className={cn(
-          "min-h-0 flex-1 overflow-y-auto overscroll-contain pt-5",
+          "min-h-0 flex-1 overflow-y-auto overscroll-contain pt-3",
           collapsed ? "px-1.5" : "px-3",
         )}
       >
+        {!collapsed && <WorkspaceQuickCreate onOpen={onNavigate} />}
         {!collapsed && (
-          <div className="px-3 pb-2 text-[11px] text-muted-foreground">
-            Workspace
+          <div className="px-3 pb-2 pt-4 text-[11px] text-muted-foreground">
+            Your library
           </div>
         )}
         <nav className="flex flex-col gap-0.5">
@@ -216,7 +212,7 @@ function SidebarBody({
               onClick={() => setClustersOpen((prev) => !prev)}
               className="w-full flex items-center justify-between px-3 pb-2 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
             >
-              <span>Subjects</span>
+              <span>Clusters</span>
               <ChevronRight
                 className={cn(
                   "h-3 w-3 transition-transform duration-200",
@@ -231,10 +227,10 @@ function SidebarBody({
                     key={cluster.id}
                     href={`/clusters/${cluster.id}`}
                     onClick={onNavigate}
-                    className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-all duration-200"
+                    className="flex items-center gap-2.5 rounded-md px-3 py-2 text-[13px] text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-all duration-200"
                   >
                     <span
-                      className="h-2 w-2 rounded-full shrink-0"
+                      className="h-1.5 w-1.5 rounded-sm shrink-0"
                       style={{ backgroundColor: cluster.color }}
                     />
                     <span className="flex-1 truncate">{cluster.name}</span>
@@ -243,11 +239,11 @@ function SidebarBody({
                 <Link
                   href="/clusters"
                   onClick={onNavigate}
-                  className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-all duration-200"
+                  className="flex items-center gap-2.5 rounded-md px-3 py-2 text-[13px] text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-all duration-200"
                 >
                   <span className="h-2 w-2 rounded-full shrink-0 border border-muted-foreground/40" />
                   <span className="flex-1 truncate text-muted-foreground/60">
-                    Manage subjects
+                    Manage clusters
                   </span>
                 </Link>
               </div>
@@ -273,7 +269,7 @@ function SidebarBody({
           )}
           title={collapsed ? "Settings" : undefined}
         >
-          <Settings className="h-4 w-4 shrink-0" />
+          <WorkspaceIcon name="settings" className="h-4 w-4 shrink-0" />
           {!collapsed && <span>Settings</span>}
         </Link>
 
@@ -282,7 +278,7 @@ function SidebarBody({
             "transition-all duration-250",
             collapsed
               ? "flex justify-center py-2 bg-transparent border-transparent"
-              : "rounded-xl border border-border bg-card/60 p-3 flex items-center gap-3",
+              : "p-3 flex items-center gap-3",
           )}
           title={collapsed ? settings?.name || "Your workspace" : undefined}
         >
@@ -328,8 +324,8 @@ export const AppSidebar = memo(function AppSidebar({
   return (
     <aside
       className={cn(
-        "hidden lg:flex shrink-0 flex-col border-r border-border bg-sidebar sticky top-0 h-screen",
-        collapsed ? "w-[68px]" : "w-[232px]",
+        "workspace-sidebar hidden lg:flex shrink-0 flex-col border-r border-border bg-sidebar sticky top-0 h-screen",
+        collapsed ? "w-[68px]" : "w-[216px]",
       )}
     >
       <SidebarBody

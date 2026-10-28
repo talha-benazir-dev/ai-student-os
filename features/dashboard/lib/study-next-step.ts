@@ -1,5 +1,5 @@
 export type StudyProgress = {
-  subjects: number;
+  clusters: number;
   notes: number;
   documents: number;
   tasks: number;
@@ -42,7 +42,7 @@ export function getStudyNextStep(progress: StudyProgress) {
       action: "Add a study task",
       href: "/tasks?new=task",
     };
-  if (progress.subjects > 0)
+  if (progress.clusters > 0)
     return {
       title: "Start with what you’re learning",
       description:
@@ -51,10 +51,10 @@ export function getStudyNextStep(progress: StudyProgress) {
       href: "/notes?new=note",
     };
   return {
-    title: "Give one subject a home",
+    title: "Create your first cluster",
     description:
-      "Start with a subject you’re studying. It keeps related notes, tasks, and flashcards together. You can add the rest later.",
-    action: "Add your first subject",
-    href: "/clusters?new=subject",
+      "Start with one area you’re studying. It keeps related notes, tasks, and flashcards together. You can add the rest later.",
+    action: "Add your first cluster",
+    href: "/clusters?new=cluster",
   };
 }

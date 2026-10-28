@@ -73,11 +73,11 @@ const CREATE_ACTIONS: CreateAction[] = [
   },
   {
     id: "cluster",
-    label: "New subject",
-    description: "Keep one subject’s material together",
+    label: "New cluster",
+    description: "Keep one cluster’s material together",
     icon: Layers,
     shortcut: "C",
-    keywords: ["cluster", "group", "folder", "subject"],
+    keywords: ["cluster", "group", "folder", "cluster"],
     action: "cluster",
   },
 ];
@@ -275,5 +275,23 @@ export function DashboardCommandSearch() {
         </div>
       </button>
     </div>
+  );
+}
+
+export function WorkspaceQuickCreate({ onOpen }: { onOpen?: () => void }) {
+  const { openCommand } = useCommandPalette();
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        onOpen?.();
+        openCommand();
+      }}
+      className="workspace-quick-create"
+    >
+      <Plus className="size-3.5" />
+      <span>Create something</span>
+      <kbd>⌘ K</kbd>
+    </button>
   );
 }
