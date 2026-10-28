@@ -1,9 +1,11 @@
 .study-landing {
-  --paper: #fafaf7;
-  --ink: #242a27;
-  --quiet: #616963;
-  --rule: #dfe3dc;
-  --green: #2f5948;
+  --paper: #f8f9fb;
+  --ink: #202329;
+  --quiet: #646a75;
+  --rule: #dfe3e9;
+  --brand: var(--primary);
+  --brand-foreground: var(--primary-foreground);
+  --link: #415f91;
   background: var(--paper);
   color: var(--ink);
   color-scheme: light;
@@ -16,7 +18,7 @@
 }
 .study-landing a:focus-visible,
 .study-landing button:focus-visible {
-  outline: 2px solid #4c8067;
+  outline: 2px solid var(--link);
   outline-offset: 5px;
 }
 .landing-header,
@@ -61,7 +63,7 @@
 .landing-nav a:hover,
 .landing-account > a:first-child:hover,
 .landing-footer nav a:hover {
-  color: var(--green);
+  color: var(--link);
 }
 .landing-button {
   display: inline-flex;
@@ -71,8 +73,8 @@
   min-height: 46px;
   border-radius: 6px;
   padding: 12px 20px;
-  background: var(--green);
-  color: #fff;
+  background: var(--brand);
+  color: var(--brand-foreground);
   font-size: 13px;
   font-weight: 500;
   line-height: 1.4;
@@ -81,19 +83,19 @@
   cursor: pointer;
 }
 .landing-button:hover {
-  background: #234638;
+  background: #a5bce5;
 }
 .landing-button-small {
   min-height: 38px;
   padding: 9px 15px;
 }
 .landing-button-outline {
-  border-color: #c9d0c7;
+  border-color: #cbd1dc;
   background: transparent;
   color: var(--ink);
 }
 .landing-button-outline:hover {
-  background: #edf0e9;
+  background: #eef1f6;
 }
 .landing-hero {
   padding-top: 60px;
@@ -129,8 +131,8 @@
 }
 .landing-product-frame {
   padding: 14px;
-  background: #e6eae2;
-  border: 1px solid #d9dfd4;
+  background: #e8ebf0;
+  border: 1px solid #dce1e9;
   border-radius: 12px;
   scroll-margin-top: 24px;
 }
@@ -147,15 +149,15 @@
   grid-template-columns: 180px minmax(0, 1fr) 222px;
   min-height: 510px;
   border-radius: 6px;
-  background: #1c1f1d;
-  color: #e7ebe7;
-  border: 1px solid #333b35;
+  background: var(--background);
+  color: var(--foreground);
+  border: 1px solid var(--border);
   overflow: hidden;
-  box-shadow: 0 14px 32px #25352812;
+  box-shadow: 0 14px 32px #1b243312;
   font-size: 12px;
 }
 .preview-sidebar {
-  background: #181b19;
+  background: var(--sidebar);
   padding: 20px 12px;
   display: flex;
   flex-direction: column;
@@ -169,14 +171,14 @@
 }
 .preview-brand > svg:last-child {
   margin-left: auto;
-  color: #8e9890;
+  color: var(--muted-foreground);
 }
 .preview-search {
   display: flex;
   align-items: center;
   gap: 7px;
   font-size: 10px;
-  color: #a0aaa3;
+  color: var(--muted-foreground);
   padding: 8px 6px;
   margin-bottom: 15px;
   border: 1px solid #ffffff12;
@@ -193,7 +195,7 @@
   width: 100%;
   padding: 8px 10px;
   border-radius: 4px;
-  color: #aab4ac;
+  color: #b4b8c1;
   text-align: left;
   font-size: 11px;
 }
@@ -201,12 +203,12 @@
   cursor: pointer;
 }
 .preview-nav-active {
-  background: #ffffff0b;
-  color: #edf2ed;
+  background: #91acdf12;
+  color: var(--foreground);
 }
 .preview-section-label {
   display: block;
-  color: #93a096;
+  color: var(--muted-foreground);
   font-size: 10px;
   margin: 22px 10px 7px;
 }
@@ -232,7 +234,7 @@
   margin-top: auto;
   padding: 28px 8px 0;
   font-size: 10px;
-  color: #c8d2ca;
+  color: #d0d4dc;
 }
 .preview-user > span {
   display: grid;
@@ -240,13 +242,13 @@
   width: 25px;
   height: 25px;
   border-radius: 5px;
-  background: #39473c;
-  color: #c6d6c8;
+  background: var(--secondary);
+  color: var(--foreground);
 }
 .preview-user small,
 .preview-related small {
   display: block;
-  color: #8d998f;
+  color: var(--muted-foreground);
   font-size: 9px;
   margin-top: 2px;
 }
@@ -258,22 +260,22 @@
   gap: 10px;
   padding: 0 22px;
   font-size: 10px;
-  color: #a6b2a8;
+  color: var(--muted-foreground);
 }
 .preview-breadcrumb > span {
-  color: #d0d8d1;
+  color: #d3d7df;
 }
 .preview-breadcrumb > .preview-saved {
   margin-left: auto;
   font-size: 9px;
-  color: #8e9c90;
+  color: var(--muted-foreground);
 }
 .preview-note {
   padding: 32px 38px 24px;
   max-width: 590px;
 }
 .preview-note-icon {
-  color: #adbea9;
+  color: var(--muted-foreground);
   margin-bottom: 12px;
 }
 .preview-note h2 {
@@ -286,16 +288,16 @@
   display: flex;
   gap: 14px;
   font-size: 9px !important;
-  color: #a3b19f !important;
+  color: var(--muted-foreground) !important;
   padding: 12px 0 22px;
   margin: 0 !important;
 }
 .preview-note-meta span {
-  color: #8b978d;
+  color: var(--muted-foreground);
 }
 .preview-note > p {
   font-size: 11px;
-  color: #b4c0b7;
+  color: #bbc0ca;
   line-height: 1.9;
   margin: 10px 0;
 }
@@ -307,31 +309,31 @@
 .preview-callout {
   display: flex;
   gap: 12px;
-  border-left: 2px solid #687f6e;
-  background: #a1b49e08;
+  border-left: 2px solid #657da8;
+  background: #91acdf08;
   padding: 10px 12px;
   margin-top: 10px;
   border-radius: 0 3px 3px 0;
 }
 .preview-callout p {
   font-size: 10px;
-  color: #b6c4b9;
+  color: #c0c6d0;
   margin: 0;
   line-height: 1.8;
 }
 .preview-callout strong {
   font-weight: 500;
-  color: #e0e8e0;
+  color: var(--foreground);
 }
 .preview-callout-mark {
-  color: #a4b99e;
+  color: var(--primary);
 }
 .preview-note-footer {
   display: flex;
   gap: 8px;
   align-items: flex-start;
   font-size: 9px;
-  color: #8d9d91;
+  color: var(--muted-foreground);
   border-top: 1px solid #ffffff0c;
   margin-top: 26px;
   padding-top: 15px;
@@ -342,7 +344,7 @@
 .preview-context {
   border-left: 1px solid #ffffff0b;
   padding: 8px 18px;
-  background: #1a1e1b;
+  background: var(--context);
 }
 .preview-context .preview-section-label {
   margin-left: 0;
@@ -354,7 +356,7 @@
   margin-top: 13px;
 }
 .preview-context p {
-  color: #a1aea4;
+  color: #aeb4c0;
   font-size: 11px;
   line-height: 1.9;
   margin-top: 8px;
@@ -370,15 +372,15 @@
   gap: 10px;
   font-size: 10px;
   margin: 18px 0;
-  color: #bfcac2;
+  color: #c3c9d4;
 }
 .preview-related svg {
-  color: #91a58f;
+  color: var(--muted-foreground);
 }
 .preview-handwritten {
   display: block;
   font-size: 18px;
-  color: #b8c7b3;
+  color: #b4bccb;
   font-family: Georgia, serif;
   font-style: italic;
   transform: rotate(-7deg);
@@ -396,7 +398,7 @@
   border-bottom: 1px solid #ffffff12;
   width: 100%;
   text-align: left;
-  color: #dde6de;
+  color: var(--foreground);
   font-size: 11px;
 }
 .preview-note > button {
@@ -404,7 +406,7 @@
 }
 .preview-task small {
   display: block;
-  color: #95a399;
+  color: var(--muted-foreground);
   font-size: 10px;
   margin-top: 5px;
 }
@@ -412,24 +414,24 @@
   display: grid;
   place-items: center;
   flex-shrink: 0;
-  border: 1px solid #718473;
+  border: 1px solid #727c8e;
   border-radius: 3px;
   width: 17px;
   height: 17px;
 }
 .preview-task-done {
-  color: #a1b49e;
+  color: var(--muted-foreground);
 }
 .preview-task-done > span:last-child {
   text-decoration: line-through;
 }
 .preview-task-done .preview-check {
-  background: #a3bca2;
-  color: #1c281e;
+  background: var(--primary);
+  color: var(--primary-foreground);
 }
 .preview-inline-note {
   margin-top: 28px !important;
-  color: #b5c9ae !important;
+  color: #c3cbd8 !important;
 }
 .preview-flashcard {
   display: flex;
@@ -437,15 +439,15 @@
   gap: 36px;
   width: 100%;
   text-align: left;
-  border: 1px solid #556652;
+  border: 1px solid #536886;
   border-radius: 7px;
-  background: #a2b29b08;
+  background: #91acdf08;
   padding: 24px;
   margin-top: 12px;
   min-height: 235px;
 }
 .preview-flashcard > small {
-  color: #a6b9a0;
+  color: var(--primary);
   font-size: 10px;
 }
 .preview-flashcard > strong {
@@ -457,7 +459,7 @@
   display: flex;
   gap: 8px;
   align-items: center;
-  color: #9eaf98;
+  color: #acb5c5;
   font-size: 9px;
 }
 .landing-tools {
@@ -490,7 +492,7 @@
   gap: 40px;
 }
 .landing-tool-grid article > svg {
-  color: var(--green);
+  color: var(--link);
   margin-bottom: 22px;
 }
 .landing-tool-grid h3 {
@@ -507,7 +509,7 @@
 .landing-tool-grid article > span {
   display: block;
   font-size: 11px;
-  color: var(--green);
+  color: var(--link);
   margin-top: 22px;
 }
 .landing-assistant {
@@ -517,11 +519,11 @@
   width: calc(100% - 72px);
   max-width: 1128px;
   padding: 48px;
-  background: #edf0e8;
+  background: #eef1f6;
   border-radius: 10px;
 }
 .landing-assistant > div:first-child > svg {
-  color: var(--green);
+  color: var(--link);
   margin-bottom: 24px;
 }
 .landing-assistant h2 {
@@ -539,7 +541,7 @@
 }
 .landing-conversation {
   background: var(--paper);
-  border: 1px solid #d6ddcf;
+  border: 1px solid #d8dfe9;
   border-radius: 7px;
   padding: 24px;
 }
@@ -552,11 +554,11 @@
 }
 .landing-conversation .landing-question {
   padding: 14px 16px;
-  background: #e6ebdf;
+  background: #e4ebf5;
   border-radius: 5px;
   margin-top: 24px;
   font-size: 12px;
-  color: #32452f;
+  color: #324563;
   max-width: none;
 }
 .landing-answer {
@@ -566,7 +568,7 @@
   margin-top: 24px;
 }
 .landing-answer > svg {
-  color: var(--green);
+  color: var(--link);
   flex-shrink: 0;
   margin-top: 4px;
 }
@@ -604,8 +606,8 @@
   flex-direction: column;
 }
 .landing-price-grid .landing-price-pro {
-  background: #f0f3ec;
-  border-color: #c3d0bc;
+  background: #edf2f9;
+  border-color: #b8c9e3;
 }
 .landing-price-title {
   display: flex;
@@ -643,7 +645,7 @@
   gap: 10px;
 }
 .landing-price-grid li svg {
-  color: var(--green);
+  color: var(--link);
   flex-shrink: 0;
 }
 .landing-price-grid .landing-button {
@@ -658,7 +660,7 @@
   border-top: 1px solid var(--rule);
 }
 .landing-closing > svg {
-  color: var(--green);
+  color: var(--link);
   margin-bottom: 26px;
 }
 .landing-closing h2 {
@@ -700,8 +702,8 @@
   top: 8px;
   left: 8px;
   z-index: 100;
-  background: var(--green);
-  color: #fff;
+  background: var(--brand);
+  color: var(--brand-foreground);
   padding: 10px;
   transform: translateY(-150%);
 }
@@ -814,12 +816,12 @@
     font-size: 10px;
     padding: 5px 12px;
     border-radius: 4px;
-    color: #afbcb0;
+    color: #b7becb;
     cursor: pointer;
   }
   .preview-mobile-tabs button[aria-pressed="true"] {
     background: #ffffff0c;
-    color: #e7ebe7;
+    color: var(--foreground);
   }
   .preview-note {
     padding: 22px 20px 25px;
@@ -958,7 +960,7 @@
     box-shadow 160ms;
 }
 .landing-button:hover {
-  box-shadow: 0 3px 8px #23463816;
+  box-shadow: 0 3px 8px #34486a16;
 }
 .landing-button:active {
   transform: translateY(1px);
@@ -991,8 +993,8 @@
     border-color 180ms;
 }
 .preview-flashcard:hover {
-  background: #a2b29b14;
-  border-color: #91a58f;
+  background: #91acdf14;
+  border-color: var(--muted-foreground);
 }
 @keyframes landing-intro {
   from {

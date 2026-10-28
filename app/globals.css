@@ -51,52 +51,53 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-/* Nucleus Graphite: neutral surfaces, a quiet sage accent, clear hierarchy. */
+/* Nucleus Charcoal: neutral surfaces, muted blue actions, clear hierarchy. */
 :root,
 .dark {
   color-scheme: dark;
   --radius: 0.5rem;
-  --background: #1b1d1b;
-  --foreground: #e9ece8;
-  --card: #202320;
-  --card-foreground: #e9ece8;
-  --popover: #252925;
-  --popover-foreground: #e9ece8;
-  --primary: #b4c8aa;
-  --primary-foreground: #202d1d;
-  --primary-soft: #c4d2be;
-  --secondary: #2b302a;
-  --secondary-foreground: #d8e1d3;
-  --muted: #292d29;
-  --muted-foreground: #9ca79b;
-  --accent: #30362e;
-  --accent-foreground: #e9ece8;
-  --success: #a4c49f;
+  --background: #18191b;
+  --foreground: #ecedef;
+  --card: #222428;
+  --card-foreground: #ecedef;
+  --context: #1b1d20;
+  --popover: #282b30;
+  --popover-foreground: #ecedef;
+  --primary: #91acdf;
+  --primary-foreground: #151c28;
+  --primary-soft: #b1c6eb;
+  --secondary: #2b2e34;
+  --secondary-foreground: #dce0e7;
+  --muted: #26292e;
+  --muted-foreground: #9a9ea7;
+  --accent: #30343b;
+  --accent-foreground: #ecedef;
+  --success: #97baa8;
   --destructive: #e49189;
   --destructive-foreground: #271614;
-  --border: #ffffff12;
-  --input: #ffffff20;
-  --ring: #b4c8aa;
-  --chart-1: #b4c8aa;
-  --chart-2: #a0b7c6;
-  --chart-3: #cfb896;
-  --chart-4: #aaa7c2;
-  --chart-5: #b7b994;
-  --sidebar: #161916;
-  --sidebar-foreground: #dce3d8;
-  --sidebar-primary: #b4c8aa;
-  --sidebar-primary-foreground: #202d1d;
-  --sidebar-accent: #ffffff0b;
-  --sidebar-accent-foreground: #e9ece8;
-  --sidebar-border: #ffffff10;
-  --sidebar-ring: #b4c8aa;
+  --border: #303238;
+  --input: #687180;
+  --ring: #91acdf;
+  --chart-1: #91acdf;
+  --chart-2: #89b5c4;
+  --chart-3: #c4b094;
+  --chart-4: #b3a6ce;
+  --chart-5: #a4ada0;
+  --sidebar: #141518;
+  --sidebar-foreground: #dce0e7;
+  --sidebar-primary: #91acdf;
+  --sidebar-primary-foreground: #151c28;
+  --sidebar-accent: #91acdf12;
+  --sidebar-accent-foreground: #ecedef;
+  --sidebar-border: #292c32;
+  --sidebar-ring: #91acdf;
 }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
     scrollbar-width: thin;
-    scrollbar-color: #535c50 transparent;
+    scrollbar-color: #555a65 transparent;
   }
 
   *::-webkit-scrollbar {
@@ -109,12 +110,12 @@
   }
 
   *::-webkit-scrollbar-thumb {
-    background: #41493e;
+    background: #424650;
     border-radius: 9999px;
   }
 
   *::-webkit-scrollbar-thumb:hover {
-    background: #62705b;
+    background: #687080;
   }
 
   body {
@@ -270,7 +271,7 @@
 /* Workspace proportions follow the product preview, at a readable working size. */
 .workspace-shell {
   --workspace-bar: 44px;
-  background: #1c1f1d;
+  background: var(--background);
 }
 .workspace-shell .lucide {
   stroke-width: 1.5;
@@ -293,7 +294,7 @@
   flex-shrink: 0;
   padding: 32px 22px;
   border-left: 1px solid var(--border);
-  background: #1a1e1b;
+  background: var(--context);
   align-self: stretch;
 }
 .workspace-context h2 {
@@ -338,7 +339,7 @@
   font-family: Georgia, serif;
   font-style: italic;
   font-size: 17px;
-  color: #b4c8aa;
+  color: var(--muted-foreground);
   line-height: 1.6;
 }
 .workspace-quick-create {
@@ -395,7 +396,7 @@
 .workspace-page-emblem {
   width: 25px;
   height: 25px;
-  color: #b1bfaa;
+  color: var(--muted-foreground);
   margin-bottom: 18px;
 }
 .workspace-page-actions {

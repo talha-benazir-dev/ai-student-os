@@ -26,17 +26,17 @@ export default function ExcalidrawEditor({ initialData, onChange }: Props) {
         .excalidraw-nucleus-wrapper {
           height: 100%;
           width: 100%;
-          --color-primary: #b4c8aa;
-          --color-primary-darker: #92ad86;
-          --color-primary-darkest: #708a64;
-          --color-primary-light: #b4c8aa33;
-          --color-surface-primary-container: #202320;
-          --color-surface-low: #202320;
-          --color-surface-mid: #252925;
-          --color-surface-high: #2b302a;
-          --color-surface-highest: #30362e;
-          --color-on-surface: #ffffff;
-          --color-on-surface-muted: #9ca79b;
+          --color-primary: var(--primary);
+          --color-primary-darker: #7e9ed5;
+          --color-primary-darkest: #617fb4;
+          --color-primary-light: #91acdf33;
+          --color-surface-primary-container: var(--card);
+          --color-surface-low: var(--card);
+          --color-surface-mid: var(--popover);
+          --color-surface-high: var(--secondary);
+          --color-surface-highest: var(--accent);
+          --color-on-surface: var(--foreground);
+          --color-on-surface-muted: var(--muted-foreground);
         }
 
         /* Hide Excalidraw footer / branding bar */
@@ -56,7 +56,7 @@ export default function ExcalidrawEditor({ initialData, onChange }: Props) {
 
         /* Match canvas background to Nucleus dark */
         .excalidraw .excalidraw-canvas {
-          background-color: #1b1d1b !important;
+          background-color: var(--background) !important;
         }
 
         /* Style the toolbar to match Nucleus */
@@ -65,22 +65,22 @@ export default function ExcalidrawEditor({ initialData, onChange }: Props) {
         }
 
         .excalidraw .Island {
-          background-color: #252925 !important;
+          background-color: var(--popover) !important;
           border-color: #ffffff20 !important;
           box-shadow: 0 4px 24px rgba(0,0,0,0.4), 0 0 0 1px #ffffff15 !important;
         }
 
         .excalidraw .ToolIcon__icon {
-          color: #ffffff !important;
+          color: var(--foreground) !important;
         }
 
         .excalidraw .ToolIcon:hover .ToolIcon__icon {
-          background-color: #b4c8aa22 !important;
+          background-color: #91acdf22 !important;
         }
 
         .excalidraw .ToolIcon--selected .ToolIcon__icon {
-          background-color: #b4c8aa33 !important;
-          color: #b4c8aa !important;
+          background-color: #91acdf33 !important;
+          color: var(--primary) !important;
         }
 
         /* Collaboration button — hide it */
