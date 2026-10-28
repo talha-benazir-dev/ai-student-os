@@ -33,6 +33,7 @@ const initialTask = {
 };
 let tasks = [{ ...initialTask }];
 let notes = [];
+let documents = [];
 let clusters = [];
 let flashcards = [];
 let sessions = [];
@@ -55,6 +56,25 @@ createServer(async (req, res) => {
     requests = [];
     delay = Number(url.searchParams.get("delay") ?? 0);
     const scenario = url.searchParams.get("scenario") ?? "established";
+    profile.plan = scenario === "pro" ? "pro" : "free";
+    documents =
+      scenario === "pro"
+        ? [
+            {
+              id: "66666666-6666-4666-8666-666666666666",
+              user_id: id,
+              title: "Cell biology reading",
+              file_url: "https://example.com/reading.pdf",
+              file_size: 123481,
+              page_count: 3,
+              ai_summary: null,
+              cloudinary_public_id: "test-reading",
+              cluster_id: "33333333-3333-4333-8333-333333333333",
+              raw_text: "Cell transport lecture reading.",
+              created_at: now,
+            },
+          ]
+        : [];
     tasks = scenario === "empty" ? [] : [{ ...initialTask }];
     clusters =
       scenario === "empty"
@@ -125,12 +145,44 @@ createServer(async (req, res) => {
     );
   }
   const table = url.pathname.split("/").at(-1);
+  // Mirror the live documents schema: invalid projections fail even with no rows.
+  if (table === "documents") {
+    const columns = new Set([
+      "id",
+      "user_id",
+      "title",
+      "file_url",
+      "file_size",
+      "page_count",
+      "ai_summary",
+      "created_at",
+      "cloudinary_public_id",
+      "cluster_id",
+      "raw_text",
+    ]);
+    const unknown = (url.searchParams.get("select") ?? "*")
+      .split(",")
+      .map((column) => column.trim())
+      .find((column) => column !== "*" && !columns.has(column));
+    if (unknown) {
+      res.statusCode = 400;
+      return res.end(
+        JSON.stringify({
+          code: "42703",
+          message: `column documents.${unknown} does not exist`,
+          details: null,
+          hint: null,
+        }),
+      );
+    }
+  }
   let data = [];
   if (table === "profiles") data = [profile];
   if (table === "streaks") data = [{ current_streak: 3, longest_streak: 7 }];
   const collections = {
     tasks,
     notes,
+    documents,
     clusters,
     flashcards,
     study_sessions: sessions,

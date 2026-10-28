@@ -527,3 +527,29 @@ test("home timestamps hydrate consistently when the student's clock differs", as
   ).toBeVisible();
   expect(errors).toEqual([]);
 });
+
+test("existing Pro workspace loads Home against the current document schema", async ({
+  context,
+  page,
+  request,
+}) => {
+  await request.get(`${backend}/__reset?scenario=pro`);
+  await signIn(context);
+  // This is the response produced by the real database for the broken query.
+  const legacy = await request.get(
+    `${backend}/rest/v1/documents?select=id,title,file_size,subject,created_at`,
+  );
+  expect(legacy.status()).toBe(400);
+  expect(await legacy.json()).toMatchObject({ code: "42703" });
+  await page.goto("/dashboard");
+  await expect(
+    page.getByRole("heading", { name: "Welcome back, Alex" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("alert").filter({ hasText: "Some of your study material" }),
+  ).not.toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "Cell biology reading" }),
+  ).toBeVisible();
+  await expect(page.getByText("Pro plan", { exact: true })).toBeVisible();
+});

@@ -84,7 +84,7 @@ export default async function Dashboard() {
         .limit(4),
       supabase
         .from("documents")
-        .select("id, title, file_size, subject, created_at", { count: "exact" })
+        .select("id, title, file_size, created_at", { count: "exact" })
         .eq("user_id", userId)
         .order("created_at", { ascending: false })
         .limit(4),
