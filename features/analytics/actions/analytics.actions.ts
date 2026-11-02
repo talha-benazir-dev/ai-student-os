@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getUser, getWorkspaceProfile } from "@/lib/supabase/server";
 import type { WidgetId } from "@/features/analytics/types/widgets";
 import type { AnalyticsPeriod } from "@/features/analytics/types/period";
 import type { WeekStartsOn } from "@/features/analytics/types/period";
@@ -28,15 +28,8 @@ type ActionResult<T> = { data: T | null; error: string | null };
 const GENERAL_CLUSTER_NAME = "General";
 const GENERAL_CLUSTER_COLOR = "#ffffff40";
 
-async function fetchWeekStartsOn(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  userId: string,
-): Promise<WeekStartsOn> {
-  const { data } = await supabase
-    .from("profiles")
-    .select("week_starts_on")
-    .eq("id", userId)
-    .single();
+async function fetchWeekStartsOn(): Promise<WeekStartsOn> {
+  const { data } = await getWorkspaceProfile();
   return parseWeekStartsOn(data?.week_starts_on);
 }
 
@@ -49,15 +42,10 @@ function periodSinceIso(
 }
 
 export async function getDashboardWidgets(): Promise<ActionResult<WidgetId[]>> {
-  const supabase = await createClient();
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  const { data: { user }, error: authError } = await getUser();
   if (authError || !user) return { data: null, error: "Not authenticated." };
 
-  const { data, error } = await supabase
-    .from("profiles")
-    .select("dashboard_widgets")
-    .eq("id", user.id)
-    .single();
+  const { data, error } = await getWorkspaceProfile();
 
   if (error || !data) return { data: ["daily_study_time", "activity_heatmap"], error: null };
   return { data: (data.dashboard_widgets ?? ["daily_study_time", "activity_heatmap"]) as WidgetId[], error: null };
@@ -67,7 +55,7 @@ export async function setDashboardWidgets(widgets: WidgetId[]): Promise<ActionRe
   if (widgets.length !== 2) return { data: null, error: "Select exactly 2 widgets." };
 
   const supabase = await createClient();
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  const { data: { user }, error: authError } = await getUser();
   if (authError || !user) return { data: null, error: "Not authenticated." };
 
   const { error } = await supabase
@@ -85,10 +73,10 @@ export async function getAnalyticsSummary(
   period: AnalyticsPeriod,
 ): Promise<ActionResult<AnalyticsSummary>> {
   const supabase = await createClient();
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  const { data: { user }, error: authError } = await getUser();
   if (authError || !user) return { data: null, error: "Not authenticated." };
 
-  const weekStartsOn = await fetchWeekStartsOn(supabase, user.id);
+  const weekStartsOn = await fetchWeekStartsOn();
   const sinceIso = periodSinceIso(period, weekStartsOn);
 
   let sessionsQuery = supabase
@@ -147,10 +135,10 @@ export async function getDailyStudyTimeForPeriod(
   period: AnalyticsPeriod,
 ): Promise<ActionResult<{ date: string; minutes: number }[]>> {
   const supabase = await createClient();
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  const { data: { user }, error: authError } = await getUser();
   if (authError || !user) return { data: null, error: "Not authenticated." };
 
-  const weekStartsOn = await fetchWeekStartsOn(supabase, user.id);
+  const weekStartsOn = await fetchWeekStartsOn();
   const dateKeys = getFullPeriodDateKeys(period, weekStartsOn);
   const since = getPeriodSince(period, weekStartsOn);
 
@@ -187,7 +175,7 @@ export async function getDailyStudyTimeForPeriod(
 
 export async function getDailyStudyTime(days: number = 30): Promise<ActionResult<{ date: string; minutes: number }[]>> {
   const supabase = await createClient();
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  const { data: { user }, error: authError } = await getUser();
   if (authError || !user) return { data: null, error: "Not authenticated." };
 
   const since = startOfLocalDayDaysAgo(days - 1);
@@ -226,10 +214,10 @@ export async function getTaskCompletionRateForPeriod(
   period: AnalyticsPeriod,
 ): Promise<ActionResult<{ date: string; completed: number }[]>> {
   const supabase = await createClient();
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  const { data: { user }, error: authError } = await getUser();
   if (authError || !user) return { data: null, error: "Not authenticated." };
 
-  const weekStartsOn = await fetchWeekStartsOn(supabase, user.id);
+  const weekStartsOn = await fetchWeekStartsOn();
   const dateKeys = getFullPeriodDateKeys(period, weekStartsOn);
   const since = getPeriodSince(period, weekStartsOn);
 
@@ -266,7 +254,7 @@ export async function getTaskCompletionRateForPeriod(
 
 export async function getTaskCompletionRate(days: number = 30): Promise<ActionResult<{ date: string; completed: number }[]>> {
   const supabase = await createClient();
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  const { data: { user }, error: authError } = await getUser();
   if (authError || !user) return { data: null, error: "Not authenticated." };
 
   const since = startOfLocalDayDaysAgo(days - 1);
@@ -299,10 +287,10 @@ export async function getClusterBreakdown(
   period: AnalyticsPeriod = "all",
 ): Promise<ActionResult<ClusterBreakdownItem[]>> {
   const supabase = await createClient();
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  const { data: { user }, error: authError } = await getUser();
   if (authError || !user) return { data: null, error: "Not authenticated." };
 
-  const weekStartsOn = await fetchWeekStartsOn(supabase, user.id);
+  const weekStartsOn = await fetchWeekStartsOn();
   const sinceIso = periodSinceIso(period, weekStartsOn);
 
   let sessionsQuery = supabase
@@ -347,10 +335,10 @@ export async function getSessionHistory(
   offset: number = 0,
 ): Promise<ActionResult<SessionHistoryResult>> {
   const supabase = await createClient();
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  const { data: { user }, error: authError } = await getUser();
   if (authError || !user) return { data: null, error: "Not authenticated." };
 
-  const weekStartsOn = await fetchWeekStartsOn(supabase, user.id);
+  const weekStartsOn = await fetchWeekStartsOn();
   const sinceIso = periodSinceIso(period, weekStartsOn);
 
   let query = supabase
@@ -419,10 +407,10 @@ export async function getTasksByCluster(
   period: AnalyticsPeriod,
 ): Promise<ActionResult<TaskClusterRow[]>> {
   const supabase = await createClient();
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  const { data: { user }, error: authError } = await getUser();
   if (authError || !user) return { data: null, error: "Not authenticated." };
 
-  const weekStartsOn = await fetchWeekStartsOn(supabase, user.id);
+  const weekStartsOn = await fetchWeekStartsOn();
   const since = getPeriodSince(period, weekStartsOn);
 
   const { data: tasks, error: tasksError } = await supabase

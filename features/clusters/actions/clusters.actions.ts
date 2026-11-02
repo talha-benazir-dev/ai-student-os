@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getUser } from "@/lib/supabase/server";
 import type { Cluster } from "@/features/clusters/types";
 
 type ActionResult<T> = {
@@ -14,7 +14,7 @@ export async function getClusters(): Promise<ActionResult<Cluster[]>> {
   const {
     data: { user },
     error: authError,
-  } = await supabase.auth.getUser();
+  } = await getUser();
 
   if (authError || !user) {
     return { data: null, error: "You must be signed in to view clusters." };
@@ -40,7 +40,7 @@ export async function createCluster(
   const {
     data: { user },
     error: authError,
-  } = await supabase.auth.getUser();
+  } = await getUser();
 
   if (authError || !user) {
     return { data: null, error: "You must be signed in to create clusters." };
@@ -51,7 +51,7 @@ export async function createCluster(
     .insert({
       user_id: user.id,
       name: name.trim(),
-      color: color || "#7c5cfc",
+      color: color || "#a6be98",
     })
     .select()
     .single();
@@ -75,7 +75,7 @@ export async function deleteCluster(
   const {
     data: { user },
     error: authError,
-  } = await supabase.auth.getUser();
+  } = await getUser();
 
   if (authError || !user) {
     return { data: null, error: "You must be signed in to delete clusters." };
@@ -104,7 +104,7 @@ export async function updateCluster(
   const {
     data: { user },
     error: authError,
-  } = await supabase.auth.getUser();
+  } = await getUser();
 
   if (authError || !user) {
     return { data: null, error: "You must be signed in to update clusters." };

@@ -16,7 +16,7 @@ export function QuestionCard({
   const isAnswered = answered != null;
 
   return (
-    <div className="mt-2 max-w-[85%] rounded-2xl border border-[#ffffff10] bg-[#0f0f17] p-4">
+    <div className="mt-2 max-w-[85%] rounded-2xl border border-[#ffffff10] bg-card p-4">
       <p className="mb-3 text-sm text-white/80">{question}</p>
       <div className="flex flex-wrap gap-2">
         {options.map((option) => {
@@ -36,7 +36,7 @@ export function QuestionCard({
                 "rounded-xl border px-3 py-2 text-sm transition-all",
                 isAnswered && "pointer-events-none",
                 isSelected
-                  ? "border-[#7c5cfc] bg-[#7c5cfc1a] text-violet-300"
+                  ? "border-primary bg-primary/10 text-primary-soft"
                   : "border-[#ffffff15] bg-[#ffffff08] text-white/70 hover:bg-[#ffffff12] hover:text-white",
               )}
             >

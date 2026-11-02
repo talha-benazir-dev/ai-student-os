@@ -1,7 +1,9 @@
 "use client";
 
+import { WorkspacePageHeader } from "@/features/dashboard/components/workspace-page";
 import { useState, useMemo, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useRequestedDialog } from "@/hooks/use-requested-dialog";
 import { Plus, Pencil, Trash2, BookOpen, Layers } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -42,6 +44,7 @@ interface FlashcardsPageProps {
   initialCards: Flashcard[];
   initialClusters: Cluster[];
   autoOpenCreate?: boolean;
+  autoStartReview?: boolean;
 }
 
 function clusterSelectValue(clusterId: string | null): string {
@@ -97,8 +100,8 @@ function FlashcardFormModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-lg p-0 bg-[#0f0f17] border-[#ffffff10] shadow-2xl overflow-hidden sm:rounded-2xl !bg-opacity-100 backdrop-blur-none">
-        <div className="absolute inset-0 bg-[#0f0f17] -z-10" />
+      <DialogContent className="max-w-lg p-0 bg-card border-[#ffffff10] shadow-2xl overflow-hidden sm:rounded-2xl !bg-opacity-100 backdrop-blur-none">
+        <div className="absolute inset-0 bg-card -z-10" />
         <DialogHeader className="px-6 py-4 border-b border-[#ffffff10]">
           <DialogTitle className="text-lg font-semibold text-white">
             {title}
@@ -107,7 +110,7 @@ function FlashcardFormModal({
 
         <div className="p-6 space-y-5">
           <div className="space-y-2">
-            <label className="text-[11px] font-semibold text-white/30 uppercase tracking-[0.1em]">
+            <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-[0.1em]">
               Front of Card
             </label>
             <Textarea
@@ -115,33 +118,33 @@ function FlashcardFormModal({
               placeholder="What's the question or concept?"
               value={front}
               onChange={(e) => setFront(e.target.value)}
-              className="min-h-[100px] bg-white/[0.03] border-[#ffffff10] text-white focus-visible:ring-[#7c5cfc]/50 resize-none text-sm p-4 rounded-xl"
+              className="min-h-[100px] bg-white/[0.03] border-[#ffffff10] text-white focus-visible:ring-primary/50 resize-none text-sm p-4 rounded-xl"
               autoComplete="off"
             />
           </div>
 
           <div className="space-y-2">
-            <label className="text-[11px] font-semibold text-white/30 uppercase tracking-[0.1em]">
+            <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-[0.1em]">
               Back of Card
             </label>
             <Textarea
               placeholder="The answer or explanation..."
               value={back}
               onChange={(e) => setBack(e.target.value)}
-              className="min-h-[100px] bg-white/[0.03] border-[#ffffff10] text-white focus-visible:ring-[#7c5cfc]/50 resize-none text-sm p-4 rounded-xl"
+              className="min-h-[100px] bg-white/[0.03] border-[#ffffff10] text-white focus-visible:ring-primary/50 resize-none text-sm p-4 rounded-xl"
               autoComplete="off"
             />
           </div>
 
           <div className="space-y-2">
-            <Label className="text-[11px] font-semibold text-white/30 uppercase tracking-[0.1em]">
+            <Label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-[0.1em]">
               Cluster
             </Label>
             <Select value={selectedCluster} onValueChange={setSelectedCluster}>
               <SelectTrigger className="bg-white/[0.03] border-[#ffffff10] text-white h-10 rounded-xl text-sm">
                 <SelectValue placeholder="General" />
               </SelectTrigger>
-              <SelectContent className="border-[#ffffff10] bg-[#0f0f17] text-white">
+              <SelectContent className="border-[#ffffff10] bg-card text-white">
                 <SelectItem value={GENERAL_CLUSTER_VALUE}>General</SelectItem>
                 {clusters.map((cluster) => (
                   <SelectItem key={cluster.id} value={cluster.id}>
@@ -168,7 +171,7 @@ function FlashcardFormModal({
             <Button
               variant="ghost"
               onClick={onClose}
-              className="text-white/60 hover:text-white hover:bg-white/5"
+              className="text-muted-foreground hover:text-white hover:bg-white/5"
             >
               Cancel
             </Button>
@@ -182,7 +185,7 @@ function FlashcardFormModal({
                 )
               }
               disabled={!isValid}
-              className="bg-[#7c5cfc] hover:bg-[#6b4ce8] text-white px-6 font-medium shadow-[0_0_20px_-5px_rgba(124,92,252,0.5)]"
+              className="bg-primary hover:bg-primary/90 text-primary-foreground px-6 font-medium"
             >
               {submitLabel}
             </Button>
@@ -216,13 +219,13 @@ function FlashcardGridItem({
   }[card.difficulty];
 
   let dueText = "";
-  let dueClass = "text-white/45";
+  let dueClass = "text-muted-foreground";
   if (isOverdue) {
     dueText = "Overdue";
     dueClass = "text-red-400";
   } else if (isDue) {
     dueText = "Due today";
-    dueClass = "text-violet-400";
+    dueClass = "text-primary";
   } else {
     const diffTime =
       new Date(card.next_review).getTime() - new Date(today).getTime();
@@ -231,7 +234,7 @@ function FlashcardGridItem({
   }
 
   return (
-    <div className="group relative rounded-xl border border-[#ffffff10] bg-[#0f0f17]/60 backdrop-blur-md p-5 transition-all hover:border-[#ffffff20] hover:bg-[#0f0f17]/80 flex flex-col h-[180px]">
+    <div className="group relative rounded-lg border border-border bg-transparent p-5 transition-colors hover:border-input hover:bg-accent/20 flex flex-col h-[180px]">
       <div className="flex-1 min-h-0">
         <p className="text-white/90 font-medium line-clamp-2 text-sm whitespace-pre-wrap">
           {card.front}
@@ -261,12 +264,13 @@ function FlashcardGridItem({
         </span>
       </div>
 
-      <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 bg-[#0f0f17] p-1 rounded-lg border border-[#ffffff10]">
+      <div className="absolute top-3 right-3 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 transition-opacity flex gap-1 bg-card p-1 rounded-md border border-border">
         <Button
           variant="ghost"
           size="icon"
           onClick={onEditStart}
-          className="h-7 w-7 text-white/50 hover:text-white"
+          aria-label="Edit flashcard"
+          className="h-7 w-7 text-muted-foreground hover:text-white"
         >
           <Pencil className="h-3.5 w-3.5" />
         </Button>
@@ -274,7 +278,8 @@ function FlashcardGridItem({
           variant="ghost"
           size="icon"
           onClick={onDelete}
-          className="h-7 w-7 text-white/50 hover:text-red-400"
+          aria-label="Delete flashcard"
+          className="h-7 w-7 text-muted-foreground hover:text-red-400"
         >
           <Trash2 className="h-3.5 w-3.5" />
         </Button>
@@ -320,18 +325,18 @@ function ReviewSession({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#0a0a0f]/80 backdrop-blur-md flex flex-col">
+    <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-md flex flex-col">
       <div className="flex items-center justify-between px-6 py-4 border-b border-[#ffffff10]">
         <div className="flex items-center gap-4">
           <h2 className="text-lg font-semibold text-white">Review Session</h2>
-          <span className="text-sm text-white/40">
+          <span className="text-sm text-muted-foreground">
             Card {currentIndex + 1} of {dueCards.length}
           </span>
         </div>
         <Button
           variant="ghost"
           onClick={() => onEndSession(stats)}
-          className="text-white/60 hover:text-white"
+          className="text-muted-foreground hover:text-white"
         >
           End Session
         </Button>
@@ -339,7 +344,7 @@ function ReviewSession({
 
       <div className="h-1 bg-[#ffffff10]">
         <div
-          className="h-full bg-[#7c5cfc] transition-all duration-300"
+          className="h-full bg-primary transition-all duration-300"
           style={{ width: `${(currentIndex / dueCards.length) * 100}%` }}
         />
       </div>
@@ -347,7 +352,16 @@ function ReviewSession({
       <div className="flex-1 flex flex-col items-center justify-center p-6">
         <div className="w-full max-w-xl perspective-[1000px]">
           <div
+            role={flipped ? undefined : "button"}
+            aria-label={flipped ? undefined : "Reveal answer"}
+            tabIndex={flipped ? -1 : 0}
             onClick={() => !flipped && setFlipped(true)}
+            onKeyDown={(event) => {
+              if (!flipped && (event.key === "Enter" || event.key === " ")) {
+                event.preventDefault();
+                setFlipped(true);
+              }
+            }}
             className={cn(
               "relative w-full min-h-[300px] transition-transform duration-400 ease-in-out preserve-3d cursor-pointer",
               flipped ? "rotate-y-180" : "",
@@ -355,8 +369,9 @@ function ReviewSession({
             style={{ transformStyle: "preserve-3d" }}
           >
             <div
+              aria-hidden={flipped}
               className={cn(
-                "absolute inset-0 backface-hidden rounded-2xl border border-[#7c5cfc40] bg-[#0f0f17] p-8 flex flex-col shadow-[0_0_30px_-8px_#7c5cfc60]",
+                "absolute inset-0 backface-hidden rounded-2xl border border-primary/25 bg-card p-8 flex flex-col",
                 flipped ? "hidden" : "",
               )}
             >
@@ -365,14 +380,15 @@ function ReviewSession({
                   {card.front}
                 </p>
               </div>
-              <div className="mt-8 text-center text-sm text-[#7c5cfc]/80 animate-pulse">
-                Tap to reveal
+              <div className="mt-8 text-center text-sm text-primary/80 animate-pulse">
+                Think of the answer, then reveal
               </div>
             </div>
 
             <div
+              aria-hidden={!flipped}
               className={cn(
-                "absolute inset-0 backface-hidden rotate-y-180 rounded-2xl border border-[#ffffff20] bg-[#1a1a24] p-8 flex flex-col",
+                "absolute inset-0 backface-hidden rotate-y-180 rounded-2xl border border-[#ffffff20] bg-secondary p-8 flex flex-col",
                 !flipped ? "hidden" : "",
               )}
               style={{ transform: "rotateY(180deg)" }}
@@ -380,15 +396,15 @@ function ReviewSession({
               <div className="flex-1 flex items-center justify-center overflow-y-auto">
                 <div className="w-full space-y-6">
                   <div className="pb-6 border-b border-[#ffffff10]">
-                    <p className="text-sm text-white/40 mb-2 uppercase tracking-wider font-semibold text-center">
+                    <p className="text-sm text-muted-foreground mb-2 uppercase tracking-wider font-semibold text-center">
                       Front
                     </p>
-                    <p className="text-base text-white/60 text-center whitespace-pre-wrap">
+                    <p className="text-base text-muted-foreground text-center whitespace-pre-wrap">
                       {card.front}
                     </p>
                   </div>
                   <div>
-                    <p className="text-sm text-[#7c5cfc]/80 mb-2 uppercase tracking-wider font-semibold text-center">
+                    <p className="text-sm text-primary/80 mb-2 uppercase tracking-wider font-semibold text-center">
                       Back
                     </p>
                     <p className="text-xl text-white/95 text-center whitespace-pre-wrap font-medium">
@@ -432,13 +448,21 @@ export default function FlashcardsPage({
   initialCards,
   initialClusters,
   autoOpenCreate = false,
+  autoStartReview = false,
 }: FlashcardsPageProps) {
   const router = useRouter();
   const [cards, setCards] = useState<Flashcard[]>(initialCards);
   const [clusters] = useState<Cluster[]>(initialClusters);
-  const [mode, setMode] = useState<Mode>("LIBRARY");
+  const [mode, setMode] = useState<Mode>(() =>
+    autoStartReview &&
+    initialCards.some(
+      (card) => card.next_review <= new Date().toISOString().slice(0, 10),
+    )
+      ? "REVIEW"
+      : "LIBRARY",
+  );
 
-  const [showCreate, setShowCreate] = useState(false);
+  const [showCreate, setShowCreate] = useRequestedDialog(autoOpenCreate);
   const [createError, setCreateError] = useState<string | null>(null);
 
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -455,15 +479,22 @@ export default function FlashcardsPage({
     medium: 0,
     hard: 0,
   });
-  const [activeReviewCards, setActiveReviewCards] = useState<Flashcard[]>([]);
+  const [activeReviewCards, setActiveReviewCards] = useState<Flashcard[]>(() =>
+    autoStartReview
+      ? initialCards
+          .filter(
+            (card) => card.next_review <= new Date().toISOString().slice(0, 10),
+          )
+          .sort((a, b) => a.next_review.localeCompare(b.next_review))
+      : [],
+  );
 
   const today = useMemo(() => new Date().toISOString().split("T")[0], []);
 
   useEffect(() => {
-    if (!autoOpenCreate) return;
-    setShowCreate(true);
+    if (!autoOpenCreate && !autoStartReview) return;
     router.replace("/flashcards", { scroll: false });
-  }, [autoOpenCreate, router]);
+  }, [autoOpenCreate, autoStartReview, router]);
 
   const clusterMap = useMemo(
     () => new Map(clusters.map((c) => [c.id, c])),
@@ -624,15 +655,15 @@ export default function FlashcardsPage({
 
   if (mode === "SUMMARY") {
     return (
-      <div className="fixed inset-0 z-50 bg-[#0a0a0f] flex flex-col items-center justify-center p-6">
-        <div className="max-w-md w-full bg-[#0f0f17] border border-[#ffffff10] rounded-2xl p-8 text-center shadow-2xl">
+      <div className="fixed inset-0 z-50 bg-background flex flex-col items-center justify-center p-6">
+        <div className="max-w-md w-full bg-card border border-[#ffffff10] rounded-2xl p-8 text-center shadow-2xl">
           <div className="w-16 h-16 bg-green-500/15 text-green-400 rounded-full flex items-center justify-center mx-auto mb-6">
             <BookOpen className="w-8 h-8" />
           </div>
           <h2 className="text-2xl font-bold text-white mb-2">
             Session Complete!
           </h2>
-          <p className="text-white/60 mb-8">
+          <p className="text-muted-foreground mb-8">
             You reviewed {sessionStats.total} cards today.
           </p>
 
@@ -665,7 +696,7 @@ export default function FlashcardsPage({
 
           <Button
             onClick={() => setMode("LIBRARY")}
-            className="w-full bg-[#7c5cfc] hover:bg-[#6b4ce8] text-white h-12 text-base font-medium"
+            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground h-12 text-base font-medium"
           >
             Back to Library
           </Button>
@@ -675,40 +706,46 @@ export default function FlashcardsPage({
   }
 
   return (
-    <div className="flex flex-col min-h-[calc(100dvh-3.5rem)] lg:min-h-[100dvh] bg-[#0a0a0f]">
-      <div className="w-full max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 flex flex-col flex-1">
-        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-8">
-          <div>
-            <h1 className="text-2xl sm:text-[28px] font-semibold tracking-tight text-white/95">
-              Flashcards
-            </h1>
-            <p className="text-sm text-white/40 mt-1">
-              Active recall, scheduled by Nucleus.
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            {dueCards.length > 0 && (
+    <div className="flex flex-col min-h-[calc(100dvh-3.5rem)] lg:min-h-[calc(100dvh-44px)] bg-background">
+      <div className="workspace-page flex flex-col flex-1">
+        <WorkspacePageHeader
+          icon="review"
+          title="Flashcards"
+          description="A question, a pause, then an answer. Return to what you want to remember."
+          actions={
+            <div className="flex items-center gap-3">
+              {dueCards.length > 0 && (
+                <Button
+                  onClick={() => {
+                    setActiveReviewCards([...dueCards]);
+                    setMode("REVIEW");
+                  }}
+                  className="bg-primary hover:bg-primary/90 text-primary-foreground"
+                >
+                  Study Now ({dueCards.length})
+                </Button>
+              )}
               <Button
+                variant="outline"
                 onClick={() => {
-                  setActiveReviewCards([...dueCards]);
-                  setMode("REVIEW");
+                  setCreateError(null);
+                  setShowCreate(true);
                 }}
-                className="bg-[#7c5cfc] hover:bg-[#6b4ce8] text-white shadow-[0_0_20px_-6px_rgba(124,92,252,0.6)]"
+                className="border-[#ffffff20] text-white hover:bg-[#ffffff10]"
               >
-                Study Now ({dueCards.length})
+                <Plus className="w-4 h-4 mr-2" /> Create Flashcard
               </Button>
-            )}
-            <Button
-              variant="outline"
-              onClick={() => {
-                setCreateError(null);
-                setShowCreate(true);
-              }}
-              className="border-[#ffffff20] text-white hover:bg-[#ffffff10]"
-            >
-              <Plus className="w-4 h-4 mr-2" /> Create Flashcard
-            </Button>
-          </div>
+            </div>
+          }
+        />
+        <div className="workspace-summary">
+          <span>
+            <strong>{dueCards.length}</strong>ready to review
+          </span>
+          <span>
+            <strong>{cards.length}</strong>cards in your library
+          </span>
+          <span>A little practice goes a long way.</span>
         </div>
 
         {cards.length > 0 && (
@@ -721,7 +758,7 @@ export default function FlashcardsPage({
                   "px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors",
                   activeClusterFilter === "all"
                     ? "bg-white/10 text-white"
-                    : "text-white/40 hover:text-white/80 hover:bg-white/5",
+                    : "text-muted-foreground hover:text-white/80 hover:bg-white/5",
                 )}
               >
                 All
@@ -733,7 +770,7 @@ export default function FlashcardsPage({
                   "px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors",
                   activeClusterFilter === "general"
                     ? "bg-white/10 text-white"
-                    : "text-white/40 hover:text-white/80 hover:bg-white/5",
+                    : "text-muted-foreground hover:text-white/80 hover:bg-white/5",
                 )}
               >
                 General
@@ -747,7 +784,7 @@ export default function FlashcardsPage({
                     "px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors inline-flex items-center gap-1.5",
                     activeClusterFilter === cluster.id
                       ? "bg-white/10 text-white"
-                      : "text-white/40 hover:text-white/80 hover:bg-white/5",
+                      : "text-muted-foreground hover:text-white/80 hover:bg-white/5",
                   )}
                 >
                   <span
@@ -769,8 +806,8 @@ export default function FlashcardsPage({
                     className={cn(
                       "px-3 py-1.5 rounded-full text-xs font-medium capitalize transition-colors",
                       difficultyFilter === d
-                        ? "bg-[#7c5cfc]/20 text-[#7c5cfc] ring-1 ring-[#7c5cfc]/40"
-                        : "text-white/40 hover:bg-white/5",
+                        ? "bg-primary/20 text-primary ring-1 ring-primary/40"
+                        : "text-muted-foreground hover:bg-white/5",
                     )}
                   >
                     {d}
@@ -781,7 +818,7 @@ export default function FlashcardsPage({
           </div>
         )}
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-3 gap-4">
           {visibleCards.map((c) => (
             <FlashcardGridItem
               key={c.id}
@@ -798,21 +835,25 @@ export default function FlashcardsPage({
             />
           ))}
           {visibleCards.length === 0 && cards.length > 0 && (
-            <div className="col-span-full py-12 text-center text-white/40">
+            <div className="col-span-full py-12 text-center text-muted-foreground">
               No cards match your filters.
             </div>
           )}
           {cards.length === 0 && (
             <div className="col-span-full flex flex-col items-center justify-center py-20 px-6 text-center">
-              <div className="inline-flex h-12 w-12 rounded-xl bg-[#7c5cfc]/10 border border-[#7c5cfc]/25 items-center justify-center mb-4">
-                <Layers className="h-5 w-5 text-[#7c5cfc]" />
+              <div className="inline-flex h-12 w-12 rounded-xl bg-primary/10 border border-primary/25 items-center justify-center mb-4">
+                <Layers className="h-5 w-5 text-primary" />
               </div>
               <p className="text-base font-medium text-white/85">
-                No flashcards yet
+                Turn an idea into a question
               </p>
-              <p className="text-sm text-white/40 mt-1 max-w-xs">
-                Create your first card to start mastering your material.
+              <p className="text-sm text-muted-foreground mt-1 max-w-xs">
+                Put a question on the front and the answer in your own words on
+                the back. Try recalling the answer before revealing it.
               </p>
+              <Button className="mt-5" onClick={() => setShowCreate(true)}>
+                Create your first flashcard
+              </Button>
             </div>
           )}
         </div>

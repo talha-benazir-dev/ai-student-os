@@ -1,5 +1,6 @@
 "use client";
 
+import { WorkspacePageHeader } from "@/features/dashboard/components/workspace-page";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { logout } from "@/features/auth/actions/auth";
@@ -8,7 +9,10 @@ import {
   updateSettings,
 } from "@/features/settings/actions/settings.actions";
 import type { UserSettings } from "@/features/settings/types";
-import type { DashboardStudyPeriod, WeekStartsOn } from "@/features/analytics/types/period";
+import type {
+  DashboardStudyPeriod,
+  WeekStartsOn,
+} from "@/features/analytics/types/period";
 import {
   PERIOD_LABELS,
   WEEK_STARTS_ON_OPTIONS,
@@ -77,7 +81,7 @@ export default function SettingsPage() {
           setStudyHoursPeriod(result.data.study_hours_period);
           setWeekStartsOn(result.data.week_starts_on);
         }
-      } catch (err) {
+      } catch {
         setError("Failed to load settings");
       } finally {
         setLoading(false);
@@ -97,7 +101,7 @@ export default function SettingsPage() {
         setSettings(result.data);
         setIsEditDialogOpen(false);
       }
-    } catch (err) {
+    } catch {
       setError("Failed to update settings");
     } finally {
       setIsSaving(false);
@@ -142,7 +146,7 @@ export default function SettingsPage() {
 
   if (loading) {
     return (
-      <div className="px-4 sm:px-6 lg:px-10 xl:px-12 py-6 sm:py-10 mx-auto w-full max-w-[900px]">
+      <div className="workspace-page max-w-[900px]">
         <h1 className="text-2xl sm:text-[28px] font-semibold tracking-tight">
           Settings
         </h1>
@@ -156,7 +160,7 @@ export default function SettingsPage() {
 
   if (error) {
     return (
-      <div className="px-4 sm:px-6 lg:px-10 xl:px-12 py-6 sm:py-10 mx-auto w-full max-w-[900px]">
+      <div className="workspace-page max-w-[900px]">
         <h1 className="text-2xl sm:text-[28px] font-semibold tracking-tight">
           Settings
         </h1>
@@ -169,16 +173,15 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="px-4 sm:px-6 lg:px-10 xl:px-12 py-6 sm:py-10 mx-auto w-full max-w-[900px]">
-      <h1 className="text-2xl sm:text-[28px] font-semibold tracking-tight">
-        Settings
-      </h1>
-      <p className="text-sm text-muted-foreground mt-1 mb-8">
-        Profile, plan, and preferences.
-      </p>
+    <div className="workspace-page max-w-[900px]">
+      <WorkspacePageHeader
+        icon="settings"
+        title="Settings"
+        description="Your profile and the small choices that make this space yours."
+      />
 
       <div className="space-y-6">
-        <div className="rounded-2xl border border-border bg-card p-6 space-y-4">
+        <div className="rounded-lg border border-border bg-transparent p-6 space-y-4">
           <div className="flex items-center justify-between w-full">
             <div className="flex-1">
               <Row label="Name" value={settings?.name || ""} />
@@ -231,7 +234,7 @@ export default function SettingsPage() {
           <Row label="Theme" value={settings?.theme || ""} />
         </div>
 
-        <div className="rounded-2xl border border-border bg-card p-6 space-y-4">
+        <div className="rounded-lg border border-border bg-transparent p-6 space-y-4">
           <div>
             <h3 className="text-sm font-medium">Analytics</h3>
             <p className="text-xs text-muted-foreground mt-0.5">
@@ -240,7 +243,9 @@ export default function SettingsPage() {
             </p>
           </div>
           <div className="space-y-2">
-            <p className="text-xs text-muted-foreground">Study hours on dashboard</p>
+            <p className="text-xs text-muted-foreground">
+              Study hours on dashboard
+            </p>
             <div className="flex flex-wrap gap-1.5">
               {(["today", "week", "month"] as DashboardStudyPeriod[]).map(
                 (period) => (
@@ -287,9 +292,7 @@ export default function SettingsPage() {
 
         <div className="rounded-2xl border border-destructive/20 bg-destructive/5 p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h3 className="text-sm font-medium text-destructive-foreground">
-              Sign Out
-            </h3>
+            <h3 className="text-sm font-medium text-destructive">Sign Out</h3>
             <p className="text-xs text-muted-foreground mt-0.5">
               Log out of your Nucleus account on this device.
             </p>

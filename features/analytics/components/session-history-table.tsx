@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { ChevronLeft, ChevronRight, Clock } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -35,12 +35,6 @@ export function SessionHistoryTable({
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(initialHasMore);
   const [pending, startTransition] = useTransition();
-
-  useEffect(() => {
-    setRows(initialRows);
-    setHasMore(initialHasMore);
-    setPage(0);
-  }, [period, initialRows, initialHasMore]);
 
   function goToPage(nextPage: number) {
     if (nextPage < 0) return;

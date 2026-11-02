@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getUser } from "@/lib/supabase/server";
 import { isProPlan } from "@/lib/ai/plan";
 
 export type { UserPlan } from "@/lib/ai/plan";
@@ -11,7 +11,7 @@ export async function requirePro(): Promise<
   const {
     data: { user },
     error: authError,
-  } = await supabase.auth.getUser();
+  } = await getUser();
 
   if (authError || !user) {
     return {
@@ -46,7 +46,7 @@ export async function requireProAction(): Promise<
   const supabase = await createClient();
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await getUser();
 
   if (!user) {
     return { error: "You must be signed in." };

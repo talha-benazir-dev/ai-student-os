@@ -26,10 +26,10 @@ const STAGE_OPTIONS: {
 ];
 
 const INPUT_CLASS =
-  "w-full rounded-xl border border-[#ffffff15] bg-transparent px-4 py-3 text-lg text-white placeholder:text-white/35 outline-none transition-colors duration-200 focus:border-[#7c5cfc]";
+  "w-full rounded-xl border border-[#ffffff15] bg-transparent px-4 py-3 text-lg text-white placeholder:text-muted-foreground outline-none transition-colors duration-200 focus:border-primary";
 
 const PRIMARY_BUTTON_CLASS =
-  "ml-auto inline-flex items-center justify-center gap-2 rounded-lg bg-[#7c5cfc] px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#8a6dfd] disabled:cursor-not-allowed disabled:opacity-50";
+  "ml-auto inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-6 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary disabled:cursor-not-allowed disabled:opacity-50";
 
 function normalizeSubject(raw: string): string {
   const trimmed = raw.trim().replace(/,+$/, "").trim();
@@ -55,14 +55,9 @@ export function OnboardingFlow({ prefillName }: OnboardingFlowProps) {
   const [subjectInput, setSubjectInput] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [isExiting, setIsExiting] = useState(false);
 
   const goToStep = useCallback((next: number) => {
-    setIsExiting(true);
-    window.setTimeout(() => {
-      setStep(next);
-      setIsExiting(false);
-    }, 200);
+    setStep(next);
   }, []);
 
   useEffect(() => {
@@ -81,7 +76,7 @@ export function OnboardingFlow({ prefillName }: OnboardingFlowProps) {
 
   const handleStageSelect = (stage: StudyStage) => {
     setStudyStage(stage);
-    window.setTimeout(() => goToStep(4), 300);
+    goToStep(4);
   };
 
   const addSubject = (raw: string) => {
@@ -139,10 +134,10 @@ export function OnboardingFlow({ prefillName }: OnboardingFlowProps) {
       ? "Add your research areas or modules. Press Enter or comma to add."
       : studyStage === "self_learning"
         ? "Add topics you're exploring. Press Enter or comma to add."
-        : "Add up to 6 subjects. Press Enter or comma to add.";
+        : "Start with just one subject. We’ll create a cluster for its notes, tasks, and flashcards. You can add more later.";
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#0a0a0f] text-white">
+    <div className="flex min-h-screen flex-col bg-background text-white">
       <header className="flex flex-col gap-6 px-6 pt-8 sm:px-10">
         <h1 className="text-xl font-bold tracking-tight text-white">
           Nucleus
@@ -155,7 +150,7 @@ export function OnboardingFlow({ prefillName }: OnboardingFlowProps) {
             >
               <div
                 className={cn(
-                  "h-full rounded-full bg-[#7c5cfc] transition-all duration-300 ease-out",
+                  "h-full rounded-full bg-primary transition-all duration-300 ease-out",
                   segment <= step ? "w-full" : "w-0",
                 )}
               />
@@ -167,19 +162,17 @@ export function OnboardingFlow({ prefillName }: OnboardingFlowProps) {
       <main className="flex flex-1 flex-col items-center justify-center px-4 pb-10">
         <div
           className={cn(
-            "w-full max-w-lg rounded-2xl border border-[#ffffff10] bg-[#0f0f17] p-8 transition-all duration-200 ease-out",
-            isExiting
-              ? "translate-y-1 opacity-0"
-              : "translate-y-0 opacity-100",
+            "w-full max-w-lg rounded-2xl border border-[#ffffff10] bg-card p-8 transition-all duration-200 ease-out",
+
           )}
         >
-          <p className="mb-2 text-xs text-white/45">Step {step} of 4</p>
+          <p className="mb-2 text-xs text-muted-foreground">Step {step} of 4</p>
 
           {step === 1 && (
             <div className="space-y-6">
               <StepHeader
                 heading="What should we call you?"
-                subtext="This is how Nucleus will greet you."
+                subtext="We’ll help you create a cluster for one subject, then show you where to begin."
               />
               <input
                 ref={nameInputRef}
@@ -221,7 +214,7 @@ export function OnboardingFlow({ prefillName }: OnboardingFlowProps) {
             <div className="space-y-6">
               <StepHeader
                 heading="Where are you in your journey?"
-                subtext="This helps Nucleus personalize your experience."
+                subtext="Choose the option that best describes your studies. You can change it later."
               />
               <div className="grid grid-cols-2 gap-3">
                 {STAGE_OPTIONS.map(({ value, label, icon: Icon }) => {
@@ -234,14 +227,14 @@ export function OnboardingFlow({ prefillName }: OnboardingFlowProps) {
                       className={cn(
                         "flex flex-col items-center gap-3 rounded-xl border px-4 py-5 text-center transition-all duration-200",
                         isSelected
-                          ? "border-[#7c5cfc] bg-[#7c5cfc1a]"
+                          ? "border-primary bg-primary/10"
                           : "border-[#ffffff15] bg-transparent hover:border-[#ffffff25]",
                       )}
                     >
                       <Icon
                         className={cn(
                           "h-6 w-6",
-                          isSelected ? "text-[#7c5cfc]" : "text-white/60",
+                          isSelected ? "text-primary" : "text-muted-foreground",
                         )}
                         aria-hidden
                       />
@@ -270,13 +263,13 @@ export function OnboardingFlow({ prefillName }: OnboardingFlowProps) {
                 {subjects.map((subject) => (
                   <span
                     key={subject}
-                    className="inline-flex items-center gap-1.5 rounded-full border border-[#7c5cfc40] bg-[#7c5cfc1a] px-3 py-1 text-sm text-white"
+                    className="inline-flex items-center gap-1.5 rounded-full border border-primary/25 bg-primary/10 px-3 py-1 text-sm text-white"
                   >
                     {subject}
                     <button
                       type="button"
                       onClick={() => removeSubject(subject)}
-                      className="text-white/45 transition-colors hover:text-white/80"
+                      className="text-muted-foreground transition-colors hover:text-white/80"
                       aria-label={`Remove ${subject}`}
                     >
                       ×
@@ -311,7 +304,7 @@ export function OnboardingFlow({ prefillName }: OnboardingFlowProps) {
                       key={suggestion}
                       type="button"
                       onClick={() => addSubject(suggestion)}
-                      className="rounded-full border border-[#ffffff15] px-3 py-1 text-xs text-white/60 transition-colors hover:border-[#7c5cfc40] hover:text-white"
+                      className="rounded-full border border-[#ffffff15] px-3 py-1 text-xs text-muted-foreground transition-colors hover:border-primary/25 hover:text-white"
                     >
                       {suggestion}
                     </button>
@@ -328,7 +321,7 @@ export function OnboardingFlow({ prefillName }: OnboardingFlowProps) {
                   type="button"
                   onClick={() => goToStep(step - 1)}
                   disabled={isSubmitting}
-                  className="rounded-lg px-4 py-2 text-sm text-white/60 transition-colors hover:bg-white/5 hover:text-white disabled:opacity-50"
+                  className="rounded-lg px-4 py-2 text-sm text-muted-foreground transition-colors hover:bg-white/5 hover:text-white disabled:opacity-50"
                 >
                   Back
                 </button>
@@ -401,7 +394,7 @@ function StepHeader({
       <h2 className="text-2xl font-semibold tracking-tight text-white">
         {heading}
       </h2>
-      <p className="mt-2 text-sm text-white/50">{subtext}</p>
+      <p className="mt-2 text-sm text-muted-foreground">{subtext}</p>
     </div>
   );
 }

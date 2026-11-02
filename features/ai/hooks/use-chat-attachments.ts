@@ -28,7 +28,10 @@ export function useChatAttachments() {
   const [pending, setPending] = useState<PendingAttachment[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const pendingRef = useRef(pending);
-  pendingRef.current = pending;
+
+  useEffect(() => {
+    pendingRef.current = pending;
+  }, [pending]);
 
   useEffect(() => {
     return () => {

@@ -46,7 +46,7 @@ const readmeComponents: Components = {
   a: ({ children, href }) => (
     <a
       href={href}
-      className="text-[#7c5cfc] hover:underline"
+      className="text-primary hover:underline"
       target="_blank"
       rel="noopener noreferrer"
     >
@@ -61,7 +61,7 @@ const readmeComponents: Components = {
   ),
   li: ({ children }) => <li className="leading-relaxed">{children}</li>,
   blockquote: ({ children }) => (
-    <blockquote className="my-3 border-l-2 border-[#7c5cfc40] pl-4 text-zinc-400">
+    <blockquote className="my-3 border-l-2 border-primary/25 pl-4 text-zinc-400">
       {children}
     </blockquote>
   ),

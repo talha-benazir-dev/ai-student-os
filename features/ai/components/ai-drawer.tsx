@@ -1,13 +1,28 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { X, Sparkles } from "lucide-react";
-import { useAIDrawer, type DrawerContext } from "@/providers/ai-drawer-provider";
+import dynamic from "next/dynamic";
+import { Sparkles } from "lucide-react";
+import {
+  useAIDrawer,
+  type DrawerContext,
+} from "@/providers/ai-drawer-provider";
 import { useClusters } from "@/providers/clusters-provider";
-import { DrawerChat } from "@/features/ai/components/drawer-chat";
 import { createClient } from "@/lib/supabase/client";
 import type { Profile } from "@/features/ai/types";
-import { cn } from "@/lib/utils";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
+
+const DrawerChat = dynamic(
+  () => import("./drawer-chat").then((module) => module.DrawerChat),
+  {
+    ssr: false,
+    loading: () => (
+      <p role="status" className="p-6 text-sm text-muted-foreground">
+        Opening study assistant…
+      </p>
+    ),
+  },
+);
 
 function getDrawerTitle(context: DrawerContext): string {
   switch (context.type) {
@@ -38,14 +53,25 @@ export function AIDrawer() {
   const [profileLoaded, setProfileLoaded] = useState(false);
 
   useEffect(() => {
+    if (!isOpen || profileLoaded) return;
+    let cancelled = false;
     async function fetchProfile() {
       const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (cancelled) return;
+      if (!user) {
+        setProfileLoaded(true);
+        return;
+      }
       const { data } = await supabase
         .from("profiles")
         .select("name, study_stage, subjects, country")
-        .limit(1)
+        .eq("id", user.id)
         .maybeSingle();
 
+      if (cancelled) return;
       if (data) {
         setProfile({
           name: data.name ?? "",
@@ -58,8 +84,13 @@ export function AIDrawer() {
       setProfileLoaded(true);
     }
 
-    void fetchProfile();
-  }, []);
+    void fetchProfile().catch(() => {
+      if (!cancelled) setProfileLoaded(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, profileLoaded]);
 
   const clusterOptions = clusters.map((c) => ({
     id: c.id,
@@ -68,40 +99,39 @@ export function AIDrawer() {
   }));
 
   return (
-    <>
-      {isOpen ? (
-        <div
-          className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
-          onClick={closeDrawer}
-          aria-hidden="true"
-        />
-      ) : null}
-
-      <div
-        className={cn(
-          "fixed bottom-0 right-0 top-0 z-50 flex w-full flex-col border-l border-[#ffffff10] bg-[#0a0a0f] shadow-2xl transition-transform duration-300 ease-in-out md:w-[480px]",
-          isOpen ? "translate-x-0" : "translate-x-full",
-        )}
+    <Sheet
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) closeDrawer();
+      }}
+    >
+      <SheetContent
+        side="right"
+        aria-describedby={undefined}
+        className="flex w-full flex-col gap-0 border-l border-border bg-background p-0 sm:max-w-[480px]"
       >
-        <div className="flex shrink-0 items-center justify-between border-b border-[#ffffff08] p-4">
-          <div className="flex min-w-0 items-center gap-2">
-            <Sparkles className="h-[18px] w-[18px] shrink-0 text-violet-400" />
-            <h2 className="truncate text-sm font-medium text-white">
-              {context ? getDrawerTitle(context) : "Nucleus AI"}
-            </h2>
-          </div>
-          <button
-            type="button"
-            onClick={closeDrawer}
-            className="rounded-lg p-2 hover:bg-[#ffffff08]"
-            aria-label="Close drawer"
-          >
-            <X className="h-4 w-4 text-white" />
-          </button>
-        </div>
-
-        <div className="flex-1 overflow-hidden">
-          {isOpen && context && profileLoaded ? (
+        <header className="flex h-14 shrink-0 items-center gap-2 border-b border-border pl-4 pr-12">
+          <Sparkles className="size-4 shrink-0 text-primary" />
+          <SheetTitle className="truncate text-sm font-medium">
+            {context ? getDrawerTitle(context) : "Study assistant"}
+          </SheetTitle>
+        </header>
+        <div className="min-h-0 flex-1 overflow-hidden">
+          {!profileLoaded ? (
+            <p role="status" className="p-6 text-sm text-muted-foreground">
+              Opening study assistant…
+            </p>
+          ) : !profile ? (
+            <div className="p-6 text-sm text-muted-foreground">
+              <p>Your study profile couldn’t load.</p>
+              <button
+                onClick={() => setProfileLoaded(false)}
+                className="mt-3 text-primary underline"
+              >
+                Try again
+              </button>
+            </div>
+          ) : isOpen && context ? (
             <DrawerChat
               key={getDrawerChatKey(context)}
               context={context}
@@ -110,7 +140,7 @@ export function AIDrawer() {
             />
           ) : null}
         </div>
-      </div>
-    </>
+      </SheetContent>
+    </Sheet>
   );
 }

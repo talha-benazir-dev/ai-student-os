@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getUser } from "@/lib/supabase/server";
 
 type ActionResult<T> = {
   data: T | null;
@@ -12,7 +12,7 @@ export async function startSession(
   clusterId?: string | null
 ): Promise<ActionResult<{ id: string; started_at: string }>> {
   const supabase = await createClient();
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  const { data: { user }, error: authError } = await getUser();
   if (authError || !user) return { data: null, error: "Not authenticated." };
 
   const { data: active } = await supabase
@@ -46,7 +46,7 @@ export async function getActiveSession(): Promise<
   ActionResult<{ id: string; started_at: string; cluster_id: string | null }>
 > {
   const supabase = await createClient();
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  const { data: { user }, error: authError } = await getUser();
   if (authError || !user) return { data: null, error: "Not authenticated." };
 
   const { data, error } = await supabase
@@ -66,7 +66,7 @@ export async function endSession(
   sessionId: string
 ): Promise<ActionResult<{ id: string; duration_minutes: number }>> {
   const supabase = await createClient();
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  const { data: { user }, error: authError } = await getUser();
   if (authError || !user) return { data: null, error: "Not authenticated." };
 
   const { data: session, error: fetchError } = await supabase
@@ -179,7 +179,7 @@ export async function getStreakData(): Promise<
   ActionResult<{ current_streak: number; longest_streak: number }>
 > {
   const supabase = await createClient();
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  const { data: { user }, error: authError } = await getUser();
   if (authError || !user) return { data: null, error: "Not authenticated." };
 
   const { data, error } = await supabase
@@ -194,7 +194,7 @@ export async function getStreakData(): Promise<
 
 export async function getWeeklyStudyMinutes(): Promise<ActionResult<number>> {
   const supabase = await createClient();
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  const { data: { user }, error: authError } = await getUser();
   if (authError || !user) return { data: null, error: "Not authenticated." };
 
   const weekAgo = new Date();
@@ -216,7 +216,7 @@ export async function getClusterStudyMinutes(
   clusterId: string
 ): Promise<ActionResult<number>> {
   const supabase = await createClient();
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  const { data: { user }, error: authError } = await getUser();
   if (authError || !user) return { data: null, error: "Not authenticated." };
 
   const { data, error } = await supabase
@@ -235,7 +235,7 @@ export async function getClusterStudyMinutesMap(): Promise<
   ActionResult<Record<string, number>>
 > {
   const supabase = await createClient();
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  const { data: { user }, error: authError } = await getUser();
   if (authError || !user) return { data: null, error: "Not authenticated." };
 
   const { data, error } = await supabase

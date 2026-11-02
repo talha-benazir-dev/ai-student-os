@@ -1,44 +1,23 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useMemo } from "react";
+import { useStoredPreference } from "@/hooks/use-stored-preference";
 
 export const NOTES_COLLAPSED_SECTIONS_KEY = "nucleus_notes_collapsed_sections";
 
 export function useCollapsedNoteSections() {
-  const [collapsedIds, setCollapsedIds] = useState<Set<string>>(
-    () => new Set(),
-  );
-
-  useEffect(() => {
+  const [stored, setStored] = useStoredPreference(NOTES_COLLAPSED_SECTIONS_KEY, "[]");
+  const collapsedIds = useMemo(() => {
     try {
-      const saved = localStorage.getItem(NOTES_COLLAPSED_SECTIONS_KEY);
-      if (!saved) return;
-      const parsed = JSON.parse(saved) as unknown;
-      if (Array.isArray(parsed)) {
-        setCollapsedIds(
-          new Set(parsed.filter((id): id is string => typeof id === "string")),
-        );
-      }
-    } catch {
-      // ignore invalid storage
-    }
-  }, []);
-
+      const parsed: unknown = JSON.parse(stored);
+      return new Set<string>(Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === "string") : []);
+    } catch { return new Set<string>(); }
+  }, [stored]);
   const toggleSectionCollapsed = useCallback((sectionId: string) => {
-    setCollapsedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(sectionId)) {
-        next.delete(sectionId);
-      } else {
-        next.add(sectionId);
-      }
-      localStorage.setItem(
-        NOTES_COLLAPSED_SECTIONS_KEY,
-        JSON.stringify([...next]),
-      );
-      return next;
-    });
-  }, []);
-
+    const next = new Set(collapsedIds);
+    if (next.has(sectionId)) next.delete(sectionId);
+    else next.add(sectionId);
+    setStored(JSON.stringify([...next]));
+  }, [collapsedIds, setStored]);
   return { collapsedIds, toggleSectionCollapsed };
 }

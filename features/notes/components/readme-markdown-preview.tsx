@@ -15,7 +15,7 @@ export function ReadmeMarkdownPreview({
 }: ReadmeMarkdownPreviewProps) {
   return (
     <ScrollArea
-      className={cn("h-full bg-[#0f0f17] @container/readme", className)}
+      className={cn("h-full bg-card @container/readme", className)}
     >
       <div
         className={cn(

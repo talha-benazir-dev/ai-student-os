@@ -11,9 +11,9 @@ export const metadata: Metadata = {
 export default async function Page({
   searchParams,
 }: {
-  searchParams: Promise<{ new?: string }>;
+  searchParams: Promise<{ new?: string; review?: string }>;
 }) {
-  const { new: newParam } = await searchParams;
+  const { new: newParam, review } = await searchParams;
   const [cardsResult, clustersResult] = await Promise.all([
     getFlashcards(),
     getClusters(),
@@ -24,6 +24,7 @@ export default async function Page({
       initialCards={cardsResult.data ?? []}
       initialClusters={clustersResult.data ?? []}
       autoOpenCreate={newParam === "card"}
+      autoStartReview={review === "due"}
     />
   );
 }

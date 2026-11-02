@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getUser } from "@/lib/supabase/server";
 import type {
   CreateTaskInput,
   Task,
@@ -18,7 +18,7 @@ export async function getTasks(): Promise<ActionResult<Task[]>> {
   const {
     data: { user },
     error: authError,
-  } = await supabase.auth.getUser();
+  } = await getUser();
 
   if (authError || !user) {
     return { data: null, error: "You must be signed in to view tasks." };
@@ -43,7 +43,7 @@ export async function createTask(
   const {
     data: { user },
     error: authError,
-  } = await supabase.auth.getUser();
+  } = await getUser();
 
   if (authError || !user) {
     return { data: null, error: "You must be signed in to create tasks." };
@@ -80,7 +80,7 @@ export async function updateTask(
   const {
     data: { user },
     error: authError,
-  } = await supabase.auth.getUser();
+  } = await getUser();
 
   if (authError || !user) {
     return { data: null, error: "You must be signed in to update tasks." };
@@ -122,7 +122,7 @@ export async function toggleTask(
   const {
     data: { user },
     error: authError,
-  } = await supabase.auth.getUser();
+  } = await getUser();
 
   if (authError || !user) {
     return { data: null, error: "You must be signed in to update tasks." };
@@ -153,7 +153,7 @@ export async function deleteTask(
   const {
     data: { user },
     error: authError,
-  } = await supabase.auth.getUser();
+  } = await getUser();
 
   if (authError || !user) {
     return { data: null, error: "You must be signed in to delete tasks." };

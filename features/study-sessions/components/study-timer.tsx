@@ -156,13 +156,13 @@ export function StudyTimer() {
           className="ml-auto flex items-center gap-1.5 rounded-lg bg-primary/10 border border-primary/20 px-2.5 py-1 text-xs text-primary hover:bg-primary/20 transition-colors disabled:opacity-50"
         >
           <Play className="h-3 w-3" />
-          Start
+          {isHydrating ? "Loading…" : isLoading ? "Starting…" : "Start"}
         </button>
       ) : (
         <button
           onClick={handleStop}
           disabled={isLoading}
-          className="ml-auto flex items-center gap-1.5 rounded-lg bg-red-500/10 border border-red-500/20 px-2.5 py-1 text-xs text-red-400 hover:bg-red-500/20 transition-colors disabled:opacity-50 animate-pulse"
+          className="ml-auto flex items-center gap-1.5 rounded-lg bg-red-500/10 border border-red-500/20 px-2.5 py-1 text-xs text-red-400 hover:bg-red-500/20 transition-colors disabled:opacity-50"
         >
           <Square className="h-3 w-3" />
           Stop

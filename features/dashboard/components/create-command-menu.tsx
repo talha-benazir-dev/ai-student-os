@@ -46,8 +46,8 @@ type CreateAction = {
 const CREATE_ACTIONS: CreateAction[] = [
   {
     id: "task",
-    label: "New Task",
-    description: "Add a study mission",
+    label: "New task",
+    description: "Choose one thing to work on",
     icon: CheckSquare,
     shortcut: "T",
     keywords: ["task", "todo", "mission"],
@@ -55,8 +55,8 @@ const CREATE_ACTIONS: CreateAction[] = [
   },
   {
     id: "note",
-    label: "New Note",
-    description: "Text, markdown, or canvas",
+    label: "New note",
+    description: "Capture or explain an idea",
     icon: FileText,
     shortcut: "N",
     keywords: ["note", "write", "readme", "canvas"],
@@ -64,7 +64,7 @@ const CREATE_ACTIONS: CreateAction[] = [
   },
   {
     id: "flashcard",
-    label: "New Flashcard",
+    label: "New flashcard",
     description: "Spaced repetition card",
     icon: Sparkles,
     shortcut: "F",
@@ -73,11 +73,11 @@ const CREATE_ACTIONS: CreateAction[] = [
   },
   {
     id: "cluster",
-    label: "New Cluster",
-    description: "Group tasks, notes, and cards",
+    label: "New cluster",
+    description: "Keep one cluster’s material together",
     icon: Layers,
     shortcut: "C",
-    keywords: ["cluster", "group", "folder", "subject"],
+    keywords: ["cluster", "group", "folder", "cluster"],
     action: "cluster",
   },
 ];
@@ -235,7 +235,7 @@ export function DashboardCreateMenu({ className }: { className?: string }) {
       type="button"
       onClick={openCommand}
       className={cn(
-        "h-9 px-3 rounded-lg bg-gradient-violet text-white text-sm font-medium gap-1.5 shadow-[0_0_20px_-4px_oklch(0.66_0.21_295/0.6)] hover:scale-[1.02] transition hover:bg-gradient-violet",
+        "h-9 px-3 rounded-lg bg-primary text-primary-foreground text-sm font-medium gap-1.5 transition-colors hover:bg-primary/90",
         className,
       )}
     >
@@ -275,5 +275,23 @@ export function DashboardCommandSearch() {
         </div>
       </button>
     </div>
+  );
+}
+
+export function WorkspaceQuickCreate({ onOpen }: { onOpen?: () => void }) {
+  const { openCommand } = useCommandPalette();
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        onOpen?.();
+        openCommand();
+      }}
+      className="workspace-quick-create"
+    >
+      <Plus className="size-3.5" />
+      <span>Create something</span>
+      <kbd>⌘ K</kbd>
+    </button>
   );
 }

@@ -4,8 +4,8 @@ import {
   createContext,
   useContext,
   useState,
-  useEffect,
   useCallback,
+  useMemo,
   ReactNode,
 } from "react";
 import { getClusters } from "@/features/clusters/actions/clusters.actions";
@@ -21,17 +21,13 @@ type ClustersContextValue = {
 
 const ClustersContext = createContext<ClustersContextValue | null>(null);
 
-export function ClustersProvider({ children }: { children: ReactNode }) {
-  const [clusters, setClusters] = useState<Cluster[]>([]);
+export function ClustersProvider({ children, initialClusters }: { children: ReactNode; initialClusters: Cluster[] }) {
+  const [clusters, setClusters] = useState<Cluster[]>(initialClusters);
 
   const fetchClusters = useCallback(async () => {
     const result = await getClusters();
     if (result.data) setClusters(result.data);
   }, []);
-
-  useEffect(() => {
-    fetchClusters();
-  }, [fetchClusters]);
 
   const addCluster = useCallback((cluster: Cluster) => {
     setClusters((prev) => [...prev, cluster]);
@@ -45,10 +41,10 @@ export function ClustersProvider({ children }: { children: ReactNode }) {
     setClusters((prev) => prev.filter((c) => c.id !== id));
   }, []);
 
+  const value = useMemo(() => ({ clusters, addCluster, updateCluster, removeCluster, refresh: fetchClusters }), [clusters, addCluster, updateCluster, removeCluster, fetchClusters]);
+
   return (
-    <ClustersContext.Provider
-      value={{ clusters, addCluster, updateCluster, removeCluster, refresh: fetchClusters }}
-    >
+    <ClustersContext.Provider value={value}>
       {children}
     </ClustersContext.Provider>
   );

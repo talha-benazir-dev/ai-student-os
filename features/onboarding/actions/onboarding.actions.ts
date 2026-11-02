@@ -1,6 +1,6 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getUser } from "@/lib/supabase/server";
 import { runOnboardingSetup } from "@/features/onboarding/lib/run-onboarding-setup";
 import type { OnboardingData, Profile } from "@/features/onboarding/types";
 
@@ -50,7 +50,7 @@ export async function getProfile(): Promise<ActionResult<Profile>> {
   const {
     data: { user },
     error: authError,
-  } = await supabase.auth.getUser();
+  } = await getUser();
 
   if (authError || !user) {
     return { data: null, error: "You must be signed in." };
@@ -80,7 +80,7 @@ export async function completeOnboarding(
   const {
     data: { user },
     error: authError,
-  } = await supabase.auth.getUser();
+  } = await getUser();
 
   if (authError || !user) {
     return { data: null, error: "You must be signed in." };

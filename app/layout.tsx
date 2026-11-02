@@ -15,15 +15,15 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "Nucleus — Your AI Study OS",
+    default: "Nucleus — A place to learn",
     template: "%s",
   },
   description:
     "Nucleus is a calm, intelligent operating system for students. Notes, tasks, flashcards, PDFs and an AI assistant — in one workspace.",
   authors: [{ name: "Nucleus" }],
   openGraph: {
-    title: "Nucleus — Your AI Study OS",
-    description: "A premium AI-native study workspace.",
+    title: "Nucleus — A place to learn",
+    description: "Notes, tasks, and a clear next step for your studies.",
     type: "website",
   },
   twitter: {

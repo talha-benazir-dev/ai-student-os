@@ -19,7 +19,6 @@ import {
   chatComposerRowClass,
 } from "@/features/ai/lib/chat-composer-styles";
 import { parseAiApiError, UPGRADE_TOAST } from "@/lib/ai/constants";
-import { cn } from "@/lib/utils";
 
 type StreamEvent =
   | { type: "text"; value: string }
@@ -117,8 +116,19 @@ function StreamingDots() {
   );
 }
 
+function initialMessages(context: DrawerChatProps["context"]): Message[] {
+  const introduction = context.type === "document"
+    ? `Let’s make a study pack for **${context.documentTitle}**. First, a few questions to make it useful to you.`
+    : context.type === "cluster"
+      ? `Let’s plan a manageable study session for **${context.clusterNames.join(", ")}**.`
+      : "What are you working on? Ask a question, work through a concept, or plan a small study session.";
+  const messages: Message[] = [{ id: nanoid(), role: "assistant", content: introduction, createdAt: new Date() }];
+  if (context.type !== "manual") messages.push({ id: nanoid(), role: "assistant", content: "", questions: context.type === "document" ? DOCUMENT_QUESTIONS : CLUSTER_QUESTIONS, createdAt: new Date() });
+  return messages;
+}
+
 export function DrawerChat({ context, clusters, profile }: DrawerChatProps) {
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<Message[]>(() => initialMessages(context));
   const [isLoading, setIsLoading] = useState(false);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [inputValue, setInputValue] = useState("");
@@ -137,58 +147,15 @@ export function DrawerChat({ context, clusters, profile }: DrawerChatProps) {
 
   const messagesRef = useRef(messages);
   const bottomRef = useRef<HTMLDivElement>(null);
-  const startedRef = useRef(false);
   const hasExecuted = useRef(false);
 
-  messagesRef.current = messages;
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
-
-  const addMessage = useCallback((message: Message) => {
-    setMessages((prev) => [...prev, message]);
-  }, []);
-
-  const startDocumentFlow = useCallback(() => {
-    if (context.type !== "document") return;
-
-    addMessage({
-      id: nanoid(),
-      role: "assistant",
-      content: `I'll create a full study pack from **${context.documentTitle}**. Let me ask you a few quick questions first.`,
-      createdAt: new Date(),
-    });
-
-    addMessage({
-      id: nanoid(),
-      role: "assistant",
-      content: "",
-      toolResults: [],
-      questions: DOCUMENT_QUESTIONS,
-      createdAt: new Date(),
-    });
-  }, [addMessage, context]);
-
-  const startClusterFlow = useCallback(() => {
-    if (context.type !== "cluster") return;
-
-    addMessage({
-      id: nanoid(),
-      role: "assistant",
-      content: `I'll set up a complete study plan for **${context.clusterNames.join(", ")}**. A few quick questions:`,
-      createdAt: new Date(),
-    });
-
-    addMessage({
-      id: nanoid(),
-      role: "assistant",
-      content: "",
-      toolResults: [],
-      questions: CLUSTER_QUESTIONS,
-      createdAt: new Date(),
-    });
-  }, [addMessage, context]);
 
   const readSSEStream = useCallback(
     async (response: Response, assistantMsgId: string) => {
@@ -324,7 +291,7 @@ export function DrawerChat({ context, clusters, profile }: DrawerChatProps) {
   );
 
   const handleAnswer = useCallback(
-    (questionId: string, value: string, _label: string) => {
+    (questionId: string, value: string) => {
       setAnswers((prev) => {
         const next = { ...prev, [questionId]: value };
         const questionMessage = messagesRef.current.find((m) => m.questions?.length);
@@ -430,24 +397,6 @@ export function DrawerChat({ context, clusters, profile }: DrawerChatProps) {
     [isLoading, profile, readSSEStream],
   );
 
-  useEffect(() => {
-    if (startedRef.current) return;
-    startedRef.current = true;
-
-    if (context.type === "document") {
-      startDocumentFlow();
-    } else if (context.type === "cluster") {
-      startClusterFlow();
-    } else {
-      addMessage({
-        id: nanoid(),
-        role: "assistant",
-        content:
-          "What would you like me to help you with? You can ask me to create notes, tasks, flashcards, or set up a full study plan.",
-        createdAt: new Date(),
-      });
-    }
-  }, [addMessage, context.type, startClusterFlow, startDocumentFlow]);
 
   const showInput = context.type === "manual" || flowComplete;
   const canSend =
@@ -475,7 +424,7 @@ export function DrawerChat({ context, clusters, profile }: DrawerChatProps) {
           if (message.role === "user") {
             return (
               <div key={message.id} className="flex justify-end">
-                <div className="max-w-[75%] rounded-2xl border border-[#7c5cfc20] bg-[#7c5cfc1a] px-4 py-3 text-sm text-white">
+                <div className="max-w-[75%] rounded-2xl border border-primary/15 bg-primary/10 px-4 py-3 text-sm text-white">
                   {message.attachments && message.attachments.length > 0 ? (
                     <div className="mb-2">
                       <ChatAttachmentStrip uploaded={message.attachments} />
@@ -497,13 +446,13 @@ export function DrawerChat({ context, clusters, profile }: DrawerChatProps) {
               <div key={message.id} className="flex flex-col">
                 {message.content.trim().length > 0 ? (
                   <div className="flex items-end gap-0.5">
-                    <div className="prose prose-invert prose-sm max-w-none prose-p:text-white/85 prose-headings:text-white prose-strong:text-white prose-code:text-violet-300 prose-code:bg-[#7c5cfc15] prose-code:rounded prose-code:px-1 prose-pre:border prose-pre:border-[#ffffff10] prose-pre:bg-[#0f0f17] prose-ol:text-white/85 prose-ul:text-white/85 prose-li:text-white/85">
+                    <div className="prose prose-invert prose-sm max-w-none prose-p:text-white/85 prose-headings:text-white prose-strong:text-white prose-code:text-primary-soft prose-code:bg-primary/10 prose-code:rounded prose-code:px-1 prose-pre:border prose-pre:border-[#ffffff10] prose-pre:bg-card prose-ol:text-white/85 prose-ul:text-white/85 prose-li:text-white/85">
                       <MarkdownWithMath variant="chat">
                         {message.content}
                       </MarkdownWithMath>
                     </div>
                     {showCursor ? (
-                      <span className="mb-1 inline-block animate-pulse text-violet-400">
+                      <span className="mb-1 inline-block animate-pulse text-primary">
                         ▍
                       </span>
                     ) : null}
@@ -518,8 +467,8 @@ export function DrawerChat({ context, clusters, profile }: DrawerChatProps) {
                     question={question.question}
                     options={question.options}
                     answered={answers[question.id] ?? null}
-                    onAnswer={(value, label) =>
-                      handleAnswer(question.id, value, label)
+                    onAnswer={(value) =>
+                      handleAnswer(question.id, value)
                     }
                   />
                 ))}
@@ -546,7 +495,7 @@ export function DrawerChat({ context, clusters, profile }: DrawerChatProps) {
       {showInput ? (
         <div className="border-t border-[#ffffff10] p-3">
           <div
-            className="flex flex-col gap-2 rounded-2xl border border-[#ffffff10] bg-[#0f0f17] p-3"
+            className="flex flex-col gap-2 rounded-2xl border border-[#ffffff10] bg-card p-3"
             onDragOver={(event) => event.preventDefault()}
             onDrop={(event) => {
               event.preventDefault();

@@ -15,6 +15,6 @@ export const CHAT_COMPOSER_ATTACH_BUTTON_CLASS = cn(
 );
 
 export const CHAT_COMPOSER_SEND_BUTTON_CLASS = cn(
-  "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#7c5cfc]",
-  "hover:bg-[#8a6dfd] disabled:opacity-40",
+  "flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground",
+  "hover:bg-primary/90 disabled:opacity-40",
 );

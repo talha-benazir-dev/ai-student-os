@@ -45,7 +45,7 @@ export function TruncatedText({ text, className }: TruncatedTextProps) {
       <TooltipTrigger asChild>{content}</TooltipTrigger>
       <TooltipContent
         side="right"
-        className="max-w-xs bg-[#0f0f17] text-white border-[#ffffff10]"
+        className="max-w-xs bg-card text-white border-[#ffffff10]"
       >
         {text}
       </TooltipContent>

@@ -128,7 +128,7 @@ export default function ChartEditor({
   return (
     <div className="flex flex-col gap-6 h-full">
       {!canGenerate ? (
-        <div className="rounded-lg border border-[#7c5cfc]/30 bg-[#7c5cfc]/10 px-4 py-3 text-sm text-white/80 shrink-0">
+        <div className="rounded-lg border border-primary/30 bg-primary/10 px-4 py-3 text-sm text-white/80 shrink-0">
           Upgrade to Pro to generate new charts.
         </div>
       ) : (
@@ -145,7 +145,7 @@ export default function ChartEditor({
                   ? "e.g. Add June with 45 hours, or change the title to Weekly Study Time"
                   : "e.g. Monthly study hours for the past 6 months"
               }
-              className="min-h-[80px] border-[#ffffff10] bg-[#0f0f17] text-white placeholder:text-white/30 resize-none"
+              className="min-h-[80px] border-[#ffffff10] bg-card text-white placeholder:text-muted-foreground resize-none"
             />
           </div>
           <div className="flex flex-wrap items-end gap-3">
@@ -155,10 +155,10 @@ export default function ChartEditor({
                 value={chartType}
                 onValueChange={(v) => setChartType(v as ChartType)}
               >
-                <SelectTrigger className="w-[140px] border-[#ffffff10] bg-[#0f0f17] text-white">
+                <SelectTrigger className="w-[140px] border-[#ffffff10] bg-card text-white">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="border-[#ffffff10] bg-[#0f0f17] text-white">
+                <SelectContent className="border-[#ffffff10] bg-card text-white">
                   {CHART_TYPES.map((t) => (
                     <SelectItem key={t} value={t}>
                       {t.charAt(0).toUpperCase() + t.slice(1)}
@@ -171,7 +171,7 @@ export default function ChartEditor({
               type="button"
               onClick={() => void handleGenerate()}
               disabled={isGenerating}
-              className="bg-[#7c5cfc] hover:bg-[#6b4ce8] text-white"
+              className="bg-primary hover:bg-primary/90 text-primary-foreground"
             >
               {isGenerating ? (
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -185,7 +185,7 @@ export default function ChartEditor({
       )}
 
       {hasChart ? (
-        <div className="flex-1 min-h-0 rounded-xl border border-[#ffffff10] bg-[#0f0f17] p-4">
+        <div className="flex-1 min-h-0 rounded-xl border border-[#ffffff10] bg-card p-4">
           {chart.title ? (
             <h3 className="text-sm font-medium text-white mb-4">{chart.title}</h3>
           ) : null}
@@ -303,8 +303,8 @@ export default function ChartEditor({
           </ResponsiveContainer>
         </div>
       ) : (
-        <div className="flex flex-1 items-center justify-center rounded-xl border border-dashed border-[#ffffff10] bg-[#0f0f17]/50 p-8">
-          <p className="text-sm text-white/40 text-center">
+        <div className="flex flex-1 items-center justify-center rounded-xl border border-dashed border-[#ffffff10] bg-card/50 p-8">
+          <p className="text-sm text-muted-foreground text-center">
             {hasChart
               ? "Describe changes above and click Apply to update the chart."
               : "Describe a chart and click Generate to visualize your data."}

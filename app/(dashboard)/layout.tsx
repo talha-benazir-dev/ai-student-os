@@ -1,41 +1,27 @@
 import { AppShell } from "@/features/dashboard/components/app-shell";
 import { CommandPaletteProvider } from "@/features/dashboard/components/create-command-menu";
 import { DashboardProviders } from "./dashboard-providers";
-import { createClient } from "@/lib/supabase/server";
-import type { UserPlan } from "@/lib/ai/plan";
-
-async function getUserPlan(): Promise<UserPlan> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) return "free";
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("plan")
-    .eq("id", user.id)
-    .single();
-
-  if (profile?.plan === "pro" || profile?.plan === "enterprise") {
-    return profile.plan;
-  }
-
-  return "free";
-}
+import { getSettings } from "@/features/settings/actions/settings.actions";
+import { getActiveSession } from "@/features/study-sessions/actions/study-sessions.actions";
+import { getClusters } from "@/features/clusters/actions/clusters.actions";
 
 export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const plan = await getUserPlan();
+  const [{ data: settings }, { data: clusters }, { data: activeSession }] =
+    await Promise.all([getSettings(), getClusters(), getActiveSession()]);
 
   return (
-    <DashboardProviders initialPlan={plan}>
+    <DashboardProviders
+      initialSession={activeSession}
+      initialPlan={settings?.plan ?? "free"}
+    >
       <CommandPaletteProvider>
-        <AppShell>{children}</AppShell>
+        <AppShell settings={settings} initialClusters={clusters ?? []}>
+          {children}
+        </AppShell>
       </CommandPaletteProvider>
     </DashboardProviders>
   );

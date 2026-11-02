@@ -36,7 +36,7 @@ const EMPTY_DIAGRAM: DiagramResult = {
 };
 
 const NODE_CLASSNAME =
-  "bg-[#0f0f17] border border-[#7c5cfc] text-white text-sm rounded-lg px-3 py-2";
+  "bg-card border border-primary text-white text-sm rounded-lg px-3 py-2";
 
 function parseDiagramContent(content: string): DiagramResult {
   if (!content.trim()) return EMPTY_DIAGRAM;
@@ -139,7 +139,7 @@ export default function DiagramEditor({
   return (
     <div className="flex flex-col gap-6 h-full">
       {!canGenerate ? (
-        <div className="rounded-lg border border-[#7c5cfc]/30 bg-[#7c5cfc]/10 px-4 py-3 text-sm text-white/80 shrink-0">
+        <div className="rounded-lg border border-primary/30 bg-primary/10 px-4 py-3 text-sm text-white/80 shrink-0">
           Upgrade to Pro to generate new diagrams.
         </div>
       ) : (
@@ -156,7 +156,7 @@ export default function DiagramEditor({
                   ? "e.g. Add a node for ATP synthesis, or rename Sunlight to Solar energy"
                   : "e.g. Photosynthesis process from sunlight to glucose"
               }
-              className="min-h-[80px] border-[#ffffff10] bg-[#0f0f17] text-white placeholder:text-white/30 resize-none"
+              className="min-h-[80px] border-[#ffffff10] bg-card text-white placeholder:text-muted-foreground resize-none"
             />
           </div>
           <div className="flex flex-wrap items-end gap-3">
@@ -166,10 +166,10 @@ export default function DiagramEditor({
                 value={diagramType}
                 onValueChange={(v) => setDiagramType(v as DiagramType)}
               >
-                <SelectTrigger className="w-[140px] border-[#ffffff10] bg-[#0f0f17] text-white">
+                <SelectTrigger className="w-[140px] border-[#ffffff10] bg-card text-white">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="border-[#ffffff10] bg-[#0f0f17] text-white">
+                <SelectContent className="border-[#ffffff10] bg-card text-white">
                   {DIAGRAM_TYPES.map((t) => (
                     <SelectItem key={t} value={t}>
                       {t === "mindmap" ? "Mind map" : "Flowchart"}
@@ -182,7 +182,7 @@ export default function DiagramEditor({
               type="button"
               onClick={() => void handleGenerate()}
               disabled={isGenerating}
-              className="bg-[#7c5cfc] hover:bg-[#6b4ce8] text-white"
+              className="bg-primary hover:bg-primary/90 text-primary-foreground"
             >
               {isGenerating ? (
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -202,7 +202,7 @@ export default function DiagramEditor({
               {diagram.title}
             </h3>
           ) : null}
-          <div className="h-[480px] rounded-xl overflow-hidden border border-[#ffffff10] bg-[#0f0f17]">
+          <div className="h-[480px] rounded-xl overflow-hidden border border-[#ffffff10] bg-card">
             <ReactFlow
               key={flowKey}
               nodes={flowNodes}
@@ -215,13 +215,13 @@ export default function DiagramEditor({
               proOptions={{ hideAttribution: true }}
             >
               <Background color="#ffffff10" />
-              <Controls className="!bg-[#0f0f17] !border-[#ffffff10] !shadow-none [&>button]:!bg-[#0f0f17] [&>button]:!border-[#ffffff10] [&>button]:!text-white [&>button:hover]:!bg-[#16161f]" />
+              <Controls className="!bg-card !border-[#ffffff10] !shadow-none [&>button]:!bg-card [&>button]:!border-[#ffffff10] [&>button]:!text-white [&>button:hover]:!bg-secondary" />
             </ReactFlow>
           </div>
         </div>
       ) : (
-        <div className="flex flex-1 items-center justify-center rounded-xl border border-dashed border-[#ffffff10] bg-[#0f0f17]/50 p-8">
-          <p className="text-sm text-white/40 text-center">
+        <div className="flex flex-1 items-center justify-center rounded-xl border border-dashed border-[#ffffff10] bg-card/50 p-8">
+          <p className="text-sm text-muted-foreground text-center">
             {hasDiagram
               ? "Describe changes above and click Apply to update the diagram."
               : "Describe a diagram and click Generate to visualize it."}

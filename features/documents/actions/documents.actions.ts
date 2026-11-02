@@ -1,13 +1,13 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getUser } from "@/lib/supabase/server";
 import { createHash } from "crypto";
 
 export async function getDocuments() {
   const supabase = await createClient();
 
-  const { data: userData, error: userError } = await supabase.auth.getUser();
+  const { data: userData, error: userError } = await getUser();
   if (userError) {
     return { data: null, error: userError };
   }
@@ -33,7 +33,7 @@ export async function createDocument(
 ) {
   const supabase = await createClient();
 
-  const { data: userData, error: userError } = await supabase.auth.getUser();
+  const { data: userData, error: userError } = await getUser();
   if (userError) {
     return { data: null, error: userError };
   }
@@ -68,7 +68,7 @@ export async function updateDocument(
   const {
     data: { user },
     error: userError,
-  } = await supabase.auth.getUser();
+  } = await getUser();
   if (userError || !user) {
     return { data: null, error: userError || new Error("User not found") };
   }

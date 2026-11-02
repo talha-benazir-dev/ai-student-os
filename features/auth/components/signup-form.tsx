@@ -14,7 +14,7 @@ export function SignupForm() {
   const [state, formAction, isPending] = useActionState(signup, null);
 
   return (
-    <Card className="w-full max-w-md shadow-violet-500/20 border-border bg-card/50 backdrop-blur-sm">
+    <Card className="w-full max-w-md shadow-none border-border bg-card/50 backdrop-blur-sm">
       <CardHeader className="space-y-1">
         <CardTitle className="text-2xl font-bold tracking-tight text-center">
           Create an account

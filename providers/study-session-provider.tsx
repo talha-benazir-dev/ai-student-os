@@ -4,22 +4,26 @@ import {
   createContext,
   useCallback,
   useContext,
-  useEffect,
   useState,
+  useSyncExternalStore,
   type ReactNode,
 } from "react";
 import {
   startSession,
   endSession,
-  getActiveSession,
 } from "@/features/study-sessions/actions/study-sessions.actions";
 
-const STORAGE_KEY = "nucleus-active-study-session";
+function subscribeClock(listener: () => void) {
+  const timer = setInterval(listener, 1000);
+  return () => clearInterval(timer);
+}
+const getClockSnapshot = () => Math.floor(Date.now() / 1000);
+const getServerClockSnapshot = () => 0;
 
-type StoredSession = {
-  sessionId: string;
-  startedAt: string;
-  clusterId: string | null;
+export type ActiveStudySession = {
+  id: string;
+  started_at: string;
+  cluster_id: string | null;
 };
 
 type StudySessionContextValue = {
@@ -35,102 +39,43 @@ type StudySessionContextValue = {
   stop: () => Promise<number | null>;
 };
 
-const StudySessionContext = createContext<StudySessionContextValue | null>(null);
+const StudySessionContext = createContext<StudySessionContextValue | null>(
+  null,
+);
 
-function readStoredSession(): StoredSession | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = sessionStorage.getItem(STORAGE_KEY);
-    if (!raw) return null;
-    return JSON.parse(raw) as StoredSession;
-  } catch {
-    return null;
-  }
-}
-
-function writeStoredSession(session: StoredSession | null) {
-  if (typeof window === "undefined") return;
-  if (session) {
-    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(session));
-  } else {
-    sessionStorage.removeItem(STORAGE_KEY);
-  }
-}
-
-function applySession(
-  session: StoredSession,
-  setSessionId: (id: string) => void,
-  setStartedAt: (at: string) => void,
-  setRunningClusterId: (id: string | null) => void,
-) {
-  setSessionId(session.sessionId);
-  setStartedAt(session.startedAt);
-  setRunningClusterId(session.clusterId);
-}
-
-export function StudySessionProvider({ children }: { children: ReactNode }) {
-  const [sessionId, setSessionId] = useState<string | null>(null);
-  const [startedAt, setStartedAt] = useState<string | null>(null);
-  const [runningClusterId, setRunningClusterId] = useState<string | null>(null);
+export function StudySessionProvider({
+  children,
+  initialSession,
+}: {
+  children: ReactNode;
+  initialSession: ActiveStudySession | null;
+}) {
+  const [sessionId, setSessionId] = useState<string | null>(
+    initialSession?.id ?? null,
+  );
+  const [startedAt, setStartedAt] = useState<string | null>(
+    initialSession?.started_at ?? null,
+  );
+  const [runningClusterId, setRunningClusterId] = useState<string | null>(
+    initialSession?.cluster_id ?? null,
+  );
   const [selectedCluster, setSelectedCluster] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [isHydrating, setIsHydrating] = useState(true);
-  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const isHydrating = false;
+  const subscribe = useCallback(
+    (listener: () => void) => (sessionId ? subscribeClock(listener) : () => {}),
+    [sessionId],
+  );
+  const now = useSyncExternalStore(
+    subscribe,
+    getClockSnapshot,
+    getServerClockSnapshot,
+  );
 
   const isRunning = sessionId !== null && startedAt !== null;
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function hydrate() {
-      const stored = readStoredSession();
-      if (stored) {
-        applySession(stored, setSessionId, setStartedAt, setRunningClusterId);
-      }
-
-      const result = await getActiveSession();
-      if (cancelled) return;
-
-      if (result.data) {
-        const session: StoredSession = {
-          sessionId: result.data.id,
-          startedAt: result.data.started_at,
-          clusterId: result.data.cluster_id,
-        };
-        applySession(session, setSessionId, setStartedAt, setRunningClusterId);
-        writeStoredSession(session);
-      } else {
-        setSessionId(null);
-        setStartedAt(null);
-        setRunningClusterId(null);
-        writeStoredSession(null);
-      }
-
-      setIsHydrating(false);
-    }
-
-    hydrate();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!isRunning || !startedAt) {
-      setElapsedSeconds(0);
-      return;
-    }
-
-    const tick = () => {
-      setElapsedSeconds(
-        Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000),
-      );
-    };
-
-    tick();
-    const id = setInterval(tick, 1000);
-    return () => clearInterval(id);
-  }, [isRunning, startedAt]);
+  const elapsedSeconds = isRunning
+    ? Math.max(0, now - Math.floor(new Date(startedAt!).getTime() / 1000))
+    : 0;
 
   const start = useCallback(async () => {
     if (isRunning || isLoading) return false;
@@ -141,14 +86,9 @@ export function StudySessionProvider({ children }: { children: ReactNode }) {
 
     if (result.error || !result.data) return false;
 
-    const session: StoredSession = {
-      sessionId: result.data.id,
-      startedAt: result.data.started_at,
-      clusterId: selectedCluster,
-    };
-
-    applySession(session, setSessionId, setStartedAt, setRunningClusterId);
-    writeStoredSession(session);
+    setSessionId(result.data.id);
+    setStartedAt(result.data.started_at);
+    setRunningClusterId(selectedCluster);
     return true;
   }, [isRunning, isLoading, selectedCluster]);
 
@@ -164,7 +104,6 @@ export function StudySessionProvider({ children }: { children: ReactNode }) {
     setSessionId(null);
     setStartedAt(null);
     setRunningClusterId(null);
-    writeStoredSession(null);
 
     return result.data.duration_minutes;
   }, [sessionId, isLoading]);

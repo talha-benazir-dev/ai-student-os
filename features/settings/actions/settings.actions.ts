@@ -1,6 +1,6 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getUser, getWorkspaceProfile } from "@/lib/supabase/server";
 import type {
   UserSettings,
   UpdateSettingsData,
@@ -17,21 +17,16 @@ type ActionResult<T> = {
 };
 
 export async function getSettings(): Promise<ActionResult<UserSettings>> {
-  const supabase = await createClient();
   const {
     data: { user },
     error: authError,
-  } = await supabase.auth.getUser();
+  } = await getUser();
 
   if (authError || !user) {
     return { data: null, error: "You must be signed in to view settings." };
   }
 
-  const { data: profile, error: profileError } = await supabase
-    .from("profiles")
-    .select("name, plan, theme, study_hours_period, week_starts_on, created_at, updated_at")
-    .eq("id", user.id)
-    .maybeSingle();
+  const { data: profile, error: profileError } = await getWorkspaceProfile();
 
   if (profileError) {
     return { data: null, error: profileError.message };
@@ -42,7 +37,7 @@ export async function getSettings(): Promise<ActionResult<UserSettings>> {
     name: profile?.name || "",
     email: user.email || "",
     plan: (profile?.plan as "free" | "pro" | "enterprise") || "free",
-    theme: profile?.theme || "Obsidian (default)",
+    theme: profile?.theme || "Graphite",
     study_hours_period: parseDashboardStudyPeriod(profile?.study_hours_period),
     week_starts_on: parseWeekStartsOn(profile?.week_starts_on),
     created_at: profile?.created_at || user.created_at,
@@ -59,7 +54,7 @@ export async function updateSettings(
   const {
     data: { user },
     error: authError,
-  } = await supabase.auth.getUser();
+  } = await getUser();
 
   if (authError || !user) {
     return { data: null, error: "You must be signed in to update settings." };
@@ -105,7 +100,7 @@ export async function updateSettings(
     name: data.name || "",
     email: user.email || "",
     plan: (data.plan as "free" | "pro" | "enterprise") || "free",
-    theme: data.theme || "Obsidian (default)",
+    theme: data.theme || "Graphite",
     study_hours_period: parseDashboardStudyPeriod(data.study_hours_period),
     week_starts_on: parseWeekStartsOn(data.week_starts_on),
     created_at: data.created_at,

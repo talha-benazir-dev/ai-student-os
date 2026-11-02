@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 
 function SectionCountBadge({ count }: { count: number }) {
   return (
-    <span className="text-[10px] font-medium tabular-nums px-1.5 py-0.5 rounded-full bg-white/10 text-white/50 shrink-0">
+    <span className="text-[10px] font-medium tabular-nums px-1.5 py-0.5 rounded-full bg-white/10 text-muted-foreground shrink-0">
       {count}
     </span>
   );
@@ -47,7 +47,7 @@ export function NoteListSection({
       >
         <ChevronRight
           className={cn(
-            "h-3.5 w-3.5 shrink-0 text-white/40 transition-transform duration-200",
+            "h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform duration-200",
             !isCollapsed && "rotate-90",
           )}
           aria-hidden
@@ -59,14 +59,14 @@ export function NoteListSection({
             aria-hidden
           />
         ) : null}
-        <h2 className="text-xs font-medium text-white/60 truncate min-w-0 flex-1">
+        <h2 className="text-xs font-medium text-muted-foreground truncate min-w-0 flex-1">
           {title}
         </h2>
         <SectionCountBadge count={count} />
       </button>
       {!isCollapsed ? (
         notes.length === 0 ? (
-          <p className="px-2 py-3 text-xs text-white/30">{emptyMessage}</p>
+          <p className="px-2 py-3 text-xs text-muted-foreground">{emptyMessage}</p>
         ) : (
           <div role="list" className="space-y-1">
             {notes.map((note) => (

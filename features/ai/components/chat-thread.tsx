@@ -47,7 +47,7 @@ export function ChatThread({ messages }: ChatThreadProps) {
         if (message.role === "user") {
           return (
             <div key={message.id} className="mb-4 flex justify-end">
-              <div className="max-w-[75%] rounded-2xl border border-[#7c5cfc20] bg-[#7c5cfc1a] px-4 py-3 text-sm text-white">
+              <div className="max-w-[75%] rounded-2xl border border-primary/15 bg-primary/10 px-4 py-3 text-sm text-white">
                 {message.attachments && message.attachments.length > 0 ? (
                   <div className="mb-2">
                     <ChatAttachmentStrip uploaded={message.attachments} />
@@ -71,13 +71,13 @@ export function ChatThread({ messages }: ChatThreadProps) {
                 <StreamingDots />
               ) : (
                 <div className="flex items-end gap-0.5">
-                  <div className="prose prose-invert prose-sm max-w-none prose-p:text-white/85 prose-headings:text-white prose-strong:text-white prose-code:text-violet-300 prose-code:bg-[#7c5cfc15] prose-code:rounded prose-code:px-1 prose-pre:border prose-pre:border-[#ffffff10] prose-pre:bg-[#0f0f17] prose-ol:text-white/85 prose-ul:text-white/85 prose-li:text-white/85">
+                  <div className="prose prose-invert prose-sm max-w-none prose-p:text-white/85 prose-headings:text-white prose-strong:text-white prose-code:text-primary-soft prose-code:bg-primary/10 prose-code:rounded prose-code:px-1 prose-pre:border prose-pre:border-[#ffffff10] prose-pre:bg-card prose-ol:text-white/85 prose-ul:text-white/85 prose-li:text-white/85">
                     <MarkdownWithMath variant="chat">
                       {message.content}
                     </MarkdownWithMath>
                   </div>
                   {showCursor ? (
-                    <span className="mb-1 inline-block animate-pulse text-violet-400">
+                    <span className="mb-1 inline-block animate-pulse text-primary">
                       ▍
                     </span>
                   ) : null}

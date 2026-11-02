@@ -9,7 +9,7 @@ import {
 
 export async function executeToolCall(
   toolName: string,
-  toolInput: any,
+  toolInput: Record<string, unknown>,
   userId: string,
 ): Promise<string> {
   const supabase = await createClient();
